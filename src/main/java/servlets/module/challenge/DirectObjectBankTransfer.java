@@ -73,7 +73,16 @@ public class DirectObjectBankTransfer extends HttpServlet {
       String errorMessage = new String();
       String applicationRoot = getServletContext().getRealPath("");
       try {
-        String senderAccountNumber = request.getParameter("senderAccountNumber");
+        // Funds may only ever be sent from the account this session authenticated to during
+        // bank login. A request supplied sender account number is not trusted. The receiver
+        // account is legitimately chosen by the user.
+        Object bankAccount = ses.getAttribute("directObjectBankAccount");
+        if (bankAccount == null) {
+          log.error(levelName + " accessed without a bank account signed into the session");
+          out.write(errors.getString("error.noSession"));
+          return;
+        }
+        String senderAccountNumber = bankAccount.toString();
         log.debug("Sender Account Number - " + senderAccountNumber);
         String receiverAccountNumber = request.getParameter("receiverAccountNumber");
         log.debug("Receiver Account Number - " + receiverAccountNumber);

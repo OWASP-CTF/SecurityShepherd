@@ -67,15 +67,23 @@ public class DirectObjectBankCurrentBalance extends HttpServlet {
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
       try {
-        String accountNumber = request.getParameter("accountNumber");
-        log.debug("Account Number - " + accountNumber);
-        String applicationRoot = getServletContext().getRealPath("");
-        String htmlOutput = new String();
-        long currentBalance =
-            DirectObjectBankLogin.getAccountBalance(accountNumber, applicationRoot);
-        log.debug("Outputting HTML");
-        htmlOutput = Long.toString(currentBalance);
-        out.write(htmlOutput);
+        // The balance returned is always the balance of the account this session authenticated
+        // to during bank login. Any account number in the request is not trusted.
+        Object bankAccount = ses.getAttribute("directObjectBankAccount");
+        if (bankAccount == null) {
+          log.error(levelName + " accessed without a bank account signed into the session");
+          out.write(errors.getString("error.noSession"));
+        } else {
+          String accountNumber = bankAccount.toString();
+          log.debug("Account Number - " + accountNumber);
+          String applicationRoot = getServletContext().getRealPath("");
+          String htmlOutput = new String();
+          long currentBalance =
+              DirectObjectBankLogin.getAccountBalance(accountNumber, applicationRoot);
+          log.debug("Outputting HTML");
+          htmlOutput = Long.toString(currentBalance);
+          out.write(htmlOutput);
+        }
       } catch (SQLException e) {
         out.write(
             errors.getString("error.funky")
