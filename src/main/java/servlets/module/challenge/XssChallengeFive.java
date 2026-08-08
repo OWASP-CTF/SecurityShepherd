@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
 import utils.FindXSS;
 import utils.Hash;
 import utils.ShepherdLogManager;
@@ -80,8 +81,15 @@ public class XssChallengeFive extends HttpServlet {
           String searchTerm = request.getParameter("searchTerm");
           log.debug("User Submitted - " + searchTerm);
           searchTerm = XssFilter.badUrlValidate(searchTerm);
-          userPost = "<a href=\"" + searchTerm + "\">Your HTTP Link!</a>";
           log.debug("After WhiteListing - " + searchTerm);
+
+          // The URL filter above is not an HTML encoder, so a payload such as
+          // " onmouseover="alert(1) could break out of the href attribute below. Encode for the
+          // HTML sink before the link is built, so the markup is neutralised in both the response
+          // body and the FindXSS detection input.
+          searchTerm = Encode.forHtml(searchTerm);
+          userPost = "<a href=\"" + searchTerm + "\">Your HTTP Link!</a>";
+          log.debug("After Encoding - " + searchTerm);
 
           boolean xssDetected = FindXSS.search(userPost);
           if (xssDetected) {
