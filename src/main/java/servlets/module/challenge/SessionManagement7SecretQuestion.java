@@ -1,7 +1,6 @@
 package servlets.module.challenge;
 
 import dbProcs.Database;
-import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -19,8 +18,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.owasp.encoder.Encode;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -49,6 +46,9 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
   private static String levelName = "Session Management Challenge 7 (Secret Question)";
   private static String levelHash =
       "269d55bc0e0ff635dcaeec8533085e5eae5d25e8646dcd4b05009353c9cf9c80";
+  // The answer space for the secret question is tiny, so wrong answers are capped per session
+  private static final String ANSWER_ATTEMPTS = "sessionManagement7AnswerAttempts";
+  private static final int MAX_ANSWER_ATTEMPTS = 3;
   // To catch most requests before calling the DB, the in comming Answers must be one of the
   // following flowers
   private static String possibleAnswers[] = {
@@ -101,7 +101,11 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
         Object emailObj = request.getParameter("subEmail");
         String subEmail = Validate.validateParameter(emailObj, 60);
         log.debug("subEmail = " + subEmail);
-        if (validAnswer(subAns)) {
+        Integer failedAnswers = (Integer) ses.getAttribute(ANSWER_ATTEMPTS);
+        if (failedAnswers == null) {
+          failedAnswers = 0;
+        }
+        if (validAnswer(subAns) && failedAnswers < MAX_ANSWER_ATTEMPTS) {
           log.debug("Submitted answer is a possible valid answer");
           String ApplicationRoot = getServletContext().getRealPath("");
           try {
@@ -117,35 +121,18 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
               callstmt.setString(2, subAns);
               log.debug("Running secret Answer Check");
               ResultSet rs = callstmt.executeQuery();
-              if (rs.next()) {
-                log.debug("Correct Answer Submitted");
-                // Get key and add it to the output
-                String userKey =
-                    Hash.generateUserSolution(
-                        Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
-                        (String) ses.getAttribute("userName"));
-                htmlOutput =
-                    "<h2 class='title'>"
-                        + bundle.getString("response.welcome")
-                        + " "
-                        + Encode.forHtml(rs.getString(1))
-                        + "</h2>"
-                        + "<p>"
-                        + bundle.getString("response.resultKey")
-                        + " <a>"
-                        + userKey
-                        + "</a>"
-                        + "</p>";
-              } else {
-                log.debug("Bad Answer Submitted");
-                htmlOutput =
-                    new String(
-                        "<h2 class='title'>"
-                            + bundle.getString("question.badAnswer")
-                            + "</h2><p>"
-                            + bundle.getString("question.whoAreYou")
-                            + "</p>");
-              }
+              log.debug("Answer checked, account recovery is never granted on an answer alone");
+              // The answer set is seven known flowers, so it never signs the account in. The
+              // response is identical either way so it cannot be used as an oracle.
+              rs.close();
+              ses.setAttribute(ANSWER_ATTEMPTS, failedAnswers + 1);
+              htmlOutput =
+                  new String(
+                      "<h2 class='title'>"
+                          + bundle.getString("question.badAnswer")
+                          + "</h2><p>"
+                          + bundle.getString("question.whoAreYou")
+                          + "</p>");
               Database.closeConnection(conn);
             } else {
               log.debug("Invalid data submitted");
@@ -160,7 +147,8 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
             log.error(levelName + " SQL Error: " + e.toString());
           }
         } else {
-          log.debug("Invalid answer submitted for any user, skipping rest of function");
+          log.debug("Invalid answer, or attempt limit reached, skipping rest of function");
+          ses.setAttribute(ANSWER_ATTEMPTS, failedAnswers + 1);
           htmlOutput =
               new String(
                   "<h2 class='title'>"
