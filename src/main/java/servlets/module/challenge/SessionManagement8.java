@@ -3,21 +3,14 @@ package servlets.module.challenge;
 import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
-import java.security.InvalidKeyException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Locale;
 import java.util.ResourceBundle;
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import utils.Hash;
@@ -49,25 +42,6 @@ public class SessionManagement8 extends HttpServlet {
   private static String levelName = "Session Management Challenge Eight";
   private static String levelHash =
       "714d8601c303bbef8b5cabab60b1060ac41f0d96f53b6ea54705bb1ea4316334";
-
-  // Server-side secret used to sign a genuinely privileged "challengeRole" cookie value. The
-  // fixed, publicly-documented ATOM-128 encoded "superuser" string must never, by itself, be
-  // trusted to grant elevated access - only a value bearing a valid signature produced with
-  // this secret may do so. Nothing in this application legitimately issues such a signature, so
-  // simply decoding/encoding "superuser" no longer escalates privilege.
-  private static final byte[] roleSigningKey = Hash.randomKeyBytes();
-  private static final String HMAC_ALGO = "HmacSHA256";
-
-  private static byte[] signPayload(String payload) {
-    try {
-      Mac mac = Mac.getInstance(HMAC_ALGO);
-      mac.init(new SecretKeySpec(roleSigningKey, HMAC_ALGO));
-      return mac.doFinal(payload.getBytes("UTF-8"));
-    } catch (NoSuchAlgorithmException | InvalidKeyException | UnsupportedEncodingException e) {
-      log.error("Could not sign challengeRole payload: " + e.toString());
-      return null;
-    }
-  }
 
   /**
    * Users must take advance of the broken session management in this application by modifying the
@@ -118,22 +92,7 @@ public class SessionManagement8 extends HttpServlet {
         if (theCookie != null) {
           log.debug("Cookie value: " + theCookie.getValue());
 
-          // Expected privileged cookie format:
-          // "nmHqLjQknlHs.<base64-hmac-of-nmHqLjQknlHs>"
-          String rawCookie = theCookie.getValue();
-          int separatorIndex = rawCookie.indexOf('.');
-          String rolePart = separatorIndex > 0 ? rawCookie.substring(0, separatorIndex) : rawCookie;
-          boolean superUserSignatureValid = false;
-          if (separatorIndex > 0 && rolePart.equals("nmHqLjQknlHs")) {
-            byte[] submittedSignature =
-                Base64.decodeBase64(rawCookie.substring(separatorIndex + 1));
-            byte[] expectedSignature = signPayload(rolePart);
-            superUserSignatureValid =
-                expectedSignature != null
-                    && MessageDigest.isEqual(expectedSignature, submittedSignature);
-          }
-
-          if (superUserSignatureValid) {
+          if (theCookie.getValue().equals("nmHqLjQknlHs")) {
             log.debug("Super User Cookie detected");
             // Get key and add it to the output
             String userKey =
