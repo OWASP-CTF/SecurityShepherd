@@ -64,10 +64,14 @@ public class DirectObjectBankCurrentBalance extends HttpServlet {
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
       log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+      String accountNumber = (String) ses.getAttribute("directObjectBankAccount");
+      if (accountNumber == null) {
+        response.sendError(HttpServletResponse.SC_FORBIDDEN);
+        return;
+      }
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
       try {
-        String accountNumber = request.getParameter("accountNumber");
         log.debug("Account Number - " + accountNumber);
         String applicationRoot = getServletContext().getRealPath("");
         String htmlOutput = new String();
