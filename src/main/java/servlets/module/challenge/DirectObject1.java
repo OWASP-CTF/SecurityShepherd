@@ -6,6 +6,9 @@ import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -43,6 +46,14 @@ public class DirectObject1 extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(DirectObject1.class);
   private static String levelName = "Insecure Direct Object Challenge Challenge One";
+  /**
+   * The profiles this challenge publishes. Any other identifier is a direct object
+   * reference the requester was never authorised to use, so it is refused regardless of
+   * whether a matching row happens to exist.
+   */
+  private static final List<String> authorisedUserIds =
+      Collections.unmodifiableList(Arrays.asList("1", "3", "5", "7", "9"));
+
   public static String levelHash =
       "o9a450a64cc2a196f55878e2bd9a27a72daea0f17017253f87e7ebd98c71c98c";
 
@@ -75,6 +86,10 @@ public class DirectObject1 extends HttpServlet {
       try {
         String userId = request.getParameter("userId[]");
         log.debug("User Submitted - " + userId);
+        boolean authorised = userId != null && authorisedUserIds.contains(userId);
+        if (!authorised) {
+          log.debug("Refusing profile the user is not authorised to read");
+        }
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
         String htmlOutput = new String();
@@ -85,7 +100,7 @@ public class DirectObject1 extends HttpServlet {
             conn.prepareStatement("SELECT userName, privateMessage FROM users WHERE userId = ?");
         prepstmt.setString(1, userId);
         ResultSet resultSet = prepstmt.executeQuery();
-        if (resultSet.next()) {
+        if (authorised && resultSet.next()) {
           log.debug("Found user: " + resultSet.getString(1));
           String userName = resultSet.getString(1);
           String privateMessage = resultSet.getString(2);

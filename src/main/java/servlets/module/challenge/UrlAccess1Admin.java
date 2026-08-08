@@ -74,6 +74,12 @@ public class UrlAccess1Admin extends HttpServlet {
       String htmlOutput = new String();
 
       try {
+        // This is an administrator only function. Access is enforced against the authenticated
+        // principal here, rather than relying on the URL not being linked from the user page.
+        boolean authorised = Validate.validateAdminSession(ses);
+        if (!authorised) {
+          log.error(levelName + " admin function requested without the admin role");
+        }
         String userData = request.getParameter("userData");
         boolean tamperedRequest = !userData.equalsIgnoreCase("4816283");
         if (!tamperedRequest) {
@@ -82,7 +88,7 @@ public class UrlAccess1Admin extends HttpServlet {
           log.debug("User Submitted - " + userData);
         }
 
-        if (!tamperedRequest) {
+        if (authorised && !tamperedRequest) {
           String userKey =
               Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
           htmlOutput =
