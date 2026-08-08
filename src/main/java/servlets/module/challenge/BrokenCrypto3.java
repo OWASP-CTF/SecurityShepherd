@@ -83,8 +83,17 @@ public class BrokenCrypto3 extends HttpServlet {
         log.debug("User Submitted - " + userData);
 
         log.debug("Decrypting user input");
-        String decryptedUserData = decrypt(userData, encryptionKey);
-        log.debug("Decrypted to: " + decryptedUserData);
+        String decryptedUserData;
+        try {
+          decryptedUserData = decrypt(userData, encryptionKey);
+          log.debug("Decrypted to: " + decryptedUserData);
+        } catch (GeneralSecurityException | IllegalArgumentException e) {
+          // Cipher text that was not produced by this application does not decrypt. Report that
+          // as an empty plain text rather than telling the submitter anything about why it
+          // failed, which is what turns a decryption endpoint into a padding oracle.
+          log.debug("Submitted cipher text could not be decrypted");
+          decryptedUserData = new String();
+        }
 
         htmlOutput =
             "<h2 class='title'>"

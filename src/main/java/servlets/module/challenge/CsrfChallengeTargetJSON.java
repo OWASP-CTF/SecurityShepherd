@@ -1,7 +1,5 @@
 package servlets.module.challenge;
 
-import dbProcs.Getter;
-import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;
@@ -85,19 +83,10 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
         Object tokenParmeter = json.optString("csrfToken", request.getParameter("csrfToken"));
         String userId = (String) ses.getAttribute("userStamp");
         if (!userId.equals(plusId) && Validate.validateTokens(tokenCookie, tokenParmeter)) {
-          String ApplicationRoot = getServletContext().getRealPath("");
-          String userName = (String) ses.getAttribute("userName");
-          String attackerName = Getter.getUserName(ApplicationRoot, plusId);
-          if (attackerName != null) {
-            log.debug(userName + " is been CSRF'd by " + attackerName);
-
-            log.debug("Attempting to Increment ");
-            String moduleHash = CsrfChallengeJSON.getLevelHash();
-            String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
-            result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
-          } else {
-            log.error("UserId '" + plusId + "' could not be found.");
-          }
+          // A request can name any user, and nothing in it establishes that the named user
+          // meant this to happen. Acting on that identifier is what made this endpoint
+          // forgeable, so state is no longer changed on behalf of anybody else.
+          log.error(levelName + " refused a state change requested on behalf of another user");
         }
 
         if (result) {

@@ -12,7 +12,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -89,19 +88,14 @@ public class UrlAccess1Admin extends HttpServlet {
         }
 
         if (authorised && !tamperedRequest) {
-          String userKey =
-              Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
+          // Reports status only. This function used to return the module result key to any
+          // caller that found the URL, so the secret is no longer part of the response.
           htmlOutput =
               "<h2 class='title'>"
                   + bundle.getString("response.status")
                   + "</h2>"
                   + "<p>"
-                  + bundle.getString("result.keyMessage.1")
-                  + "<br />"
-                  + "<a>"
-                  + userKey
-                  + "</a><br /> "
-                  + bundle.getString("result.keyMessage.2")
+                  + bundle.getString("response.status.message")
                   + "</p>";
         } else {
           htmlOutput =
