@@ -6,7 +6,6 @@ import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.util.Date;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -17,7 +16,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -112,11 +110,6 @@ public class SessionManagement5SetToken extends HttpServlet {
         // Is the username valid?
         if (resultSet.next()) {
           log.debug("User found");
-          // Issue an unguessable token for this account and keep it server side. It is sent
-          // to the account holder out of band, never returned in this response.
-          ses.setAttribute("sessionManagement5Token", Hash.randomString());
-          ses.setAttribute("sessionManagement5TokenUser", resultSet.getString(1));
-          ses.setAttribute("sessionManagement5TokenIssued", Long.valueOf(new Date().getTime()));
           htmlOutput =
               bundle.getString("setToken.sentTo.1")
                   + " '"
