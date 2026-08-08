@@ -132,6 +132,8 @@ public class SessionManagement3 extends HttpServlet {
             ResultSet resultSet2 = callstmt.executeQuery();
             if (resultSet2.next()) {
               log.debug("Successful Admin Login");
+              // Remember who this session actually authenticated as, server side.
+              ses.setAttribute("sessionManagement3User", resultSet2.getString(1));
               // Get key and add it to the output
               String userKey =
                   Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
@@ -158,6 +160,8 @@ public class SessionManagement3 extends HttpServlet {
             }
           } else {
             log.debug("Successful Guest Login");
+            // Remember who this session actually authenticated as, server side.
+            ses.setAttribute("sessionManagement3User", resultSet.getString(1));
             htmlOutput =
                 makeTable(bundle)
                     + "<h2 class='title'>"

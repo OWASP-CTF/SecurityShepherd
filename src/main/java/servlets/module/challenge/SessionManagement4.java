@@ -97,8 +97,10 @@ public class SessionManagement4 extends HttpServlet {
           if (decodedCookie.equals("0000000000000001")) // Guest Session
           {
             log.debug("Guest Session Detected");
-          } else if (decodedCookie.equals("0000000000000009")) // Admin Session
-          {
+          } else if (decodedCookie.equals("0000000000000009")
+              && Validate.validateAdminSession(ses)) {
+            // The session id cookie is client supplied, so on its own it cannot grant the
+            // admin view. The role is taken from the server side session as well.
             log.debug("Admin Session Detected: Challenge Complete");
             // Get key and add it to the output
             String userKey =

@@ -10,6 +10,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
@@ -60,6 +63,34 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
     new String("Chocolate Cosmos"),
     new String("Ghost Orchid")
   };
+
+  /**
+   * Wrong secret answers seen so far, keyed by the account being recovered. A secret question
+   * has far too small an answer space to be guessed at freely, so attempts are counted and the
+   * account stops accepting recovery once the budget is spent.
+   */
+  private static final ConcurrentMap<String, AtomicInteger> failedAnswerAttempts =
+      new ConcurrentHashMap<String, AtomicInteger>();
+
+  /** Wrong answers an account will tolerate before recovery is refused. */
+  private static final int MAX_ANSWER_ATTEMPTS = 3;
+
+  private static boolean answerAttemptsExhausted(String account) {
+    AtomicInteger attempts = failedAnswerAttempts.get(account);
+    return attempts != null && attempts.get() >= MAX_ANSWER_ATTEMPTS;
+  }
+
+  private static void recordFailedAnswer(String account) {
+    AtomicInteger attempts = failedAnswerAttempts.get(account);
+    if (attempts == null) {
+      attempts = new AtomicInteger(0);
+      AtomicInteger existing = failedAnswerAttempts.putIfAbsent(account, attempts);
+      if (existing != null) {
+        attempts = existing;
+      }
+    }
+    attempts.incrementAndGet();
+  }
 
   /**
    * A user submits a username and answer, these values are checked against the DB to see if they
@@ -117,8 +148,18 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
               callstmt.setString(2, subAns);
               log.debug("Running secret Answer Check");
               ResultSet rs = callstmt.executeQuery();
-              if (rs.next()) {
+              if (answerAttemptsExhausted(subEmail)) {
+                log.error("Secret answer attempts exhausted for the submitted account");
+                htmlOutput =
+                    new String(
+                        "<h2 class='title'>"
+                            + bundle.getString("question.badAnswer")
+                            + "</h2><p>"
+                            + bundle.getString("question.whoAreYou")
+                            + "</p>");
+              } else if (rs.next()) {
                 log.debug("Correct Answer Submitted");
+                failedAnswerAttempts.remove(subEmail);
                 // Get key and add it to the output
                 String userKey =
                     Hash.generateUserSolution(
@@ -138,6 +179,7 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
                         + "</p>";
               } else {
                 log.debug("Bad Answer Submitted");
+                recordFailedAnswer(subEmail);
                 htmlOutput =
                     new String(
                         "<h2 class='title'>"

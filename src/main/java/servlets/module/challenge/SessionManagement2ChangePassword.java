@@ -108,7 +108,9 @@ public class SessionManagement2ChangePassword extends HttpServlet {
           callstmt.execute();
           log.debug("Changes committed.");
 
-          htmlOutput = Encode.forHtml(newPassword);
+          // The new credential is issued out of band. Returning it to whoever asked for the
+          // reset is what let an anonymous requester take over any account.
+          htmlOutput = "********";
           Database.closeConnection(conn);
         } catch (SQLException e) {
           log.error(levelName + " SQL Error: " + e.toString());
