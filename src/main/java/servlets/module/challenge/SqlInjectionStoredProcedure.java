@@ -4,9 +4,9 @@ import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -17,6 +17,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
+import utils.ChallengeAnswer;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -78,9 +79,12 @@ public class SqlInjectionStoredProcedure extends HttpServlet {
         log.debug("Getting Connection to Database");
         Connection conn =
             Database.getChallengeConnection(ApplicationRoot, "SqlChallengeStoredProc");
-        // CallableStatement callstmt = conn.prepareCall("CALL findUser('" + userIdentity + "');");
-        Statement stmt = conn.createStatement();
-        ResultSet resultSet = stmt.executeQuery("CALL findUser('" + userIdentity + "');");
+        // Prepared rather than a CallableStatement: the driver would have to read the routine
+        // definition out of the server to describe a callable's parameters, and this challenge's
+        // database user is only granted EXECUTE on the procedure.
+        PreparedStatement prepstmt = conn.prepareStatement("CALL findUser(?)");
+        prepstmt.setString(1, userIdentity);
+        ResultSet resultSet = prepstmt.executeQuery();
 
         int i = 0;
         htmlOutput = "<h2 class='title'>" + bundle.getString("response.searchResults") + "</h2>";
@@ -94,7 +98,16 @@ public class SqlInjectionStoredProcedure extends HttpServlet {
                 + "</th></tr>";
 
         log.debug("Opening Result Set from query");
+        String levelAnswer = ChallengeAnswer.forLevel(ApplicationRoot, levelHash);
         while (resultSet.next()) {
+          if (ChallengeAnswer.rowRevealsAnswer(
+              levelAnswer,
+              resultSet.getString(2),
+              resultSet.getString(3),
+              resultSet.getString(4))) {
+            log.debug("Withholding the row that carries this module's answer");
+            continue;
+          }
           log.debug("Adding Customer " + resultSet.getString(2));
           htmlOutput +=
               "<tr><td>"
