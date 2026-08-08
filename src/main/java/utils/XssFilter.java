@@ -28,6 +28,28 @@ public class XssFilter {
 
   private static final Logger log = LogManager.getLogger(XssFilter.class);
 
+  private static final String SAFE_FALLBACK_URL =
+      "https://www.owasp.org/index.php/OWASP_Security_Shepherd";
+
+  /** Accept only absolute HTTP(S) links before placing a user supplied URL in an HTML attribute. */
+  public static String validateHttpUrl(String input) {
+    if (input == null) {
+      return SAFE_FALLBACK_URL;
+    }
+    try {
+      URL url = new URL(input);
+      String protocol = url.getProtocol();
+      if (("http".equalsIgnoreCase(protocol) || "https".equalsIgnoreCase(protocol))
+          && url.getHost() != null
+          && !url.getHost().isEmpty()) {
+        return url.toExternalForm();
+      }
+    } catch (MalformedURLException e) {
+      log.debug("Rejected malformed URL");
+    }
+    return SAFE_FALLBACK_URL;
+  }
+
   /**
    * A method to badly validate a URL
    *

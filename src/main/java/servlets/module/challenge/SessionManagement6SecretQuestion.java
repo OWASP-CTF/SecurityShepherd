@@ -79,6 +79,16 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
 
+      // Knowledge-based questions are not sufficient authentication for account recovery. A
+      // separate, verified recovery flow must place this short-lived server-side marker in the
+      // session before an answer can be checked.
+      if (!Boolean.TRUE.equals(ses.getAttribute("sessionChallenge6RecoveryVerified"))) {
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        out.write(bundle.getString("question.whoAreYou"));
+        return;
+      }
+      ses.removeAttribute("sessionChallenge6RecoveryVerified");
+
       String htmlOutput = new String();
       log.debug(levelName + " Servlet accessed");
       try {
@@ -225,10 +235,8 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
                         ApplicationRoot, "BrokenAuthAndSessMangChalSix");
                 log.debug("Getting Secret Question");
                 PreparedStatement callstmt =
-                    conn.prepareStatement(
-                        "SELECT secretQuestion FROM users WHERE userAddress = \""
-                            + subEmail
-                            + "\"");
+                    conn.prepareStatement("SELECT secretQuestion FROM users WHERE userAddress = ?");
+                callstmt.setString(1, subEmail);
                 ResultSet rs = callstmt.executeQuery();
                 if (rs.next()) {
                   log.debug("'Valid' User Detected");

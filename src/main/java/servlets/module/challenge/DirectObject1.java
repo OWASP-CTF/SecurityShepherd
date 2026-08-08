@@ -40,6 +40,9 @@ import utils.Validate;
  */
 public class DirectObject1 extends HttpServlet {
 
+  private static final java.util.Set<String> VISIBLE_USER_IDS =
+      new java.util.HashSet<String>(java.util.Arrays.asList("1", "3", "5", "7", "9"));
+
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(DirectObject1.class);
   private static String levelName = "Insecure Direct Object Challenge Challenge One";
@@ -75,6 +78,10 @@ public class DirectObject1 extends HttpServlet {
       try {
         String userId = request.getParameter("userId[]");
         log.debug("User Submitted - " + userId);
+        if (!VISIBLE_USER_IDS.contains(userId)) {
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
+        }
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
         String htmlOutput = new String();
@@ -91,12 +98,12 @@ public class DirectObject1 extends HttpServlet {
           String privateMessage = resultSet.getString(2);
           htmlOutput =
               "<h2 class='title'>"
-                  + userName
+                  + Encode.forHtml(userName)
                   + "'s "
                   + bundle.getString("response.message")
                   + "</h2>"
                   + "<p>"
-                  + privateMessage
+                  + Encode.forHtml(privateMessage)
                   + "</p>";
         } else {
           log.debug("No Profile Found");

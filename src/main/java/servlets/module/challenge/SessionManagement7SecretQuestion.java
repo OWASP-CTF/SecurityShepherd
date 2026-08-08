@@ -90,6 +90,15 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
 
+      // A small, public list of possible answers is not an authentication factor. Require a
+      // separate verified recovery flow before this legacy compatibility endpoint can run.
+      if (!Boolean.TRUE.equals(ses.getAttribute("sessionChallenge7RecoveryVerified"))) {
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        out.write(bundle.getString("question.whoAreYou"));
+        return;
+      }
+      ses.removeAttribute("sessionChallenge7RecoveryVerified");
+
       String htmlOutput = new String();
       log.debug(levelName + " Servlet accessed");
       try {

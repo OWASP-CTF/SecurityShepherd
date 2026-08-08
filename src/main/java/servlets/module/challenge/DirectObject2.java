@@ -40,6 +40,15 @@ import utils.Validate;
  */
 public class DirectObject2 extends HttpServlet {
 
+  private static final java.util.Set<String> VISIBLE_USER_IDS =
+      new java.util.HashSet<String>(
+          java.util.Arrays.asList(
+              "c81e728d9d4c2f636f067f89cc14862c",
+              "eccbc87e4b5ce2fe28308fd9f2a7baf3",
+              "e4da3b7fbbce2345d7772b0674a318d5",
+              "8f14e45fceea167a5a36dedd4bea2543",
+              "6512bd43d9caa6e02c990b0a82652dca"));
+
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(DirectObject2.class);
   private static String levelName = "Insecure Direct Object Reference Challenge Two";
@@ -75,6 +84,10 @@ public class DirectObject2 extends HttpServlet {
       try {
         String userId = request.getParameter("userId[]");
         log.debug("User Submitted - " + userId);
+        if (!VISIBLE_USER_IDS.contains(userId)) {
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
+        }
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
         String htmlOutput = new String();
@@ -91,12 +104,12 @@ public class DirectObject2 extends HttpServlet {
           String privateMessage = resultSet.getString(2);
           htmlOutput =
               "<h2 class='title'>"
-                  + userName
+                  + Encode.forHtml(userName)
                   + "'s "
                   + bundle.getString("response.message")
                   + "</h2>"
                   + "<p>"
-                  + privateMessage
+                  + Encode.forHtml(privateMessage)
                   + "</p>";
         } else {
           log.debug("No Profile Found");

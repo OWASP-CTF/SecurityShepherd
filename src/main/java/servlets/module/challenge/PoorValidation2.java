@@ -11,7 +11,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -80,15 +79,15 @@ public class PoorValidation2 extends HttpServlet {
         log.debug("bananaAmount - " + bananaAmount);
 
         // Working out costs
-        int pineappleCost = pineappleAmount * 30;
-        int orangeCost = orangeAmount * 3000;
-        int appleCost = appleAmount * 45;
-        int bananaCost = bananaAmount * 15;
+        long pineappleCost = pineappleAmount * 30L;
+        long orangeCost = orangeAmount * 3000L;
+        long appleCost = appleAmount * 45L;
+        long bananaCost = bananaAmount * 15L;
 
         htmlOutput = new String();
 
         // Work Out Final Cost
-        int finalCost = pineappleCost + orangeCost + bananaCost + appleCost;
+        long finalCost = pineappleCost + orangeCost + bananaCost + appleCost;
 
         // Output Order
         htmlOutput =
@@ -103,14 +102,6 @@ public class PoorValidation2 extends HttpServlet {
                 + " <a><strong>$"
                 + finalCost
                 + "</strong></a></p>";
-        if (finalCost <= 0 && orangeAmount > 0) {
-          htmlOutput +=
-              "<br><p>"
-                  + bundle.getString("poorValidation.freeOranges")
-                  + " - "
-                  + Hash.generateUserSolution(levelSolution, currentUser)
-                  + "</p>";
-        }
       } catch (Exception e) {
         log.debug("Didn't complete order: " + e.toString());
         htmlOutput += "<p>" + bundle.getString("poorValidation.badOrder") + "</p>";
@@ -127,8 +118,8 @@ public class PoorValidation2 extends HttpServlet {
   }
 
   private static int validateAmount(int amount) {
-    if (amount < 0) {
-      amount = 0;
+    if (amount < 0 || amount > 1000) {
+      throw new IllegalArgumentException("Invalid item quantity");
     }
     return amount;
   }

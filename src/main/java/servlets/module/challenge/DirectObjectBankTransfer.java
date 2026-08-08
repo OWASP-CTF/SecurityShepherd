@@ -73,7 +73,11 @@ public class DirectObjectBankTransfer extends HttpServlet {
       String errorMessage = new String();
       String applicationRoot = getServletContext().getRealPath("");
       try {
-        String senderAccountNumber = request.getParameter("senderAccountNumber");
+        String senderAccountNumber = (String) ses.getAttribute("directObjectBankAccount");
+        if (senderAccountNumber == null) {
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
+        }
         log.debug("Sender Account Number - " + senderAccountNumber);
         String receiverAccountNumber = request.getParameter("receiverAccountNumber");
         log.debug("Receiver Account Number - " + receiverAccountNumber);

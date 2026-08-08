@@ -1,6 +1,5 @@
 package servlets.module.challenge;
 
-import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;
@@ -13,8 +12,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.FindXSS;
-import utils.Hash;
+import org.owasp.encoder.Encode;
 import utils.ShepherdLogManager;
 import utils.Validate;
 import utils.XssFilter;
@@ -79,37 +77,13 @@ public class XssChallengeFour extends HttpServlet {
           String userPost = new String();
           String searchTerm = request.getParameter("searchTerm");
           log.debug("User Submitted - " + searchTerm);
-          if (!searchTerm.startsWith("http")) {
-            searchTerm = "https://www.owasp.org/index.php/OWASP_Security_Shepherd";
-            userPost =
-                "<a href=\""
-                    + searchTerm
-                    + "\" alt=\"OWASP Security Shepherd\">"
-                    + searchTerm
-                    + "</a>";
-          } else {
-
-            searchTerm = XssFilter.encodeForHtml(searchTerm);
-            userPost =
-                "<a href=\"" + searchTerm + "\" alt=\"" + searchTerm + "\">" + searchTerm + "</a>";
-            log.debug("After Encoding - " + searchTerm);
-            if (FindXSS.search(userPost)) {
-              htmlOutput =
-                  "<h2 class='title'>"
-                      + bundle.getString("result.wellDone")
-                      + "</h2>"
-                      + "<p>"
-                      + bundle.getString("result.youDidIt")
-                      + "<br />"
-                      + bundle.getString("result.resultKey")
-                      + " <a>"
-                      + Hash.generateUserSolution(
-                          Getter.getModuleResultFromHash(
-                              getServletContext().getRealPath(""), levelHash),
-                          (String) ses.getAttribute("userName"))
-                      + "</a>";
-            }
-          }
+          searchTerm = XssFilter.validateHttpUrl(searchTerm);
+          userPost =
+              "<a href=\""
+                  + Encode.forHtmlAttribute(searchTerm)
+                  + "\" alt=\"OWASP Security Shepherd\">"
+                  + Encode.forHtml(searchTerm)
+                  + "</a>";
           log.debug("Adding searchTerm to Html: " + searchTerm);
           htmlOutput +=
               "<h2 class='title'>"

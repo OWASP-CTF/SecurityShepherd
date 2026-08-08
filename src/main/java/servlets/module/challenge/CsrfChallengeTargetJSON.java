@@ -8,6 +8,7 @@ import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.Scanner;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -72,6 +73,12 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+
+        Cookie tokenCookie = Validate.getToken(request.getCookies());
+        if (!Validate.validateTokens(tokenCookie, request.getHeader("X-CSRF-Token"))) {
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
+        }
 
         log.debug("Getting JSON String");
         String jsonData = extractPostRequestBody(request);

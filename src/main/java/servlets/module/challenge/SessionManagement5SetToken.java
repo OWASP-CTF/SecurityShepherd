@@ -1,11 +1,7 @@
 package servlets.module.challenge;
 
-import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -15,7 +11,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.owasp.encoder.Encode;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -81,46 +76,10 @@ public class SessionManagement5SetToken extends HttpServlet {
       String htmlOutput = new String();
       log.debug(levelName + " Servlet Accessed");
       try {
-        log.debug("Getting Parameters");
-        Object nameObj = request.getParameter("subUserName");
-        String userName = new String();
-        if (nameObj != null) {
-          userName = (String) nameObj;
-        }
-        log.debug("subName = " + userName);
-
-        log.debug("Getting ApplicationRoot");
-        String ApplicationRoot = getServletContext().getRealPath("");
-        log.debug("Servlet root = " + ApplicationRoot);
-
-        Connection conn =
-            Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalFive");
-        log.debug("Checking name");
-        PreparedStatement callstmt;
-
-        log.debug("Committing changes made to database");
-        callstmt = conn.prepareStatement("COMMIT");
-        callstmt.execute();
-        log.debug("Changes committed.");
-
-        callstmt = conn.prepareStatement("SELECT userName FROM users WHERE userName = ?");
-        callstmt.setString(1, userName);
-        log.debug("Executing findUser");
-        ResultSet resultSet = callstmt.executeQuery();
-        // Is the username valid?
-        if (resultSet.next()) {
-          log.debug("User found");
-          htmlOutput =
-              bundle.getString("setToken.sentTo.1")
-                  + " '"
-                  + Encode.forHtml(userName)
-                  + "' "
-                  + bundle.getString("setToken.sentTo.2");
-        } else {
-          log.debug("User not Found");
-          htmlOutput = bundle.getString("response.badUser") + "" + Encode.forHtml(userName);
-        }
-        Database.closeConnection(conn);
+        // Return the same response for every account name. A production implementation would
+        // generate a random, single-use, expiring token and deliver it out of band.
+        htmlOutput =
+            bundle.getString("setToken.sentTo.1") + " " + bundle.getString("setToken.sentTo.2");
         log.debug("Outputting HTML");
         out.write(htmlOutput);
       } catch (Exception e) {
