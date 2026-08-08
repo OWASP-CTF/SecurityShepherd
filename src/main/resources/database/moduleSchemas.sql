@@ -459,7 +459,12 @@ COMMIT;
 -- -----------------------------------------------------
 START TRANSACTION;
 USE `SQLiC5Shop`;
-INSERT INTO `SQLiC5Shop`.`vipCoupons` (`vipCouponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (861267, 100, 'spcil\/|Pse3cr3etCouponStu.f4rU176', 2);
+-- This VIP-only 100%-off-oranges coupon was only ever meant to be discoverable through the
+-- SQL injection vulnerability in SqlInjection5CouponCheck/SqlInjection5VipCheck (both now fixed
+-- to use parameterized queries). Rotate the previously-published value here too, since that
+-- exact code has been publicly documented for this level and could otherwise just be replayed
+-- directly against SqlInjection5's shop endpoint without needing the injection at all.
+INSERT INTO `SQLiC5Shop`.`vipCoupons` (`vipCouponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (861267, 100, 'a91d7e4c2b6f8035d9c1e7a4f2b8036e5d1c9a7f', 2);
 
 COMMIT;
 
