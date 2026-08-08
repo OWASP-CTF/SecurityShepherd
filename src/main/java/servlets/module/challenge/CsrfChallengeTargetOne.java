@@ -49,11 +49,6 @@ public class CsrfChallengeTargetOne extends HttpServlet {
    */
   public void doGet(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
-    response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
-  }
-
-  public void doPost(HttpServletRequest request, HttpServletResponse response)
-      throws ServletException, IOException {
     // Setting IpAddress To Log and taking header for original IP if forwarded from proxy
     ShepherdLogManager.setRequestIp(request.getRemoteAddr(), request.getHeader("X-Forwarded-For"));
     log.debug("Cross-SiteForegery Challenge One Target Servlet");
@@ -85,13 +80,20 @@ public class CsrfChallengeTargetOne extends HttpServlet {
         log.debug("User Submitted - " + plusId);
         String userId = (String) ses.getAttribute("userStamp");
         if (!userId.equals(plusId)) {
-          response.sendError(HttpServletResponse.SC_FORBIDDEN);
-          return;
+          String ApplicationRoot = getServletContext().getRealPath("");
+          String userName = (String) ses.getAttribute("userName");
+          String attackerName = Getter.getUserName(ApplicationRoot, plusId);
+          if (attackerName != null) {
+            log.debug(userName + " is been CSRF'd by " + attackerName);
+
+            log.debug("Attempting to Increment ");
+            String moduleHash = CsrfChallengeOne.getLevelHash();
+            String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
+            result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
+          } else {
+            log.error("UserId '" + plusId + "' could not be found.");
+          }
         }
-        String applicationRoot = getServletContext().getRealPath("");
-        String moduleHash = CsrfChallengeOne.getLevelHash();
-        String moduleId = Getter.getModuleIdFromHash(applicationRoot, moduleHash);
-        result = Setter.updateCsrfCounter(applicationRoot, moduleId, userId);
 
         if (result) {
           out.write(csrfGenerics.getString("target.incrementSuccess"));

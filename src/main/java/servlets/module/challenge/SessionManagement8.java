@@ -78,9 +78,14 @@ public class SessionManagement8 extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+        String challengeRole = (String) ses.getAttribute("sessionManagement8Role");
+        if (challengeRole == null) {
+          challengeRole = "user";
+          ses.setAttribute("sessionManagement8Role", challengeRole);
+        }
         String htmlOutput = new String();
-        if (Validate.validateAdminSession(ses)) {
-          log.debug("Server-authorized privileged user detected");
+        if (challengeRole.equals("superUser")) {
+          log.debug("Server-authorized super user detected");
           String userKey =
               Hash.generateUserSolution(
                   Getter.getModuleResultFromHash(getServletContext().getRealPath(""), levelHash),
@@ -96,8 +101,11 @@ public class SessionManagement8 extends HttpServlet {
                   + userKey
                   + "</a>"
                   + "</p>";
+        } else if (!challengeRole.equals("user")) {
+          log.debug("Invalid server-side challenge role detected");
+          htmlOutput += "<!-- " + bundle.getString("response.invalidRole") + " -->";
         } else {
-          log.debug("Standard user detected");
+          log.debug("Standard challenge role detected");
         }
         if (htmlOutput.isEmpty()) {
           log.debug("Challenge Not Complete");

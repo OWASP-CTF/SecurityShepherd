@@ -69,7 +69,7 @@ public class CsrfChallengeTargetFour extends HttpServlet {
 
     String storedToken = new String();
     try {
-      String applicationRoot = getServletContext().getRealPath("");
+      String ApplicationRoot = getServletContext().getRealPath("");
       String csrfTokenName = "csrfChallengeFourNonce";
       boolean result = false;
       HttpSession ses = request.getSession(true);
@@ -85,7 +85,7 @@ public class CsrfChallengeTargetFour extends HttpServlet {
             || ses.getAttribute(csrfTokenName).toString().isEmpty()) {
           log.debug("No CSRF Token found in session");
           storedToken =
-              Setter.setCsrfChallengeFourCsrfToken(userId, Hash.randomString(), applicationRoot);
+              Setter.setCsrfChallengeFourCsrfToken(userId, Hash.randomString(), ApplicationRoot);
           out.write(
               csrfGenerics.getString("target.noTokenNewToken") + " " + storedToken + "<br><br>");
           ses.setAttribute(csrfTokenName, storedToken);
@@ -93,29 +93,38 @@ public class CsrfChallengeTargetFour extends HttpServlet {
           storedToken = "" + ses.getAttribute(csrfTokenName);
         }
         log.debug("Victom is - " + userId);
-        String plusId = request.getParameter("userId");
+        String plusId = request.getParameter("userId").trim();
         log.debug("User Submitted - " + plusId);
-        String csrfToken = request.getParameter("csrfToken");
+        String csrfToken = request.getParameter("csrfToken").trim();
         log.debug("csrfToken Submitted - '" + csrfToken + "'");
         log.debug("storedCsrf Token is - '" + storedToken + "'");
 
-        if (csrfToken == null
-            || !MessageDigest.isEqual(
-                storedToken.getBytes(StandardCharsets.UTF_8),
-                csrfToken.getBytes(StandardCharsets.UTF_8))) {
-          response.sendError(HttpServletResponse.SC_FORBIDDEN);
-          return;
-        }
         if (!userId.equals(plusId)) {
-          response.sendError(HttpServletResponse.SC_FORBIDDEN);
-          return;
-        }
+          if (MessageDigest.isEqual(
+              storedToken.getBytes(StandardCharsets.UTF_8),
+              csrfToken.getBytes(StandardCharsets.UTF_8))) {
+            log.debug("'Valid' Nonce Value Submitted");
+            String userName = (String) ses.getAttribute("userName");
+            String attackerName = Getter.getUserName(ApplicationRoot, plusId);
+            if (attackerName != null) {
+              log.debug(userName + " is been CSRF'd by " + attackerName);
 
-        String moduleId = Getter.getModuleIdFromHash(applicationRoot, moduleHash);
-        result = Setter.updateCsrfCounter(applicationRoot, moduleId, userId);
-        String replacementToken =
-            Setter.setCsrfChallengeFourCsrfToken(userId, Hash.randomString(), applicationRoot);
-        ses.setAttribute(csrfTokenName, replacementToken);
+              log.debug("Attempting to Increment ");
+              String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
+              result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
+              String replacementToken =
+                  Setter.setCsrfChallengeFourCsrfToken(
+                      userId, Hash.randomString(), ApplicationRoot);
+              ses.setAttribute(csrfTokenName, replacementToken);
+            } else {
+              log.error("UserId '" + plusId + "' could not be found in system.");
+            }
+          } else {
+            log.debug("User " + plusId + " CSRF attack failed due to invalid nonce");
+          }
+        } else {
+          log.debug("User " + userId + " is attacking themselves");
+        }
 
         if (result) {
           out.write(csrfGenerics.getString("target.incrementSuccess"));
