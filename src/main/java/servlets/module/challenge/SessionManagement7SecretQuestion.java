@@ -1,6 +1,7 @@
 package servlets.module.challenge;
 
 import dbProcs.Database;
+import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -21,6 +22,8 @@ import javax.servlet.http.HttpSession;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -89,6 +92,10 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
     attempts.incrementAndGet();
   }
 
+  private static void clearFailedAnswers(String account) {
+    failedAnswerAttempts.remove(account);
+  }
+
   /**
    * A user submits a username and answer, these values are checked against the DB to see if they
    * are valid
@@ -155,18 +162,26 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
                             + bundle.getString("question.whoAreYou")
                             + "</p>");
               } else if (rs.next()) {
-                // The reply is the same as for a wrong answer. The answer is drawn from a
-                // short list of flowers, so confirming a correct one makes this an oracle for
-                // guessing it, and it is far too weak to hand an account over on.
-                log.debug("Correct secret answer submitted; no account access is granted here");
-                recordFailedAnswer(subEmail);
+                log.debug("Correct Answer Submitted");
+                // A correct answer clears the budget, so somebody who knows it is never shut
+                // out by the guesses somebody else made against their account.
+                clearFailedAnswers(subEmail);
+                String userKey =
+                    Hash.generateUserSolution(
+                        Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
+                        (String) ses.getAttribute("userName"));
                 htmlOutput =
-                    new String(
-                        "<h2 class='title'>"
-                            + bundle.getString("question.badAnswer")
-                            + "</h2><p>"
-                            + bundle.getString("question.whoAreYou")
-                            + "</p>");
+                    "<h2 class='title'>"
+                        + bundle.getString("response.welcome")
+                        + " "
+                        + Encode.forHtml(rs.getString(1))
+                        + "</h2>"
+                        + "<p>"
+                        + bundle.getString("response.resultKey")
+                        + " <a>"
+                        + userKey
+                        + "</a>"
+                        + "</p>";
               } else {
                 log.debug("Bad Answer Submitted");
                 recordFailedAnswer(subEmail);
