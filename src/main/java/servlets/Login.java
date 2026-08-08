@@ -101,6 +101,7 @@ public class Login extends HttpServlet {
         {
           token.setSecure(true);
         }
+        token.setHttpOnly(true);
         response.addCookie(token);
         mustRedirect = true;
 
