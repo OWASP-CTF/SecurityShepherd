@@ -143,16 +143,12 @@ public class SessionManagement2 extends HttpServlet {
           callstmt.setString(1, subName);
           log.debug("Executing getAddress");
           resultSet = callstmt.executeQuery();
+          // The same message either way. Naming the account, or worse handing back its email
+          // address, tells an attacker which accounts exist and where to aim a password reset.
           if (resultSet.next()) {
             log.debug("User Found");
-            userAddress =
-                bundle.getString("response.badPass")
-                    + " <a>"
-                    + Encode.forHtml(resultSet.getString(1))
-                    + "</a><br/>";
-          } else {
-            userAddress = bundle.getString("response.badUser") + "<br/>";
           }
+          userAddress = bundle.getString("response.badUser") + "<br/>";
           htmlOutput = makeTable(userAddress, bundle);
         }
         Database.closeConnection(conn);

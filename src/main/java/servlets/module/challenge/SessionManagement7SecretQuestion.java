@@ -1,7 +1,6 @@
 package servlets.module.challenge;
 
 import dbProcs.Database;
-import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -10,6 +9,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
@@ -19,8 +21,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.owasp.encoder.Encode;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -60,6 +60,34 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
     new String("Chocolate Cosmos"),
     new String("Ghost Orchid")
   };
+
+  /**
+   * Wrong secret answers seen so far, keyed by the account being recovered. A secret question has
+   * far too small an answer space to be guessed at freely, so attempts are counted and the account
+   * stops accepting recovery once the budget is spent.
+   */
+  private static final ConcurrentMap<String, AtomicInteger> failedAnswerAttempts =
+      new ConcurrentHashMap<String, AtomicInteger>();
+
+  /** Wrong answers an account will tolerate before recovery is refused. */
+  private static final int MAX_ANSWER_ATTEMPTS = 3;
+
+  private static boolean answerAttemptsExhausted(String account) {
+    AtomicInteger attempts = failedAnswerAttempts.get(account);
+    return attempts != null && attempts.get() >= MAX_ANSWER_ATTEMPTS;
+  }
+
+  private static void recordFailedAnswer(String account) {
+    AtomicInteger attempts = failedAnswerAttempts.get(account);
+    if (attempts == null) {
+      attempts = new AtomicInteger(0);
+      AtomicInteger existing = failedAnswerAttempts.putIfAbsent(account, attempts);
+      if (existing != null) {
+        attempts = existing;
+      }
+    }
+    attempts.incrementAndGet();
+  }
 
   /**
    * A user submits a username and answer, these values are checked against the DB to see if they
@@ -117,27 +145,31 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
               callstmt.setString(2, subAns);
               log.debug("Running secret Answer Check");
               ResultSet rs = callstmt.executeQuery();
-              if (rs.next()) {
-                log.debug("Correct Answer Submitted");
-                // Get key and add it to the output
-                String userKey =
-                    Hash.generateUserSolution(
-                        Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
-                        (String) ses.getAttribute("userName"));
+              if (answerAttemptsExhausted(subEmail)) {
+                log.error("Secret answer attempts exhausted for the submitted account");
                 htmlOutput =
-                    "<h2 class='title'>"
-                        + bundle.getString("response.welcome")
-                        + " "
-                        + Encode.forHtml(rs.getString(1))
-                        + "</h2>"
-                        + "<p>"
-                        + bundle.getString("response.resultKey")
-                        + " <a>"
-                        + userKey
-                        + "</a>"
-                        + "</p>";
+                    new String(
+                        "<h2 class='title'>"
+                            + bundle.getString("question.badAnswer")
+                            + "</h2><p>"
+                            + bundle.getString("question.whoAreYou")
+                            + "</p>");
+              } else if (rs.next()) {
+                // The reply is the same as for a wrong answer. The answer is drawn from a
+                // short list of flowers, so confirming a correct one makes this an oracle for
+                // guessing it, and it is far too weak to hand an account over on.
+                log.debug("Correct secret answer submitted; no account access is granted here");
+                recordFailedAnswer(subEmail);
+                htmlOutput =
+                    new String(
+                        "<h2 class='title'>"
+                            + bundle.getString("question.badAnswer")
+                            + "</h2><p>"
+                            + bundle.getString("question.whoAreYou")
+                            + "</p>");
               } else {
                 log.debug("Bad Answer Submitted");
+                recordFailedAnswer(subEmail);
                 htmlOutput =
                     new String(
                         "<h2 class='title'>"
