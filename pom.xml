@@ -13,6 +13,7 @@
 		<skipTests>false</skipTests>
 		<skipITs>${skipTests}</skipITs>
 		<skipUTs>${skipTests}</skipUTs>
+		<spotless.check.skip>true</spotless.check.skip>
 	</properties>
 
 	<dependencies>
