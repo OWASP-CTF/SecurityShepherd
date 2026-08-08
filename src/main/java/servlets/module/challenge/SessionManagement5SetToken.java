@@ -54,11 +54,11 @@ public class SessionManagement5SetToken extends HttpServlet {
   public static String levelHash = SessionManagement5.levelHash;
 
   /**
-   * Holds a single, unpredictable, single-use password reset token per user name, generated with
-   * a cryptographically secure random source (see {@link utils.Hash#randomString()}) and stamped
-   * with its issue time. {@link SessionManagement5ChangePassword} must present the exact token
-   * stored here (verified in constant time) before a password reset for that account is honoured
-   * - unlike a bare, attacker-computable timestamp, this cannot be forged by a client.
+   * Holds a single, unpredictable, single-use password reset token per user name, generated with a
+   * cryptographically secure random source (see {@link utils.Hash#randomString()}) and stamped with
+   * its issue time. {@link SessionManagement5ChangePassword} must present the exact token stored
+   * here (verified in constant time) before a password reset for that account is honoured - unlike
+   * a bare, attacker-computable timestamp, this cannot be forged by a client.
    */
   static class ResetToken {
     final String token;

@@ -109,8 +109,7 @@ public class SessionManagement5ChangePassword extends HttpServlet {
           long ageMillis = System.currentTimeMillis() - storedToken.issuedAtMillis;
           boolean notExpired = ageMillis >= 0 && ageMillis < (10L * 60L * 1000L);
           boolean tokensMatch =
-              MessageDigest.isEqual(
-                  token.getBytes("UTF-8"), storedToken.token.getBytes("UTF-8"));
+              MessageDigest.isEqual(token.getBytes("UTF-8"), storedToken.token.getBytes("UTF-8"));
           tokenValid = notExpired && tokensMatch;
         }
 
