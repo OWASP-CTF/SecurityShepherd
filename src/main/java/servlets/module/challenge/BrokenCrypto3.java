@@ -2,8 +2,17 @@ package servlets.module.challenge;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.GCMParameterSpec;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -16,8 +25,7 @@ import utils.ShepherdLogManager;
 import utils.Validate;
 
 /**
- * Bad Crypto Challenge Three Really bad crypto algorithm to break. Will reveal key if spaces are
- * submitted <br>
+ * Insecure Cryptographic Storage Challenge Three. <br>
  * <br>
  * This file is part of the Security Shepherd Project.
  *
@@ -41,8 +49,11 @@ public class BrokenCrypto3 extends HttpServlet {
   private static String levelName = "Broken Crypto Challenge 3";
   public static String levelHash =
       "2da053b4afb1530a500120a49a14d422ea56705a7e3fc405a77bc269948ccae1";
-  public static String levelResult =
-      "thisisthesecurityshepherdabcencryptionkey"; // Is used as encryption key in this level
+  public static String levelResult = "thisisthesecurityshepherdabcencryptionkey";
+  private static final int GCM_NONCE_LENGTH = 12;
+  private static final int GCM_TAG_LENGTH = 128;
+  private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+  private static final SecretKey ENCRYPTION_KEY = generateEncryptionKey();
 
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -72,8 +83,7 @@ public class BrokenCrypto3 extends HttpServlet {
         log.debug("User Submitted - " + userData);
 
         log.debug("Decrypting user input");
-        // Using level key as encryption key
-        String decryptedUserData = decrypt(userData, levelResult);
+        String decryptedUserData = decrypt(userData);
         log.debug("Decrypted to: " + decryptedUserData);
 
         htmlOutput =
@@ -95,40 +105,62 @@ public class BrokenCrypto3 extends HttpServlet {
   }
 
   /**
-   * Decrypts the supplied string value using the submitted key
+   * Decrypts an authenticated ciphertext produced by {@link #encrypt(String)}.
    *
    * @param hash The cipher text to be decrypted
-   * @param key The encryption key
    * @return The plain text revealed from the decryption
-   * @throws Exception Throws illegal state Exception
+   * @throws GeneralSecurityException If the ciphertext is malformed or fails authentication
    */
-  public static String decrypt(String hash, String key) throws Exception {
-    try {
-      return new String(
-          xor(org.apache.commons.codec.binary.Base64.decodeBase64(hash.getBytes()), key), "UTF-8");
-    } catch (java.io.UnsupportedEncodingException ex) {
-      throw new IllegalStateException(ex);
+  public static String decrypt(String hash) throws GeneralSecurityException {
+    byte[] encrypted = Base64.getDecoder().decode(hash);
+    if (encrypted.length <= GCM_NONCE_LENGTH) {
+      throw new GeneralSecurityException("Ciphertext is too short");
     }
+
+    ByteBuffer input = ByteBuffer.wrap(encrypted);
+    byte[] nonce = new byte[GCM_NONCE_LENGTH];
+    input.get(nonce);
+    byte[] ciphertext = new byte[input.remaining()];
+    input.get(ciphertext);
+
+    Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+    cipher.init(Cipher.DECRYPT_MODE, ENCRYPTION_KEY, new GCMParameterSpec(GCM_TAG_LENGTH, nonce));
+    return new String(cipher.doFinal(ciphertext), StandardCharsets.UTF_8);
   }
 
   /**
-   * XOR Function
+   * Encrypts text for the level's example using authenticated encryption and a fresh nonce.
    *
-   * @param input Byte array to be XOR'd
-   * @param key Encryption Key
-   * @return
+   * @param plaintext Text to encrypt
+   * @return Base64-encoded nonce and authenticated ciphertext
    */
-  private static byte[] xor(final byte[] input, String theKey) {
-    final byte[] output = new byte[input.length];
-    final byte[] secret = theKey.getBytes();
-    int spos = 0;
-    for (int pos = 0; pos < input.length; pos += 1) {
-      output[pos] = (byte) (input[pos] ^ secret[spos]);
-      spos += 1;
-      if (spos >= secret.length) {
-        spos = 0;
-      }
+  public static String encrypt(String plaintext) {
+    try {
+      byte[] nonce = new byte[GCM_NONCE_LENGTH];
+      SECURE_RANDOM.nextBytes(nonce);
+
+      Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+      cipher.init(Cipher.ENCRYPT_MODE, ENCRYPTION_KEY, new GCMParameterSpec(GCM_TAG_LENGTH, nonce));
+      byte[] ciphertext = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
+
+      return Base64.getEncoder()
+          .encodeToString(
+              ByteBuffer.allocate(nonce.length + ciphertext.length)
+                  .put(nonce)
+                  .put(ciphertext)
+                  .array());
+    } catch (GeneralSecurityException e) {
+      throw new IllegalStateException("Unable to encrypt level example", e);
     }
-    return output;
+  }
+
+  private static SecretKey generateEncryptionKey() {
+    try {
+      KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");
+      keyGenerator.init(128, SECURE_RANDOM);
+      return keyGenerator.generateKey();
+    } catch (GeneralSecurityException e) {
+      throw new ExceptionInInitializerError(e);
+    }
   }
 }
