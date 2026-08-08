@@ -7,13 +7,13 @@ import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -70,24 +70,11 @@ public class CsrfChallengeTargetThree extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
-        // A per-victim, session-bound nonce is required to credit an attack: the value is only
-        // ever handed to whoever's session it was minted for, so a request forged from another
-        // origin cannot supply a value that matches the target's own session. (The base servlet
-        // only checked that a csrfToken parameter was non-empty, never that it matched anything.)
-        String csrfTokenName = "csrfChallengeThreeNonce";
-        String storedToken;
-        if (ses.getAttribute(csrfTokenName) == null
-            || ses.getAttribute(csrfTokenName).toString().isEmpty()) {
-          storedToken = Hash.randomString();
-          ses.setAttribute(csrfTokenName, storedToken);
-          out.write(csrfGenerics.getString("target.noTokenNewToken") + " " + storedToken + "<br><br>");
-        } else {
-          storedToken = ses.getAttribute(csrfTokenName).toString();
-        }
         String plusId = request.getParameter("userid");
         log.debug("User Submitted - " + plusId);
-        String submittedToken = request.getParameter("csrfToken");
-        boolean validCsrf = submittedToken != null && storedToken.equals(submittedToken);
+        Cookie tokenCookie = Validate.getToken(request.getCookies());
+        Object csrfParam = request.getParameter("csrfToken");
+        boolean validCsrf = Validate.validateTokens(tokenCookie, csrfParam);
 
         String userId = (String) ses.getAttribute("userStamp");
         if (!userId.equals(plusId) && validCsrf) {
