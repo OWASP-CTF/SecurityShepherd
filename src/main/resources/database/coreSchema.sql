@@ -181,54 +181,30 @@ USE `core`;
 CREATE PROCEDURE `core`.`userLock` (theName VARCHAR(32))
 BEGIN
 DECLARE theDate DATETIME;
-DECLARE untilDate DATETIME;
 DECLARE theCount INT;
 
 COMMIT;
 SELECT NOW() FROM DUAL INTO theDate;
--- Get the badLoginCount from users if they are not suspended already or account has attempted a login within the last 10 mins
+UPDATE `users`
+    SET badLoginCount = IF(
+            suspendedUntil < TIMESTAMPADD(MINUTE, -10, theDate),
+            1,
+            badLoginCount + 1),
+        suspendedUntil = theDate
+    WHERE userName = theName
+      AND loginType = 'login';
+
 SELECT badLoginCount FROM `users`
     WHERE userName = theName
-    AND suspendedUntil < (theDate - '0000-00-00 00:10:00')
     INTO theCount;
 
-SELECT suspendedUntil FROM `users`
-    WHERE userName = theName
-    AND suspendedUntil < (theDate - '0000-00-00 00:10:00')
-    INTO untilDate;
-IF (untilDate < theDate) THEN
-    IF (theCount >= 3) THEN
-        -- Set suspended until 30 mins from now
-        UPDATE `users` SET
-            suspendedUntil = TIMESTAMPADD(MINUTE, 30, theDate),
+IF (theCount >= 3) THEN
+    UPDATE `users`
+        SET suspendedUntil = TIMESTAMPADD(MINUTE, 30, theDate),
             badLoginCount = 0
-            WHERE userName = theName;
-        COMMIT;
-    -- ELSE the user is already suspended, or theCount < 3
-    ELSE
-        -- Get user where their last bad login was within 10 mins ago
-        SELECT COUNT(userId) FROM users
-            WHERE userName = theName
-            AND suspendedUntil < (theDate - '0000-00-00 00:10:00')
-            INTO theCount;
-
-        -- IF a user was counted then they are not suspended, but have attemped a bad login within 10 mins of their last
-        IF (theCount > 0) THEN
-            UPDATE `users` SET
-                badLoginCount = (badLoginCount + 1),
-                suspendedUntil = theDate
-                WHERE userName = theName;
-            COMMIT;
-        -- ELSE this is the first time within 10 mins that this account has logged in bad
-        ELSE
-            UPDATE `users` SET
-                badLoginCount = 1,
-                suspendedUntil = theDate
-                WHERE userName = theName;
-            COMMIT;
-        END IF;
-    END IF;
+        WHERE userName = theName;
 END IF;
+COMMIT;
 END
 
 -- $$

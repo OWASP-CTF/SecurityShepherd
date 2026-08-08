@@ -27,12 +27,12 @@ public class Levels extends HttpServlet {
       throws ServletException, IOException {
     PrintWriter out = response.getWriter();
     out.print(getServletInfo());
-    HttpSession ses = request.getSession(true);
+    HttpSession ses = request.getSession(false);
     Locale locale = new Locale(Validate.validateLanguage(ses));
     boolean validSession = Validate.validateSession(ses);
     boolean validRequest =
         Validate.validateTokens(
-            Validate.getToken(request.getCookies()), request.getParameter("csrfToken"));
+            ses, Validate.getToken(request.getCookies()), request.getParameter("csrfToken"));
     if (validSession && validRequest) {
       JSONArray theModules = new JSONArray();
       String userId = ses.getAttribute("userStamp").toString();

@@ -51,7 +51,7 @@ public class EnableScoreboard extends HttpServlet {
     log.debug("*** servlets.Admin.EnableScoreboard ***");
     PrintWriter out = response.getWriter();
     out.print(getServletInfo());
-    HttpSession ses = request.getSession(true);
+    HttpSession ses = request.getSession(false);
     Cookie tokenCookie = Validate.getToken(request.getCookies());
     Object tokenParmeter = request.getParameter("csrfToken");
     if (Validate.validateAdminSession(ses, tokenCookie, tokenParmeter)) {
@@ -60,7 +60,7 @@ public class EnableScoreboard extends HttpServlet {
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
       String htmlOutput = new String();
-      if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
+      if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
         log.debug("Scoreboard being enabled by: " + ses.getAttribute("userName"));
         String[] classInfo = new String[2];
         try {

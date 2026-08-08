@@ -4,9 +4,9 @@ import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -69,7 +69,7 @@ public class ModuleServletTemplate extends HttpServlet {
             "i18n.servlets.challenges.folder.fileNameWithoutExtention", locale);
     try {
       // Get the session from the request
-      HttpSession ses = request.getSession(true);
+      HttpSession ses = request.getSession(false);
       if (Validate.validateSession(ses)) // Is this an active session?
       {
         // Valid Session, time to log who it is
@@ -150,29 +150,25 @@ public class ModuleServletTemplate extends HttpServlet {
       // which can access it.
       // The details of this user need to be entered in a properties file in WEB-INF/challenges
       // The Name of that user need to be entered in the following funciton;
-      Connection conn =
-          Database.getChallengeConnection(applicationRoot, "nameOfPropertiesFile.properties");
-      Statement stmt;
-      stmt = conn.createStatement();
-      ResultSet resultSet =
-          stmt.executeQuery("SELECT * FROM tb_users WHERE username = '" + username + "'");
-      log.debug("Opening Result Set from query");
-      for (int i = 0; resultSet.next(); i++) {
-        log.debug("Row " + i + ": User ID = " + resultSet.getString(1));
-        result = Encode.forHtml(resultSet.getString(1));
+      try (Connection conn =
+              Database.getChallengeConnection(applicationRoot, "nameOfPropertiesFile.properties");
+          PreparedStatement stmt =
+              conn.prepareStatement("SELECT * FROM tb_users WHERE username = ?")) {
+        stmt.setString(1, username);
+        try (ResultSet resultSet = stmt.executeQuery()) {
+          log.debug("Opening Result Set from query");
+          for (int i = 0; resultSet.next(); i++) {
+            log.debug("Row " + i + ": User ID = " + resultSet.getString(1));
+            result = Encode.forHtml(resultSet.getString(1));
+          }
+        }
       }
       log.debug("That's All");
     } catch (SQLException e) {
-      log.debug("SQL Error caught - " + e.toString());
-      result =
-          bundle.getString("example.error")
-              + ": "
-              + Encode.forHtml(e.toString()); // Html Encode Error to prevent XSS
+      log.error("Module template query failed", e);
+      result = bundle.getString("example.error");
     } catch (Exception e) {
-      log.fatal(
-          bundle.getString("example.error")
-              + ": "
-              + Encode.forHtml(e.toString())); // Html Encode Error to prevent XSS
+      log.fatal(bundle.getString("example.error"), e);
     }
     return result;
   }

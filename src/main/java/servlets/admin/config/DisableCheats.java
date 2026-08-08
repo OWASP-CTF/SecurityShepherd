@@ -50,7 +50,7 @@ public class DisableCheats extends HttpServlet {
     log.debug("*** servlets.Admin.DisableCheats ***");
     PrintWriter out = response.getWriter();
     out.print(getServletInfo());
-    HttpSession ses = request.getSession(true);
+    HttpSession ses = request.getSession(false);
     Cookie tokenCookie = Validate.getToken(request.getCookies());
     Object tokenParmeter = request.getParameter("csrfToken");
     if (Validate.validateAdminSession(ses, tokenCookie, tokenParmeter)) {
@@ -59,7 +59,7 @@ public class DisableCheats extends HttpServlet {
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
       log.debug("Current User: " + ses.getAttribute("userName").toString());
-      if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
+      if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
         CheatSheetStatus.disableForAll();
         log.debug("Cheat Sheets Disabled");
         out.write(

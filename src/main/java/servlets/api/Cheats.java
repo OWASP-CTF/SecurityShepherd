@@ -20,9 +20,10 @@ public class Cheats extends HttpServlet {
       throws ServletException, IOException {
     PrintWriter out = response.getWriter();
     out.print(getServletInfo());
-    HttpSession ses = request.getSession(true);
+    HttpSession ses = request.getSession(false);
 
-    if (CheatSheetStatus.showCheat((String) ses.getAttribute("userRole"))) {
+    String userRole = ses == null ? null : (String) ses.getAttribute("userRole");
+    if (CheatSheetStatus.showCheat(userRole)) {
       out.write("true");
     } else {
       // Return 403

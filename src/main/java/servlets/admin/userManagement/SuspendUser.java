@@ -49,7 +49,7 @@ public class SuspendUser extends HttpServlet {
 
     PrintWriter out = response.getWriter();
     out.print(getServletInfo());
-    HttpSession ses = request.getSession(true);
+    HttpSession ses = request.getSession(false);
     Cookie tokenCookie = Validate.getToken(request.getCookies());
     Object tokenParmeter = request.getParameter("csrfToken");
     if (Validate.validateAdminSession(ses, tokenCookie, tokenParmeter)) {
@@ -57,7 +57,7 @@ public class SuspendUser extends HttpServlet {
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
-      if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
+      if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
         boolean notNull = false;
         boolean validPlayer = false;
         try {

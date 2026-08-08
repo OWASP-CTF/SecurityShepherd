@@ -4,7 +4,6 @@ import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import javax.servlet.ServletException;
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -12,7 +11,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONObject;
-import utils.Hash;
+import utils.CsrfToken;
 import utils.ShepherdLogManager;
 import utils.UserKicker;
 
@@ -89,13 +88,7 @@ public class MobileLogin extends HttpServlet {
 
         ses.setAttribute("userClass", user[4]);
         log.debug("Setting CSRF cookie");
-        csrfToken = Hash.randomString();
-        Cookie token = new Cookie("token", csrfToken);
-        if (request.getRequestURL().toString().startsWith("https")) // If Requested over HTTPs
-        {
-          token.setSecure(true);
-        }
-        response.addCookie(token);
+        csrfToken = CsrfToken.issue(request, response, ses);
         authenticated = true;
 
         if (user[3].equalsIgnoreCase("true")) {
@@ -110,19 +103,9 @@ public class MobileLogin extends HttpServlet {
       log.error("Could not Find User: " + e.toString());
     }
     if (authenticated) {
-      // returning SessionID and CSRF Token
-      JSONObject jsonObj = new JSONObject();
-      jsonObj.put("JSESSIONID", ses.getId());
-      jsonObj.put("token", csrfToken);
-      out.write(jsonObj.toString());
+      out.write(authenticationResponse(csrfToken).toString());
       return;
     } else {
-      // Lagging Response
-      try {
-        Thread.sleep(2000);
-      } catch (InterruptedException ex) {
-        Thread.currentThread().interrupt();
-      }
       out.write("ERROR: Could not Authenticate");
       return;
     }
@@ -131,6 +114,12 @@ public class MobileLogin extends HttpServlet {
   // Handy
   private static String nvl(String x, String def) {
     return (x == null ? def : x);
+  }
+
+  static JSONObject authenticationResponse(String csrfToken) {
+    JSONObject response = new JSONObject();
+    response.put("token", csrfToken);
+    return response;
   }
 
   /** Redirects user to index.jsp */

@@ -56,7 +56,7 @@ public class SetDefaultClass extends HttpServlet {
     request.setCharacterEncoding("UTF-8");
     PrintWriter out = response.getWriter();
     out.print(getServletInfo());
-    HttpSession ses = request.getSession(true);
+    HttpSession ses = request.getSession(false);
     Cookie tokenCookie = Validate.getToken(request.getCookies());
     Object tokenParmeter = request.getParameter("csrfToken");
     if (Validate.validateAdminSession(ses, tokenCookie, tokenParmeter)) {
@@ -66,7 +66,7 @@ public class SetDefaultClass extends HttpServlet {
           ses.getAttribute("userName").toString());
       String htmlOutput = new String();
 
-      if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
+      if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
         String[] classInfo = new String[2];
         try {
           log.debug("Getting ApplicationRoot");

@@ -50,9 +50,9 @@ public class ChangeCoreDatabase extends HttpServlet {
     // Setting IpAddress To Log and taking header for original IP if forwarded from proxy
     ShepherdLogManager.setRequestIp(request.getRemoteAddr(), request.getHeader("X-Forwarded-For"));
     log.debug("*** servlets.Admin.config.ChangeCoreDatabase ***");
+    response.setContentType("text/html; charset=UTF-8");
     PrintWriter out = response.getWriter();
-    out.print(getServletInfo());
-    HttpSession ses = request.getSession(true);
+    HttpSession ses = request.getSession(false);
     Cookie tokenCookie = Validate.getToken(request.getCookies());
     Object tokenParmeter = request.getParameter("csrfToken");
     if (Validate.validateAdminSession(ses, tokenCookie, tokenParmeter)) {
@@ -61,7 +61,7 @@ public class ChangeCoreDatabase extends HttpServlet {
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
       log.debug("Current User: " + ses.getAttribute("userName").toString());
-      if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
+      if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
         try {
           log.debug("Getting ApplicationRoot");
           String ApplicationRoot = getServletContext().getRealPath("");
@@ -69,33 +69,28 @@ public class ChangeCoreDatabase extends HttpServlet {
 
           log.debug("Getting Parameters");
           String url = Validate.validateParameter(request.getParameter("databaseUrl"), 256);
-          log.debug("URL = " + url);
           String userName =
               Validate.validateParameter(request.getParameter("databaseUsername"), 256);
-          log.debug("userName = " + userName);
           String password =
               Validate.validateParameter(request.getParameter("databasePassword"), 256);
-          log.debug("password = NOTSHOWN");
 
-          boolean validData = !url.isEmpty() && !userName.isEmpty() && !password.isEmpty();
-          if (Setter.setCoreDatabaseInfo(ApplicationRoot, url, userName, password)) {
+          boolean validData = isValidDatabaseConfiguration(url, userName, password);
+          if (!validData) {
+            log.error("Invalid core database configuration");
+            out.print(
+                "<h3 class=\"title\">Core Database Info Update Failure</h3><br>"
+                    + "<p><font color=\"red\">Invalid database configuration. Please try again."
+                    + "</font><p>");
+          } else if (Setter.setCoreDatabaseInfo(ApplicationRoot, url, userName, password)) {
             out.write(
                 "<h3 class='title'>Core Database Info Updated</h3>"
                     + "<p>The Core Database properties have successfully been updated!</p>");
           } else {
-            // Validation Error Responses
-            String errorMessage = "An Error Occurred ";
-            if (!validData) {
-              log.error("Invalid Application Address");
-              errorMessage += "Invalid Host Address. Please try again";
-            } else {
-              log.error("Unexpected Failure");
-              errorMessage = "An Error Occurred";
-            }
+            log.error("Unexpected failure updating core database configuration");
             out.print(
                 "<h3 class=\"title\">Core Database Info Update Failure</h3><br>"
                     + "<p><font color=\"red\">"
-                    + Encode.forHtml(errorMessage)
+                    + Encode.forHtml("An Error Occurred")
                     + "</font><p>");
           }
         } catch (Exception e) {
@@ -120,5 +115,37 @@ public class ChangeCoreDatabase extends HttpServlet {
               + " error Occurred! Please log in or try non administrator functions!</font><p>");
     }
     log.debug("*** servlets.Admin.config.ChangeCoreDatabase END ***");
+  }
+
+  static boolean isValidDatabaseConfiguration(String url, String userName, String password) {
+    if (isBlank(url) || isBlank(userName) || isBlank(password)) {
+      return false;
+    }
+    if (url.length() > 256 || userName.length() > 256 || password.length() > 256) {
+      return false;
+    }
+    if (containsControlCharacter(url)
+        || containsControlCharacter(userName)
+        || containsControlCharacter(password)) {
+      return false;
+    }
+
+    String prefix = "jdbc:mariadb://";
+    String authority =
+        url.startsWith(prefix) && url.endsWith("/")
+            ? url.substring(prefix.length(), url.length() - 1)
+            : "";
+    return !authority.isEmpty()
+        && authority.indexOf('/') < 0
+        && url.indexOf('?') < 0
+        && url.indexOf('#') < 0;
+  }
+
+  private static boolean isBlank(String value) {
+    return value == null || value.trim().isEmpty();
+  }
+
+  private static boolean containsControlCharacter(String value) {
+    return value.codePoints().anyMatch(Character::isISOControl);
   }
 }

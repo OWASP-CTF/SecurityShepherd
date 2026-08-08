@@ -52,7 +52,7 @@ public class DisableScoreboard extends HttpServlet {
     log.debug("*** servlets.Admin.DisableScoreboard ***");
     PrintWriter out = response.getWriter();
     out.print(getServletInfo());
-    HttpSession ses = request.getSession(true);
+    HttpSession ses = request.getSession(false);
     Cookie tokenCookie = Validate.getToken(request.getCookies());
     Object tokenParmeter = request.getParameter("csrfToken");
     if (Validate.validateAdminSession(ses, tokenCookie, tokenParmeter)) {
@@ -61,7 +61,7 @@ public class DisableScoreboard extends HttpServlet {
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
       String htmlOutput = new String();
-      if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
+      if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
         try {
           log.debug("Scoreboard Disabled by: " + ses.getAttribute("userName"));
           ScoreboardStatus.disableScoreboard();

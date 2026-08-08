@@ -13,11 +13,13 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.security.MessageDigest;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -63,30 +65,37 @@ public class Setup extends HttpServlet {
     boolean hasDBFile = false;
 
     // Parameters From Form
-    String dbHost = request.getParameter("dbhost");
-    String dbPort = request.getParameter("dbport");
-    String dbUser = request.getParameter("dbuser");
-    String dbPass = request.getParameter("dbpass");
+    String dbHost = valueOrEmpty(request.getParameter("dbhost"));
+    String dbPort = valueOrEmpty(request.getParameter("dbport"));
+    String dbUser = valueOrEmpty(request.getParameter("dbuser"));
+    String dbPass = valueOrEmpty(request.getParameter("dbpass"));
 
     String dbOptions;
     String connectionURL;
     String driverType;
 
-    String dbOverride = request.getParameter("dboverride");
+    String dbOverride = valueOrEmpty(request.getParameter("dboverride"));
 
     Properties mysql_props = Setup.getDBProps();
     Properties mongo_props = new Properties();
 
     hasDBFile = (mysql_props != null);
 
+    String hostPortError = validateHostPort(dbHost, dbPort);
+    if (hostPortError != null) {
+      htmlOutput += hostPortError;
+      validateInput = false;
+    } else if (!dbHost.isEmpty()
+        && (!isValidDatabaseHost(dbHost) || !Validate.isValidPortNumber(dbPort))) {
+      htmlOutput += "Invalid database host or port.";
+      validateInput = false;
+    }
+
     if (hasDBFile) {
       // Db auth file exists, try to load from it
 
-      if (dbHost.isEmpty() != dbPort.isEmpty()) {
+      if (!validateInput) {
         // Only one of db host and db port provided, we need both or neither
-
-        htmlOutput += "If you override db host and db port, both must be entered!";
-        validateInput = false;
         connectionURL = "";
       } else if (dbHost.isEmpty() && dbPort.isEmpty()) {
         // Both db host and db port are missing, load from props file instead
@@ -126,10 +135,13 @@ public class Setup extends HttpServlet {
         }
       }
     } else {
-      connectionURL = "jdbc:mariadb://" + dbHost + ":" + dbPort + "/";
+      if (dbHost.isEmpty() || dbPort.isEmpty()) {
+        htmlOutput += "Database host and port are required.";
+        validateInput = false;
+      }
+      connectionURL = validateInput ? "jdbc:mariadb://" + dbHost + ":" + dbPort + "/" : "";
       driverType = "org.mariadb.jdbc.Driver";
       dbOptions = "useUnicode=true&character_set_server=utf8mb4";
-      validateInput = true;
       saveMysqlProperties = true;
     }
 
@@ -138,10 +150,10 @@ public class Setup extends HttpServlet {
       success = false;
     } else {
 
-      String dbAuth = request.getParameter("dbauth");
+      String dbAuth = valueOrEmpty(request.getParameter("dbauth"));
 
-      String mongodbHost = request.getParameter("mhost");
-      String mongodbPort = request.getParameter("mport");
+      String mongodbHost = valueOrEmpty(request.getParameter("mhost"));
+      String mongodbPort = valueOrEmpty(request.getParameter("mport"));
       String nosqlprops =
           new File(Database.class.getResource("/challenges/NoSqlInjection1.properties").getFile())
               .getAbsolutePath();
@@ -162,24 +174,9 @@ public class Setup extends HttpServlet {
 
       String auth = "";
 
-      String enableMongoChallenge = request.getParameter("enableMongoChallenge");
+      String enableMongoChallenge = valueOrEmpty(request.getParameter("enableMongoChallenge"));
 
-      String enableUnsafeLevels = request.getParameter("unsafeLevels");
-
-      // Mongo DB properties
-      StringBuffer mongoProp = new StringBuffer();
-      mongoProp.append("connectionHost=" + mongodbHost);
-      mongoProp.append("\n");
-      mongoProp.append("connectionPort=" + mongodbPort);
-      mongoProp.append("\n");
-      mongoProp.append("databaseName=" + mongodbName);
-      mongoProp.append("\n");
-      mongoProp.append("connectTimeout=10000");
-      mongoProp.append("\n");
-      mongoProp.append("socketTimeout=0");
-      mongoProp.append("\n");
-      mongoProp.append("serverSelectionTimeout=30000");
-      mongoProp.append("\n");
+      String enableUnsafeLevels = valueOrEmpty(request.getParameter("unsafeLevels"));
 
       try {
         auth = new String(Files.readAllBytes(Paths.get(Constants.SETUP_AUTH)));
@@ -189,7 +186,7 @@ public class Setup extends HttpServlet {
         log.error("Auth file could not be found: " + e.toString());
       }
 
-      if (auth == "") {
+      if (auth.isEmpty()) {
         // No auth loaded, could be because user never reloaded setup page after an
         // error. Generate it again
         log.debug("Generating auth file");
@@ -197,12 +194,12 @@ public class Setup extends HttpServlet {
         generateAuth();
       }
 
-      if (!auth.equals(dbAuth)) {
+      if (!authorizationMatches(auth, dbAuth)) {
         log.debug("Invalid auth supplied");
 
         // The supplied auth data was incorrect
         htmlOutput += bundle.getString("generic.text.setup.authentication.failed");
-        log.error("Authorization mismatch: " + auth + " does not equal " + dbAuth);
+        log.error("Setup authorization failed");
 
       } else {
         // Test the user's entered database properties. Use DriverManager directly instead of
@@ -229,8 +226,6 @@ public class Setup extends HttpServlet {
           log.debug("Database connection successful");
 
         } catch (SQLException e) {
-          htmlOutput += bundle.getString("generic.text.setup.connection.failed") + e.getMessage();
-
           log.error("DB connection error: " + e.toString());
           connectionSuccess = false;
         }
@@ -261,7 +256,7 @@ public class Setup extends HttpServlet {
 
               success = false;
 
-              htmlOutput = bundle.getString("generic.text.setup.failed") + ": " + e.getMessage();
+              htmlOutput = bundle.getString("generic.text.setup.failed");
 
               log.error("Could not save mysql properties file: " + e.toString());
             }
@@ -291,8 +286,8 @@ public class Setup extends HttpServlet {
               }
               success = true;
             } catch (SQLException e) {
-              htmlOutput = bundle.getString("generic.text.setup.failed") + ": " + e.getMessage();
-              log.error(bundle.getString("generic.text.setup.failed") + ": " + e.getMessage());
+              htmlOutput = bundle.getString("generic.text.setup.failed");
+              log.error(bundle.getString("generic.text.setup.failed"), e);
               if (!hasDBFile) {
                 FileUtils.deleteQuietly(new File(Constants.MYSQL_DB_PROP));
               }
@@ -304,16 +299,29 @@ public class Setup extends HttpServlet {
           }
 
           if (enableMongoChallenge.equalsIgnoreCase("enable")) {
-            if (!Validate.isValidPortNumber(mongodbPort)) {
+            if (!isValidDatabaseHost(mongodbHost) || !Validate.isValidPortNumber(mongodbPort)) {
               htmlOutput = bundle.getString("generic.text.setup.error.valid.port");
+              success = false;
               FileUtils.deleteQuietly(new File(Constants.MYSQL_DB_PROP));
             } else {
-              Files.write(
-                  Paths.get(Constants.MONGO_DB_PROP),
-                  mongoProp.toString().getBytes(),
-                  StandardOpenOption.CREATE);
+              Properties mongoConfiguration = new Properties();
+              mongoConfiguration.setProperty("connectionHost", mongodbHost);
+              mongoConfiguration.setProperty("connectionPort", mongodbPort);
+              mongoConfiguration.setProperty("databaseName", mongodbName);
+              mongoConfiguration.setProperty("connectTimeout", "10000");
+              mongoConfiguration.setProperty("socketTimeout", "0");
+              mongoConfiguration.setProperty("serverSelectionTimeout", "30000");
+              try (OutputStream mongoOutput =
+                  Files.newOutputStream(
+                      Paths.get(Constants.MONGO_DB_PROP),
+                      StandardOpenOption.CREATE,
+                      StandardOpenOption.TRUNCATE_EXISTING,
+                      StandardOpenOption.WRITE)) {
+                mongoConfiguration.store(mongoOutput, null);
+              }
               if (MongoDatabase.getMongoDbConnection(null).listDatabaseNames() == null) {
                 htmlOutput = bundle.getString("generic.text.setup.connection.mongo.failed");
+                success = false;
                 if (!hasDBFile) {
                   FileUtils.deleteQuietly(new File(Constants.MYSQL_DB_PROP));
                 }
@@ -321,8 +329,9 @@ public class Setup extends HttpServlet {
                 try {
                   executeMongoScript();
                 } catch (IOException e) {
-                  htmlOutput =
-                      bundle.getString("generic.text.setup.failed") + ": " + e.getMessage();
+                  htmlOutput = bundle.getString("generic.text.setup.failed");
+                  success = false;
+                  log.error("Mongo setup script failed", e);
                   if (!hasDBFile) {
                     FileUtils.deleteQuietly(new File(Constants.MYSQL_DB_PROP));
                   }
@@ -380,6 +389,33 @@ public class Setup extends HttpServlet {
       return "If you override db host and db port, both must be entered!";
     }
     return null;
+  }
+
+  static boolean authorizationMatches(String expected, String supplied) {
+    if (expected == null || supplied == null || expected.isEmpty() || supplied.isEmpty()) {
+      return false;
+    }
+    return MessageDigest.isEqual(
+        expected.getBytes(StandardCharsets.UTF_8), supplied.getBytes(StandardCharsets.UTF_8));
+  }
+
+  static boolean isValidDatabaseHost(String host) {
+    if (host == null || host.isEmpty() || host.length() > 253) {
+      return false;
+    }
+    return host.codePoints().noneMatch(Character::isISOControl)
+        && host.chars().noneMatch(Character::isWhitespace)
+        && host.indexOf('/') < 0
+        && host.indexOf('\\') < 0
+        && host.indexOf('?') < 0
+        && host.indexOf('#') < 0
+        && host.indexOf('&') < 0
+        && host.indexOf('=') < 0
+        && host.indexOf(';') < 0;
+  }
+
+  private static String valueOrEmpty(String value) {
+    return value == null ? "" : value;
   }
 
   public static boolean isInstalled() {
@@ -453,7 +489,7 @@ public class Setup extends HttpServlet {
             Paths.get(Constants.SETUP_AUTH),
             randomUUID.toString().getBytes(),
             StandardOpenOption.CREATE);
-        log.info("Generated UUID " + randomUUID + " in " + Constants.SETUP_AUTH);
+        log.info("Generated setup authorization file at " + Constants.SETUP_AUTH);
       }
     } catch (IOException e) {
       log.fatal("Unable to generate auth: " + e.getMessage());

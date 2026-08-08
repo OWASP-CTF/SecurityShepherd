@@ -37,7 +37,7 @@ public class OpenWebModules extends HttpServlet {
     PrintWriter out = response.getWriter();
     out.print(getServletInfo());
     String htmlOutput;
-    HttpSession ses = request.getSession(true);
+    HttpSession ses = request.getSession(false);
     Cookie tokenCookie = Validate.getToken(request.getCookies());
     Object tokenParmeter = request.getParameter("csrfToken");
     if (Validate.validateAdminSession(ses, tokenCookie, tokenParmeter)) {
@@ -45,7 +45,7 @@ public class OpenWebModules extends HttpServlet {
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
-      if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
+      if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
         unsafeLevels = request.getParameter("unsafeLevels");
         if (unsafeLevels == null) {
           unsafeLevels = "disable";

@@ -12,6 +12,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import utils.CsrfToken;
 import utils.LoginMethod;
 import utils.ShepherdLogManager;
 import utils.Validate;
@@ -43,7 +44,7 @@ public class Logout extends HttpServlet {
    * Initiated in index.jsp. Invalidates session and Security Shepherd tokens are removed. The user
    * is logged out.
    */
-  public void doGet(HttpServletRequest request, HttpServletResponse response)
+  public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
     // Setting IpAddress To Log and taking header for original IP if forwarded from
     // proxy
@@ -51,7 +52,7 @@ public class Logout extends HttpServlet {
     log.debug("**** servlets.Logout ***");
     response.setCharacterEncoding("UTF-8");
     request.setCharacterEncoding("UTF-8");
-    HttpSession ses = request.getSession(true);
+    HttpSession ses = request.getSession(false);
     if (Validate.validateSession(ses)) {
       ShepherdLogManager.setRequestIp(
           request.getRemoteAddr(),
@@ -59,55 +60,33 @@ public class Logout extends HttpServlet {
           ses.getAttribute("userName").toString());
       log.debug("Current User: " + ses.getAttribute("userName").toString());
       Cookie tokenCookie = Validate.getToken(request.getCookies());
-      Object tokenParmeter = request.getParameter("csrfToken");
-      if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
+      Object tokenParameter = request.getParameter("csrfToken");
+      if (Validate.validateTokens(ses, tokenCookie, tokenParameter)) {
 
-        // Remove Everything
-        ses.removeAttribute("userStamp");
-        ses.removeAttribute("userName");
-        ses.removeAttribute("userRole");
+        boolean samlLogin = LoginMethod.isSaml();
+        Auth auth = null;
+        String nameId = sessionAttribute(ses, "nameId");
+        String nameIdFormat = sessionAttribute(ses, "nameIdFormat");
+        String nameidNameQualifier = sessionAttribute(ses, "nameidNameQualifier");
+        String nameidSPNameQualifier = sessionAttribute(ses, "nameidSPNameQualifier");
+        String sessionIndex = sessionAttribute(ses, "sessionIndex");
 
-        // Invalidate Session on server
-        ses.invalidate();
-        ses = request.getSession(true);
-
-        // Remove cookie
-        Cookie emptyCookie = new Cookie("token", "");
-        emptyCookie.setPath("/");
-        response.addCookie(emptyCookie);
-        log.debug("User Logged Out");
-
-        if (LoginMethod.isSaml()) {
-
-          Auth auth;
+        if (samlLogin) {
           try {
             auth = new Auth(request, response);
           } catch (SettingsException e) {
-            throw new RuntimeException("SAML not configured: " + e.toString());
+            throw new RuntimeException("SAML not configured", e);
           } catch (Error e) {
-            throw new RuntimeException("SAML error : " + e.toString());
+            throw new RuntimeException("SAML error", e);
           }
+        }
 
-          String nameId = null;
-          if (ses.getAttribute("nameId") != null) {
-            nameId = ses.getAttribute("nameId").toString();
-          }
-          String nameIdFormat = null;
-          if (ses.getAttribute("nameIdFormat") != null) {
-            nameIdFormat = ses.getAttribute("nameIdFormat").toString();
-          }
-          String nameidNameQualifier = null;
-          if (ses.getAttribute("nameidNameQualifier") != null) {
-            nameIdFormat = ses.getAttribute("nameidNameQualifier").toString();
-          }
-          String nameidSPNameQualifier = null;
-          if (ses.getAttribute("nameidSPNameQualifier") != null) {
-            nameidSPNameQualifier = ses.getAttribute("nameidSPNameQualifier").toString();
-          }
-          String sessionIndex = null;
-          if (ses.getAttribute("sessionIndex") != null) {
-            sessionIndex = ses.getAttribute("sessionIndex").toString();
-          }
+        // Remove Everything
+        ses.invalidate();
+        CsrfToken.expire(request, response);
+        log.debug("User Logged Out");
+
+        if (samlLogin) {
           try {
             auth.logout(
                 null,
@@ -117,7 +96,7 @@ public class Logout extends HttpServlet {
                 nameidNameQualifier,
                 nameidSPNameQualifier);
           } catch (SettingsException e) {
-            throw new RuntimeException("SAML settings error : " + e.toString());
+            throw new RuntimeException("SAML settings error", e);
           }
 
         } else {
@@ -134,5 +113,15 @@ public class Logout extends HttpServlet {
       response.sendRedirect("login.jsp");
     }
     log.debug("*** END Logout ***");
+  }
+
+  public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    response.setHeader("Allow", "POST");
+    response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
+  }
+
+  private static String sessionAttribute(HttpSession session, String name) {
+    Object value = session.getAttribute(name);
+    return value == null ? null : value.toString();
   }
 }

@@ -46,6 +46,10 @@ public class Getter {
 
   private static final Logger log = LogManager.getLogger(Getter.class);
 
+  private static final String DUMMY_PASSWORD_HASH =
+      "$argon2i$v=19$m=65536,t=10,p=1$7oxgR8QkdOd4tsHFieFKrw$"
+          + "eOy0TCxhY1bQIAbLQcLr9Sz2+4q9DhPTz1frsytgtTk";
+
   /** Used for scoreboards / progress bars */
   private static final int widthOfUnitBar = 11; // px
 
@@ -85,6 +89,11 @@ public class Getter {
     log.debug("$$$ Getter.authUser $$$");
     log.debug("userName = " + userName);
 
+    if (userName == null || password == null) {
+      verifyDummyPassword(password);
+      return null;
+    }
+
     // Phase 1: Fetch user record (short DB hold, ~1-5ms)
     String userId;
     String dbUserName;
@@ -117,6 +126,7 @@ public class Getter {
           tempUsername = userResult.getBoolean(10);
         } else {
           log.debug("User did not exist");
+          verifyDummyPassword(password);
           log.debug("$$$ End authUser $$$");
           return null;
         }
@@ -130,6 +140,7 @@ public class Getter {
     // Fail-fast: reject suspended and SSO users before expensive Argon2 work
     if (!"login".equals(loginType)) {
       log.debug("User is SSO user, can't login with password!");
+      verifyDummyPassword(password);
       return null;
     }
 
@@ -145,6 +156,13 @@ public class Getter {
 
     if (!userVerified) {
       log.debug("Hash did not match, authentication failed");
+      try (Connection conn = Database.getCoreConnection(ApplicationRoot);
+          CallableStatement callstmt = conn.prepareCall("call userLock(?)")) {
+        callstmt.setString(1, dbUserName);
+        callstmt.execute();
+      } catch (SQLException e) {
+        log.error("Could not record failed login", e);
+      }
       log.debug("$$$ End authUser $$$");
       return null;
     }
@@ -187,6 +205,11 @@ public class Getter {
 
     log.debug("$$$ End authUser $$$");
     return result;
+  }
+
+  private static void verifyDummyPassword(String password) {
+    Argon2 argon2 = Argon2Factory.create();
+    argon2.verify(DUMMY_PASSWORD_HASH, (password == null ? "" : password).toCharArray());
   }
 
   /**

@@ -50,7 +50,7 @@ public class EnableCheats extends HttpServlet {
     log.debug("*** servlets.Admin.EnableCheats ***");
     PrintWriter out = response.getWriter();
     out.print(getServletInfo());
-    HttpSession ses = request.getSession(true);
+    HttpSession ses = request.getSession(false);
     Cookie tokenCookie = Validate.getToken(request.getCookies());
     Object tokenParameter = request.getParameter("csrfToken");
     if (Validate.validateAdminSession(ses, tokenCookie, tokenParameter)) {
@@ -59,7 +59,7 @@ public class EnableCheats extends HttpServlet {
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
       log.debug("Current User: " + ses.getAttribute("userName").toString());
-      if (Validate.validateTokens(tokenCookie, tokenParameter)) {
+      if (Validate.validateTokens(ses, tokenCookie, tokenParameter)) {
         // Enable for all or for admins?
         String enableFor = Validate.validateParameter(request.getParameter("enableForAll"), 16);
         if (enableFor.equalsIgnoreCase("true")) {

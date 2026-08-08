@@ -56,9 +56,9 @@ class HashTest {
   }
 
   @Test
-  void randomKeyBytes_returns16Bytes() {
+  void randomKeyBytes_returns256BitKey() {
     byte[] bytes = Hash.randomKeyBytes();
-    assertEquals(16, bytes.length);
+    assertEquals(32, bytes.length);
   }
 
   @Test
@@ -95,7 +95,7 @@ class HashTest {
   }
 
   @Test
-  void getCurrentKey_returns16Bytes() {
-    assertEquals(16, Hash.getCurrentKey().length);
+  void getCurrentKey_returns256BitKey() {
+    assertEquals(32, Hash.getCurrentKey().length);
   }
 }
