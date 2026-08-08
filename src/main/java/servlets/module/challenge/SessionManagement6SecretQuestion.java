@@ -174,7 +174,7 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
         // caller's. It used to be read out of an "ac" cookie, so any caller could set the
         // value that governed it. It is settled here and no request can change it.
         final boolean returnAnswers = false;
-        if (!returnAnswers) {
+        if (returnAnswers) {
           log.debug("Getting Parameter");
           Object emailObj = request.getParameter("subEmail");
           String subEmail = Validate.validateParameter(emailObj, 75);

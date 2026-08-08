@@ -82,7 +82,7 @@ public class SessionManagement7 extends HttpServlet {
         // caller's. It used to be read out of an "ac" cookie, so any caller could set the
         // value that governed it. It is settled here and no request can change it.
         final boolean returnAnswers = false;
-        if (!returnAnswers) {
+        if (returnAnswers) {
           log.debug("Getting Challenge Parameters");
           Object nameObj = request.getParameter("subName");
           Object passObj = request.getParameter("subPassword");
