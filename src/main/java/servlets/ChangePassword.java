@@ -76,11 +76,9 @@ public class ChangePassword extends HttpServlet {
           boolean passwordChange = false;
           boolean validPassword = false;
           validData =
-              newPassword.equalsIgnoreCase(passwordConfirm)
-                  && !newPassword.isEmpty()
-                  && newPassword != null;
-          passwordChange = !currentPassword.equalsIgnoreCase(newPassword);
-          validPassword = newPassword.length() > 4 && newPassword.length() <= 512;
+              newPassword != null && !newPassword.isEmpty() && newPassword.equals(passwordConfirm);
+          passwordChange = !currentPassword.equals(newPassword);
+          validPassword = validData && Validate.isValidPassword(newPassword);
           if (validData && passwordChange && validPassword) {
             log.debug("Validating Current Password");
             String user[] = Getter.authUser(ApplicationRoot, userName, currentPassword);
