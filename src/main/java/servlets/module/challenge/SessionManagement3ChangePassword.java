@@ -6,7 +6,6 @@ import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -52,12 +51,9 @@ public class SessionManagement3ChangePassword extends HttpServlet {
 
   /**
    * Function used by Session Management Challenge Three to change the password of the submitted
-   * user name specified in the "Current" cookie. The caller must also prove ownership of that
-   * account by supplying its current password.
+   * user name specified in the "Current" cookie
    *
    * @param current User cookie used to store the current user (encoded twice with base64)
-   * @param subUserPassword The account's current password, used to prove ownership before it may be
-   *     changed
    * @param newPassword the password which to use to update an accounts password
    */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
@@ -95,18 +91,13 @@ public class SessionManagement3ChangePassword extends HttpServlet {
           }
         }
         Object passNewObj = request.getParameter("newPassword");
-        Object passCurrentObj = request.getParameter("subUserPassword");
         String subName = new String();
         String subNewPass = new String();
-        String subCurrentPass = new String();
         if (theCookie != null) {
           subName = theCookie.getValue();
         }
         if (passNewObj != null) {
           subNewPass = (String) passNewObj;
-        }
-        if (passCurrentObj != null) {
-          subCurrentPass = (String) passCurrentObj;
         }
         log.debug("subName = " + subName);
         // Base 64 Decode
@@ -128,36 +119,23 @@ public class SessionManagement3ChangePassword extends HttpServlet {
 
           Connection conn =
               Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalThree");
+          log.debug("Changing password for user: " + subName);
+          log.debug("Changing password to: " + subNewPass);
           PreparedStatement callstmt;
 
           callstmt =
-              conn.prepareStatement(
-                  "SELECT userName FROM users WHERE userName = ? AND userPassword = SHA(?)");
-          callstmt.setString(1, subName);
-          callstmt.setString(2, subCurrentPass);
-          log.debug("Verifying current password proves ownership of the account");
-          ResultSet resultSet = callstmt.executeQuery();
-          if (resultSet.next()) {
-            log.debug("Changing password for user: " + subName);
-            log.debug("Changing password to: " + subNewPass);
+              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userName = ?");
+          callstmt.setString(1, subNewPass);
+          callstmt.setString(2, subName);
+          log.debug("Executing changePassword");
+          callstmt.execute();
 
-            callstmt =
-                conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userName = ?");
-            callstmt.setString(1, subNewPass);
-            callstmt.setString(2, subName);
-            log.debug("Executing changePassword");
-            callstmt.execute();
+          log.debug("Committing changes made to database");
+          callstmt = conn.prepareStatement("COMMIT");
+          callstmt.execute();
+          log.debug("Changes committed.");
 
-            log.debug("Committing changes made to database");
-            callstmt = conn.prepareStatement("COMMIT");
-            callstmt.execute();
-            log.debug("Changes committed.");
-
-            htmlOutput = "<p>" + bundle.getString("reset.password") + "</p>";
-          } else {
-            log.debug("Current password did not match, refusing to reset password");
-            htmlOutput = "<p>" + bundle.getString("reset.failed") + "</p>";
-          }
+          htmlOutput = "<p>" + bundle.getString("reset.password") + "</p>";
         } else {
           log.debug("invalid password submitted: " + subNewPass);
           htmlOutput = "<p>" + bundle.getString("reset.failed") + "</p>";

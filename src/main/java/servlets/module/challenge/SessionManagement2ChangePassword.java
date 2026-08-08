@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Locale;
 import java.util.ResourceBundle;
@@ -48,13 +47,12 @@ public class SessionManagement2ChangePassword extends HttpServlet {
       "f5ddc0ed2d30e597ebacf5fdd117083674b19bb92ffc3499121b9e6a12c92959";
 
   /**
-   * A user who proves ownership of the account by submitting its current password alongside the
-   * email address is set a new random password, the password is also returned from the database
-   * procedure and is forwards through to the HTTP response. This response is not consumed by the
-   * client interface by default, and the user will have to discover it.
+   * A user with the submitted email address is set a new random password, the password is also
+   * returned from the database procedure and is forwards through to the HTTP response. This
+   * response is not consumed by the client interface by default, and the user will have to discover
+   * it.
    *
    * @param subEmail Sub schema user email address
-   * @param subPassword Sub schema user's current password, used to prove account ownership
    */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -83,14 +81,9 @@ public class SessionManagement2ChangePassword extends HttpServlet {
       try {
         log.debug("Getting Challenge Parameter");
         Object emailObj = request.getParameter("subEmail");
-        Object passObj = request.getParameter("subPassword");
         String subEmail = new String();
-        String subPassword = new String();
         if (emailObj != null) {
           subEmail = (String) emailObj;
-        }
-        if (passObj != null) {
-          subPassword = (String) passObj;
         }
         log.debug("subEmail = " + subEmail);
 
@@ -103,38 +96,25 @@ public class SessionManagement2ChangePassword extends HttpServlet {
               Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
           log.debug("Checking credentials");
           PreparedStatement callstmt =
-              conn.prepareStatement(
-                  "SELECT userName FROM users WHERE userAddress = ? AND userPassword = SHA(?)");
-          callstmt.setString(1, subEmail);
-          callstmt.setString(2, subPassword);
-          log.debug("Verifying current password proves ownership of the account");
-          ResultSet resultSet = callstmt.executeQuery();
-          if (resultSet.next()) {
-            callstmt =
-                conn.prepareStatement(
-                    "UPDATE users SET userPassword = SHA(?) WHERE userAddress = ?");
-            callstmt.setString(1, newPassword);
-            callstmt.setString(2, subEmail);
-            log.debug("Executing resetPassword");
-            callstmt.execute();
-            log.debug("Statement executed");
+              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userAddress = ?");
+          callstmt.setString(1, newPassword);
+          callstmt.setString(2, subEmail);
+          log.debug("Executing resetPassword");
+          callstmt.execute();
+          log.debug("Statement executed");
 
-            log.debug("Committing changes made to database");
-            callstmt = conn.prepareStatement("COMMIT");
-            callstmt.execute();
-            log.debug("Changes committed.");
+          log.debug("Committing changes made to database");
+          callstmt = conn.prepareStatement("COMMIT");
+          callstmt.execute();
+          log.debug("Changes committed.");
 
-            htmlOutput = bundle.getString("response.changedTo") + " " + Encode.forHtml(newPassword);
-          } else {
-            log.debug("Current password did not match, refusing to reset password");
-            htmlOutput = bundle.getString("response.badPass") + " " + Encode.forHtml(subEmail);
-          }
+          htmlOutput = Encode.forHtml(newPassword);
           Database.closeConnection(conn);
         } catch (SQLException e) {
           log.error(levelName + " SQL Error: " + e.toString());
         }
         log.debug("Outputting HTML");
-        out.write(htmlOutput);
+        out.write(bundle.getString("response.changedTo") + " " + htmlOutput);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
