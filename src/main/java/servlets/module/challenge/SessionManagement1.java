@@ -57,9 +57,9 @@ public class SessionManagement1 extends HttpServlet {
   private static final String HMAC_ALGO = "HmacSHA256";
 
   /**
-   * Computes an HMAC-SHA256 signature over the supplied payload using the server-side secret
-   * key. Used to verify the integrity of the "checksum" cookie so that its value cannot be
-   * forged by a client.
+   * Computes an HMAC-SHA256 signature over the supplied payload using the server-side secret key.
+   * Used to verify the integrity of the "checksum" cookie so that its value cannot be forged by a
+   * client.
    */
   private static byte[] signPayload(String payload) {
     try {

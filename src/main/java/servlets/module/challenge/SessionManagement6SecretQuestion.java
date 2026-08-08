@@ -156,8 +156,8 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
   }
 
   /**
-   * A user submits an email address to get that user's Secret QUestion. This is vulnerable to SQL
-   * injection
+   * A user submits an email address to get that user's Secret Question. The lookup uses a
+   * parameterized query so untrusted input cannot alter the SQL statement.
    *
    * @param subEmail Sub schema user email to search DB with
    */
@@ -224,11 +224,11 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
                     Database.getChallengeConnection(
                         ApplicationRoot, "BrokenAuthAndSessMangChalSix");
                 log.debug("Getting Secret Question");
+                // Use a parameterized query instead of concatenating user input directly into
+                // the SQL string, which was exploitable via SQL injection.
                 PreparedStatement callstmt =
-                    conn.prepareStatement(
-                        "SELECT secretQuestion FROM users WHERE userAddress = \""
-                            + subEmail
-                            + "\"");
+                    conn.prepareStatement("SELECT secretQuestion FROM users WHERE userAddress = ?");
+                callstmt.setString(1, subEmail);
                 ResultSet rs = callstmt.executeQuery();
                 if (rs.next()) {
                   log.debug("'Valid' User Detected");

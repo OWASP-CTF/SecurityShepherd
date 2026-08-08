@@ -120,8 +120,7 @@ public class SessionManagement3ChangePassword extends HttpServlet {
         // change to proceed for the account matching the caller's own authenticated identity.
         String authenticatedUserName =
             ses.getAttribute("userName") == null ? "" : ses.getAttribute("userName").toString();
-        boolean ownsAccount =
-            !subName.isEmpty() && subName.equals(authenticatedUserName);
+        boolean ownsAccount = !subName.isEmpty() && subName.equals(authenticatedUserName);
 
         if (!ownsAccount) {
           log.debug("Change password attempted for an account not owned by the caller");

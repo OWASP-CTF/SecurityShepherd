@@ -84,8 +84,7 @@ public class DirectObject2 extends HttpServlet {
           Connection conn =
               Database.getChallengeConnection(ApplicationRoot, "directObjectRefChalTwo");
           PreparedStatement prepstmt =
-              conn.prepareStatement(
-                  "SELECT userName, privateMessage FROM users WHERE userId = ?");
+              conn.prepareStatement("SELECT userName, privateMessage FROM users WHERE userId = ?");
           prepstmt.setString(1, userId);
           ResultSet resultSet = prepstmt.executeQuery();
           if (resultSet.next()) {

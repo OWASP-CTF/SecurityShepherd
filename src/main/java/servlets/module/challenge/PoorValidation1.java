@@ -125,9 +125,8 @@ public class PoorValidation1 extends HttpServlet {
   }
 
   /**
-   * Clamps a submitted amount to a sane, non-negative range so that neither negative quantities
-   * nor unreasonably large quantities (which could overflow the cost calculation) can be used to
-   * manipulate the final order cost.
+   * Clamps a submitted amount to a non-negative, bounded range, preventing free-item pricing via
+   * negative quantities or integer overflow of the cost calculation.
    *
    * @param amount Amount submitted by the user
    * @return A validated amount between 0 and 9000 inclusive
