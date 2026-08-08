@@ -117,10 +117,12 @@ public class SessionManagement3ChangePassword extends HttpServlet {
         // ever legitimately issues it. It must never be trusted to select which account's
         // password gets changed - that would let anyone reset an arbitrary user's password
         // just by supplying that user's (base64'd) name in a cookie. Only allow a password
-        // change to proceed for the account matching the caller's own authenticated identity.
-        String authenticatedUserName =
-            ses.getAttribute("userName") == null ? "" : ses.getAttribute("userName").toString();
-        boolean ownsAccount = !subName.isEmpty() && subName.equals(authenticatedUserName);
+        // change to proceed for the sub-schema account this session actually authenticated as
+        // via SessionManagement3's own password check.
+        Object authenticatedAccountObj = ses.getAttribute("sessionManagement3AuthenticatedAccount");
+        String authenticatedAccount =
+            authenticatedAccountObj == null ? "" : authenticatedAccountObj.toString();
+        boolean ownsAccount = !subName.isEmpty() && subName.equals(authenticatedAccount);
 
         if (!ownsAccount) {
           log.debug("Change password attempted for an account not owned by the caller");

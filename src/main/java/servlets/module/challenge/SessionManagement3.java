@@ -118,19 +118,25 @@ public class SessionManagement3 extends HttpServlet {
         callstmt.setString(1, subName);
         log.debug("Executing findUser");
         ResultSet resultSet = callstmt.executeQuery();
+        // A password must be verified for every account, not only ones whose role happens to be
+        // "admin". Waving a caller through for any other role on the strength of a user name
+        // alone is not a sign in at all, and it lets an attacker impersonate any known account.
         if (resultSet.next()) {
           log.debug("User found");
-          if (resultSet.getString(3).equalsIgnoreCase("admin")) {
-            log.debug("Admin Detected");
-            callstmt =
-                conn.prepareStatement(
-                    "SELECT userName, userAddress, userRole FROM users WHERE userName = ? AND"
-                        + " userPassword = SHA(?)");
-            callstmt.setString(1, subName);
-            callstmt.setString(2, subPass);
-            log.debug("Executing authUser");
-            ResultSet resultSet2 = callstmt.executeQuery();
-            if (resultSet2.next()) {
+          callstmt =
+              conn.prepareStatement(
+                  "SELECT userName, userAddress, userRole FROM users WHERE userName = ? AND"
+                      + " userPassword = SHA(?)");
+          callstmt.setString(1, subName);
+          callstmt.setString(2, subPass);
+          log.debug("Executing authUser");
+          ResultSet resultSet2 = callstmt.executeQuery();
+          if (resultSet2.next()) {
+            // Remember which sub-schema account this session actually authenticated as, so
+            // dependent functionality (password change) can rely on it instead of trusting
+            // client-supplied identity.
+            ses.setAttribute("sessionManagement3AuthenticatedAccount", resultSet2.getString(1));
+            if (resultSet2.getString(3).equalsIgnoreCase("admin")) {
               log.debug("Successful Admin Login");
               // Get key and add it to the output
               String userKey =
@@ -149,23 +155,21 @@ public class SessionManagement3 extends HttpServlet {
                       + "</a>"
                       + "</p>";
             } else {
-              userAddress =
-                  bundle.getString("response.badPass")
-                      + " <a>"
-                      + Encode.forHtml(resultSet.getString(1))
-                      + "</a><br/>";
-              htmlOutput = makeTable(userAddress, bundle);
+              log.debug("Successful Guest Login");
+              htmlOutput =
+                  makeTable(bundle)
+                      + "<h2 class='title'>"
+                      + bundle.getString("response.welcomeGuest")
+                      + "</h2>"
+                      + "<p>"
+                      + bundle.getString("response.guestMessage")
+                      + "</p><br/><br/>";
             }
           } else {
-            log.debug("Successful Guest Login");
-            htmlOutput =
-                makeTable(bundle)
-                    + "<h2 class='title'>"
-                    + bundle.getString("response.welcomeGuest")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("response.guestMessage")
-                    + "</p><br/><br/>";
+            // Identical to the unknown-user response: confirming that the name was right and
+            // only the password was wrong would mark out which accounts exist to attack.
+            userAddress = bundle.getString("response.badUser") + "<br/>";
+            htmlOutput = makeTable(userAddress, bundle);
           }
         } else {
           userAddress = bundle.getString("response.badUser") + "<br/>";
