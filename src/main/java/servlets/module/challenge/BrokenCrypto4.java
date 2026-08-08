@@ -132,7 +132,7 @@ public class BrokenCrypto4 extends HttpServlet {
         appleCost = appleCost - (appleCost * (perCentOffApple / 100));
         bananaCost = bananaCost - (bananaCost * (perCentOffBanana / 100));
         orangeCost = orangeCost - (orangeCost * (perCentOffOrange / 100));
-        int finalCost = pineappleCost + appleCost + bananaAmount + orangeCost;
+        int finalCost = pineappleCost + appleCost + bananaCost + orangeCost;
 
         // Output Order
         htmlOutput =

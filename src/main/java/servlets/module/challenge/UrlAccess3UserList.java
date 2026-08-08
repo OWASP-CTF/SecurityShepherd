@@ -91,11 +91,13 @@ public class UrlAccess3UserList extends HttpServlet {
           String ApplicationRoot = getServletContext().getRealPath("");
           Connection conn = Database.getChallengeConnection(ApplicationRoot, "UrlAccessThree");
           PreparedStatement callstmt;
+          // Bind the cookie-derived user name as a parameter instead of concatenating it into
+          // the query string - the value is fully attacker-controlled (base64 decoded straight
+          // from a client cookie), so building the SQL text with it was a SQL injection flaw.
           callstmt =
               conn.prepareStatement(
-                  "SELECT userName FROM users WHERE userRole = \"admin\" OR userName = \""
-                      + currentUser
-                      + "\";");
+                  "SELECT userName FROM users WHERE userRole = \"admin\" OR userName = ?;");
+          callstmt.setString(1, currentUser);
           log.debug("Getting User List");
           htmlOutput = new String();
           ResultSet rs = callstmt.executeQuery();
