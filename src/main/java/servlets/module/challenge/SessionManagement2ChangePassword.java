@@ -1,11 +1,7 @@
 package servlets.module.challenge;
 
-import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -15,8 +11,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.owasp.encoder.Encode;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -47,10 +41,8 @@ public class SessionManagement2ChangePassword extends HttpServlet {
       "f5ddc0ed2d30e597ebacf5fdd117083674b19bb92ffc3499121b9e6a12c92959";
 
   /**
-   * A user with the submitted email address is set a new random password, the password is also
-   * returned from the database procedure and is forwards through to the HTTP response. This
-   * response is not consumed by the client interface by default, and the user will have to discover
-   * it.
+   * Accepts a password reset request without changing or disclosing credentials. A password must
+   * not be reset until ownership of the account has been verified through an out-of-band flow.
    *
    * @param subEmail Sub schema user email address
    */
@@ -76,7 +68,6 @@ public class SessionManagement2ChangePassword extends HttpServlet {
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
 
-      String htmlOutput = new String();
       log.debug(levelName + " Servlet accessed");
       try {
         log.debug("Getting Challenge Parameter");
@@ -87,34 +78,8 @@ public class SessionManagement2ChangePassword extends HttpServlet {
         }
         log.debug("subEmail = " + subEmail);
 
-        log.debug("Getting ApplicationRoot");
-        String ApplicationRoot = getServletContext().getRealPath("");
-
-        String newPassword = Hash.randomString();
-        try {
-          Connection conn =
-              Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
-          log.debug("Checking credentials");
-          PreparedStatement callstmt =
-              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userAddress = ?");
-          callstmt.setString(1, newPassword);
-          callstmt.setString(2, subEmail);
-          log.debug("Executing resetPassword");
-          callstmt.execute();
-          log.debug("Statement executed");
-
-          log.debug("Committing changes made to database");
-          callstmt = conn.prepareStatement("COMMIT");
-          callstmt.execute();
-          log.debug("Changes committed.");
-
-          htmlOutput = Encode.forHtml(newPassword);
-          Database.closeConnection(conn);
-        } catch (SQLException e) {
-          log.error(levelName + " SQL Error: " + e.toString());
-        }
         log.debug("Outputting HTML");
-        out.write(bundle.getString("response.changedTo") + " " + htmlOutput);
+        out.write(bundle.getString("response.resetRequested"));
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
