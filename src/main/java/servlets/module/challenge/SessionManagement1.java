@@ -75,9 +75,14 @@ public class SessionManagement1 extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+        String challengeRole = (String) ses.getAttribute("sessionManagement1Role");
+        if (challengeRole == null) {
+          challengeRole = "userRole=user";
+          ses.setAttribute("sessionManagement1Role", challengeRole);
+        }
         String htmlOutput = null;
-        if (Validate.validateAdminSession(ses)) {
-          log.debug("Server-authorized administrator detected");
+        if (challengeRole.equals("userRole=administrator")) {
+          log.debug("Server-authorized challenge administrator detected");
           String userKey =
               Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
           htmlOutput =
