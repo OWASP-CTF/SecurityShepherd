@@ -25,8 +25,9 @@ public class Levels extends HttpServlet {
   /** Get request just returns if the session can access the scoreboard or not */
   public void doGet(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
+    response.setContentType("application/json; charset=UTF-8");
+    response.setHeader("Cache-Control", "no-store");
     PrintWriter out = response.getWriter();
-    out.print(getServletInfo());
     HttpSession ses = request.getSession(false);
     Locale locale = new Locale(Validate.validateLanguage(ses));
     boolean validSession = Validate.validateSession(ses);
@@ -46,7 +47,6 @@ public class Levels extends HttpServlet {
         floor = "by-difficulty";
       }
       theModules = Getter.getModulesJson(userId, floor, locale);
-      response.setContentType("application/json");
       out.write(theModules.toString());
     } else {
       if (!validSession) {

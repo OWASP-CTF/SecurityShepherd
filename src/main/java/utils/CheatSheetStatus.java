@@ -103,7 +103,7 @@ public class CheatSheetStatus {
       if (isEnabledForPlayers()) {
         show = true;
       } else {
-        if (isEnabledForAdminsOnly() && userRole.compareTo("admin") == 0) {
+        if (isEnabledForAdminsOnly() && "admin".equals(userRole)) {
           show = true;
         }
       }

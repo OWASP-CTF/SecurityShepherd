@@ -20,6 +20,16 @@ class ValidateTest {
     return new String(arr);
   }
 
+  @Test
+  void userNameValidation_acceptsOnlyCanonicalStorageCharacters() {
+    assertTrue(Validate.isValidUserName("alice-01"));
+    assertFalse(Validate.isValidUserName(null));
+    assertFalse(Validate.isValidUserName("ab"));
+    assertFalse(Validate.isValidUserName("alice@example.com"));
+    assertFalse(Validate.isValidUserName("alice\r\nadmin"));
+    assertFalse(Validate.isValidUserName("<b>alice</b>"));
+  }
+
   // cookie lookup
 
   @Test

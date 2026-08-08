@@ -9,7 +9,6 @@ import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import org.apache.commons.io.FilenameUtils;
 
 public class SetupFilter implements Filter {
 
@@ -25,16 +24,12 @@ public class SetupFilter implements Filter {
     HttpServletResponse res = (HttpServletResponse) response;
     response.setCharacterEncoding("UTF-8");
     request.setCharacterEncoding("UTF-8");
-    String requestURL = req.getRequestURL().toString();
-    String pageName = FilenameUtils.getBaseName(requestURL);
 
     if (!Setup.isInstalled()) {
-      if (pageName.contains("setup")
-          || requestURL.contains("/css/")
-          || requestURL.contains("/js/")) {
+      if (isSetupResource(req)) {
         chain.doFilter(request, response);
       } else {
-        res.sendRedirect("setup.jsp");
+        res.sendRedirect(req.getContextPath() + "/setup.jsp");
       }
     } else {
       chain.doFilter(request, response);
@@ -44,5 +39,20 @@ public class SetupFilter implements Filter {
   @Override
   public void destroy() {
     //
+  }
+
+  static boolean isSetupResource(HttpServletRequest request) {
+    String requestUri = request.getRequestURI();
+    if (requestUri == null) {
+      return false;
+    }
+    String contextPath = request.getContextPath();
+    if (contextPath != null && !contextPath.isEmpty() && requestUri.startsWith(contextPath)) {
+      requestUri = requestUri.substring(contextPath.length());
+    }
+    return "/setup".equals(requestUri)
+        || "/setup.jsp".equals(requestUri)
+        || requestUri.startsWith("/css/")
+        || requestUri.startsWith("/js/");
   }
 }

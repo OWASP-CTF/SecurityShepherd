@@ -9,6 +9,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import utils.CheatSheetStatus;
+import utils.Validate;
 
 @WebServlet("/api/cheats")
 public class Cheats extends HttpServlet {
@@ -18,11 +19,12 @@ public class Cheats extends HttpServlet {
   /** Get request just returns if the session can access the scoreboard or not */
   public void doGet(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
+    response.setContentType("text/plain; charset=UTF-8");
+    response.setHeader("Cache-Control", "no-store");
     PrintWriter out = response.getWriter();
-    out.print(getServletInfo());
     HttpSession ses = request.getSession(false);
 
-    String userRole = ses == null ? null : (String) ses.getAttribute("userRole");
+    String userRole = Validate.validateSession(ses) ? (String) ses.getAttribute("userRole") : null;
     if (CheatSheetStatus.showCheat(userRole)) {
       out.write("true");
     } else {

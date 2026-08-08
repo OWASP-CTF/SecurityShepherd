@@ -6,7 +6,6 @@ import com.onelogin.saml2.exception.SettingsException;
 import java.io.IOException;
 import java.util.List;
 import javax.servlet.ServletException;
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -14,9 +13,9 @@ import javax.servlet.http.HttpSession;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import utils.CsrfToken;
 import utils.LoginMethod;
 import utils.ShepherdLogManager;
-import utils.Validate;
 
 /**
  * Control class for the SSO logout operation <br>
@@ -47,7 +46,17 @@ public class SLS extends HttpServlet {
    *
    * @param csrfToken
    */
-  public void handleRequest(HttpServletRequest request, HttpServletResponse response)
+  public void doGet(HttpServletRequest request, HttpServletResponse response)
+      throws ServletException, IOException {
+    handleRequest(request, response);
+  }
+
+  public void doPost(HttpServletRequest request, HttpServletResponse response)
+      throws ServletException, IOException {
+    handleRequest(request, response);
+  }
+
+  private void handleRequest(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
     // Setting IpAddress To Log and taking header for original IP if forwarded from
     // proxy
@@ -55,62 +64,43 @@ public class SLS extends HttpServlet {
     log.debug("**** servlets.SLS ***");
     response.setCharacterEncoding("UTF-8");
     request.setCharacterEncoding("UTF-8");
-    HttpSession ses = request.getSession(false);
-    if (Validate.validateSession(ses)) {
-      ShepherdLogManager.setRequestIp(
-          request.getRemoteAddr(),
-          request.getHeader("X-Forwarded-For"),
-          ses.getAttribute("userName").toString());
-      log.debug("Current User: " + ses.getAttribute("userName").toString());
-      Cookie tokenCookie = Validate.getToken(request.getCookies());
-      Object tokenParmeter = request.getParameter("csrfToken");
+    if (!LoginMethod.isSaml()) {
+      response.sendRedirect("../login.jsp");
+      return;
+    }
 
-      if (LoginMethod.isSaml()) {
+    Auth auth;
+    try {
+      auth = new Auth(request, response);
+    } catch (SettingsException e) {
+      throw new ServletException("SAML is not configured", e);
+    } catch (Error e) {
+      throw new ServletException("Could not initialize SAML logout", e);
+    }
 
-        Auth auth;
-        try {
-          auth = new Auth(request, response);
-        } catch (SettingsException e) {
-          throw new RuntimeException("SAML not configured: " + e.toString());
-        } catch (Error e) {
-          throw new RuntimeException("SAML error : " + e.toString());
-        }
+    try {
+      // The toolkit validates the signed SAML logout message. This endpoint is a protocol callback,
+      // so it cannot depend on the application session or CSRF token that SP-initiated logout has
+      // already invalidated.
+      auth.processSLO();
+    } catch (Exception e) {
+      throw new ServletException("Could not process SAML logout", e);
+    }
 
-        try {
-          auth.processSLO();
-        } catch (Exception e) {
-          throw new RuntimeException("SAML error when processing response: " + e.toString());
-        }
+    List<String> errors = auth.getErrors();
+    if (!errors.isEmpty()) {
+      log.warn("SAML logout validation failed: {}", StringUtils.join(errors, ", "));
+      response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid SAML logout response");
+      return;
+    }
 
-        List<String> errors = auth.getErrors();
-
-        if (errors.isEmpty()) {
-          log.debug("SSO Logout completed");
-        } else {
-          log.debug("Error when performing SSO Logout: " + StringUtils.join(errors, ", "));
-        }
-
-        if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
-          // Remove Everything
-          ses.removeAttribute("userStamp");
-          ses.removeAttribute("userName");
-          ses.removeAttribute("userRole");
-          // Invalid Session on server
-          ses.invalidate();
-          ses = request.getSession(false);
-          // Remove cookie
-          Cookie emptyCookie = new Cookie("token", "");
-          emptyCookie.setPath("/");
-          response.addCookie(emptyCookie);
-          log.debug("User Logged Out");
-          response.sendRedirect("../login.jsp");
-        } else {
-          log.error("CSRF Attack Detected");
-          response.sendRedirect("../index.jsp");
-        }
-      }
-    } else {
-      log.error("SLS Function Called with no valid session");
+    HttpSession session = request.getSession(false);
+    if (session != null) {
+      session.invalidate();
+    }
+    CsrfToken.expire(request, response);
+    log.debug("SSO logout completed");
+    if (!response.isCommitted()) {
       response.sendRedirect("../login.jsp");
     }
     log.debug("*** END SLS ***");

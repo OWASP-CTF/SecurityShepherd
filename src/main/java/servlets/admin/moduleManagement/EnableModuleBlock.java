@@ -67,9 +67,7 @@ public class EnableModuleBlock extends HttpServlet {
           String applicationRoot = getServletContext().getRealPath("");
 
           log.debug("Getting Parameters");
-          String moduleId = (String) request.getParameter("moduleId");
-          ;
-          log.debug("moduleId = " + moduleId.toString());
+          String moduleId = request.getParameter("moduleId");
           String blockedMessage =
               Validate.validateParameter(request.getParameter("blockedMessage"), 500);
 
@@ -80,8 +78,6 @@ public class EnableModuleBlock extends HttpServlet {
             log.debug("Custom Message Detected");
             message = blockedMessage;
           }
-          log.debug("Blocked Message = " + message);
-
           // Validation
           notNull = (moduleId != null);
           if (notNull) {

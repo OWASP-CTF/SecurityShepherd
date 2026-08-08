@@ -1,7 +1,7 @@
 package utils;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -13,7 +13,7 @@ import org.apache.logging.log4j.Logger;
 public class UserKicker {
 
   private static final Logger log = LogManager.getLogger(UserKicker.class);
-  private static List<String> kickTheseUsers = new ArrayList<String>();
+  private static final Set<String> kickTheseUsers = ConcurrentHashMap.newKeySet();
 
   /**
    * Add's a specific user to the kick list
@@ -21,8 +21,10 @@ public class UserKicker {
    * @param userName The user name to kick
    */
   public static void addUserToKickList(String userName) {
-    log.debug("Adding " + userName + " to kick list");
-    kickTheseUsers.add(userName);
+    if (userName != null && !userName.isEmpty()) {
+      log.debug("Adding a user to the kick list");
+      kickTheseUsers.add(userName);
+    }
   }
 
   /**
@@ -32,11 +34,11 @@ public class UserKicker {
    * @return True if the user should be kicked
    */
   public static boolean shouldKickUser(String userName) {
-    if (!kickTheseUsers.isEmpty()) {
+    if (userName != null && !kickTheseUsers.isEmpty()) {
       log.debug("Kick list Is Not Empty! Checking...");
       boolean kickUser = kickTheseUsers.contains(userName);
       if (kickUser) {
-        log.debug(userName + " is in kick list");
+        log.debug("A user is in the kick list");
       }
       return kickUser;
     } else {
@@ -51,10 +53,8 @@ public class UserKicker {
    * @param userName Username of the user to remove from kick list
    */
   public static void removeFromKicklist(String userName) {
-    if (shouldKickUser(userName)) // If User is in list
-    {
-      log.debug("Removing " + userName + " from kick list");
-      kickTheseUsers.remove(userName);
+    if (userName != null && kickTheseUsers.remove(userName)) {
+      log.debug("Removing a user from the kick list");
     }
   }
 }

@@ -49,17 +49,16 @@ public class OpenOrCloseByCategory extends HttpServlet {
         String openOrClose = new String();
         boolean validData = false;
         if (request.getParameter("openOrClose") != null) {
-          openOrClose = request.getParameter("openOrClose").toString().toLowerCase();
+          openOrClose = request.getParameter("openOrClose").toLowerCase(java.util.Locale.ROOT);
           validData =
               (openOrClose.equalsIgnoreCase("open")) || (openOrClose.equalsIgnoreCase("closed"));
         }
-        if (validData && request.getParameterValues("toOpenOrClose[]") != null) {
+        String[] toDo = request.getParameterValues("toOpenOrClose[]");
+        if (validData && validCategories(toDo)) {
           htmlOutput =
               "<h2 class='title'>Categories Set to " + Encode.forHtml(openOrClose) + "</h2>";
-          String[] toDo = request.getParameterValues("toOpenOrClose[]");
-          log.debug("toOpen = " + toDo.toString());
-          for (int i = 0; i < toDo.length; i++) {
-            Setter.setModuleCategoryStatusOpen(ApplicationRoot, toDo[i], openOrClose);
+          for (String category : toDo) {
+            Setter.setModuleCategoryStatusOpen(ApplicationRoot, category, openOrClose);
           }
           log.debug("Categories have been set to " + openOrClose);
           if (openOrClose.equalsIgnoreCase("open")) {
@@ -84,5 +83,20 @@ public class OpenOrCloseByCategory extends HttpServlet {
     }
     out.write(htmlOutput);
     log.debug("&&& END OpenOrCloseByCategory &&&");
+  }
+
+  static boolean validCategories(String[] categories) {
+    if (categories == null || categories.length == 0 || categories.length > 100) {
+      return false;
+    }
+    for (String category : categories) {
+      if (category == null
+          || category.isEmpty()
+          || category.length() > 64
+          || category.codePoints().anyMatch(Character::isISOControl)) {
+        return false;
+      }
+    }
+    return true;
   }
 }

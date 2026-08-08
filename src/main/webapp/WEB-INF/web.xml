@@ -499,24 +499,6 @@
 	</servlet-mapping>
 
 	<servlet>
-		<servlet-name>/changeHostAddress</servlet-name>
-		<servlet-class>servlets.admin.config.ChangeHostAddress</servlet-class>
-	</servlet>
-	<servlet-mapping>
-		<servlet-name>/changeHostAddress</servlet-name>
-		<url-pattern>/changeHostAddress</url-pattern>
-	</servlet-mapping>
-
-	<servlet>
-		<servlet-name>/changeVulnerableAppRoot</servlet-name>
-		<servlet-class>servlets.admin.config.ChangeVulnerableAppRoot</servlet-class>
-	</servlet>
-	<servlet-mapping>
-		<servlet-name>/changeVulnerableAppRoot</servlet-name>
-		<url-pattern>/changeVulnerableAppRoot</url-pattern>
-	</servlet-mapping>
-
-	<servlet>
 		<servlet-name>/lessons/57dda1bf9a2ca1c34e04f815491ef40836d9b710179cd19754ec5b3c31f27d1a</servlet-name>
 		<servlet-class>servlets.module.lesson.XxeLesson</servlet-class>
 	</servlet>
@@ -679,30 +661,12 @@
 	</servlet-mapping>
 
 	<servlet>
-		<servlet-name>/changeCoreHostAddress</servlet-name>
-		<servlet-class>servlets.admin.config.ChangeCoreHostAddress</servlet-class>
-	</servlet>
-	<servlet-mapping>
-		<servlet-name>/changeCoreHostAddress</servlet-name>
-		<url-pattern>/changeCoreHostAddress</url-pattern>
-	</servlet-mapping>
-
-	<servlet>
 		<servlet-name>/changeCoreDatabase</servlet-name>
 		<servlet-class>servlets.admin.config.ChangeCoreDatabase</servlet-class>
 	</servlet>
 	<servlet-mapping>
 		<servlet-name>/changeCoreDatabase</servlet-name>
 		<url-pattern>/changeCoreDatabase</url-pattern>
-	</servlet-mapping>
-
-	<servlet>
-		<servlet-name>/changeExposedDatabase</servlet-name>
-		<servlet-class>servlets.admin.config.ChangeExposedDatabase</servlet-class>
-	</servlet>
-	<servlet-mapping>
-		<servlet-name>/changeExposedDatabase</servlet-name>
-		<url-pattern>/changeExposedDatabase</url-pattern>
 	</servlet-mapping>
 
 	<servlet>
@@ -721,15 +685,6 @@
 	<servlet-mapping>
 		<servlet-name>/disableFeedback</servlet-name>
 		<url-pattern>/disableFeedback</url-pattern>
-	</servlet-mapping>
-
-	<servlet>
-		<servlet-name>/cancelConfigPrompt</servlet-name>
-		<servlet-class>servlets.admin.config.NoMoreQuickConfig</servlet-class>
-	</servlet>
-	<servlet-mapping>
-		<servlet-name>/cancelConfigPrompt</servlet-name>
-		<url-pattern>/cancelConfigPrompt</url-pattern>
 	</servlet-mapping>
 
 	<servlet>

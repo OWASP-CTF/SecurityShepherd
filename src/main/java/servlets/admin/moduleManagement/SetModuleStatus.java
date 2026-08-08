@@ -44,24 +44,20 @@ public class SetModuleStatus extends HttpServlet {
       if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
         String ApplicationRoot = getServletContext().getRealPath("");
         // ToDo - Itterate through input and run open/Close functions on them
-        if (request.getParameterValues("toOpen[]") != null) {
-          String[] toOpen = request.getParameterValues("toOpen[]");
-          ;
-          log.debug("toOpen = " + toOpen.toString());
-          for (int i = 0; i < toOpen.length; i++) {
-            Setter.setModuleStatusOpen(ApplicationRoot, toOpen[i]);
+        String[] toOpen = request.getParameterValues("toOpen[]");
+        if (validModuleIds(toOpen)) {
+          for (String moduleId : toOpen) {
+            Setter.setModuleStatusOpen(ApplicationRoot, moduleId);
           }
           log.debug("Modules Opened");
         } else {
           log.debug("Nothing to Open");
         }
 
-        if (request.getParameterValues("toClose[]") != null) {
-          String[] toClose = request.getParameterValues("toClose[]");
-          ;
-          log.debug("toClose = " + toClose.toString());
-          for (int i = 0; i < toClose.length; i++) {
-            Setter.setModuleStatusClosed(ApplicationRoot, toClose[i]);
+        String[] toClose = request.getParameterValues("toClose[]");
+        if (validModuleIds(toClose)) {
+          for (String moduleId : toClose) {
+            Setter.setModuleStatusClosed(ApplicationRoot, moduleId);
           }
           log.debug("Modules Closed");
         } else {
@@ -79,5 +75,23 @@ public class SetModuleStatus extends HttpServlet {
       out.write("css/images/loggedOutSheep.jpg");
     }
     log.debug("&&& END SetModuleStatus &&&");
+  }
+
+  static boolean validModuleIds(String[] moduleIds) {
+    if (moduleIds == null) {
+      return false;
+    }
+    if (moduleIds.length == 0 || moduleIds.length > 1000) {
+      return false;
+    }
+    for (String moduleId : moduleIds) {
+      if (moduleId == null
+          || moduleId.isEmpty()
+          || moduleId.length() > 128
+          || moduleId.codePoints().anyMatch(Character::isISOControl)) {
+        return false;
+      }
+    }
+    return true;
   }
 }

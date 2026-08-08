@@ -179,7 +179,8 @@ public class Validate {
     return result;
   }
 
-  private static boolean isValidUserName(String userName) {
+  /** Validates the canonical username before it is stored or placed in a session. */
+  public static boolean isValidUserName(String userName) {
     return userName != null && userName.matches("[A-Za-z0-9._-]{3,32}");
   }
 

@@ -44,6 +44,8 @@ Explicitly excluded from remediation by the repository instructions:
   container: 164 tests, 0 failures, 0 errors, 2 skipped.
 - The first hardening batch passes the expanded full suite: 197 tests, 0
   failures, 0 errors, 2 skipped. Spotless also passes after formatting.
+- The second hardening batch passes the expanded full suite: 211 tests, 0
+  failures, 0 errors, 2 skipped. Spotless also passes after formatting.
 - The application has only an installation-gating filter mapped globally; it
   does not have a central platform-security filter.
 - Administrative servlets consistently perform role and request-token checks,
@@ -103,6 +105,47 @@ coverage is not yet known, so each fix will receive an explicit regression test.
     A04:2021 Insecure Design / A05:2021 Security Misconfiguration.
 15. `ModuleServletTemplate` constructs a SQL statement by concatenation and
     returns raw database error details. OWASP A03:2021 Injection.
+16. `SLS` has no `doGet` or `doPost`, and its SAML callback incorrectly
+    requires the application session and CSRF token already invalidated during
+    SP-initiated logout. OWASP A07:2021 Identification and Authentication
+    Failures.
+17. `EnableScoreboard` writes an intermediate less-restricted state before an
+    administrator-only state and dereferences a missing class identifier.
+    OWASP A01:2021 Broken Access Control / A04:2021 Insecure Design.
+18. Administrative user and module handlers dereference missing parameters,
+    validate only the last member of multi-player requests, and accept
+    unbounded or control-character-bearing arrays. OWASP A04:2021 Insecure
+    Design / A05:2021 Security Misconfiguration.
+19. `ChangeUsername` HTML-encodes before storage instead of validating a
+    canonical username, enabling persistent context confusion and malformed
+    session identity values. OWASP A03:2021 Injection.
+20. Request-controlled forwarded addresses and usernames can inject control
+    characters into log context; several handlers also log raw CSRF tokens,
+    passwords, email addresses, and SSO claims. OWASP A09:2021 Security Logging
+    and Monitoring Failures.
+21. `ACS` dereferences missing SAML claims, while `authUserSSO` mishandles a
+    nullable suspension timestamp and writes the temporary-password flag into
+    the temporary-username result slot. OWASP A07:2021 Identification and
+    Authentication Failures.
+22. Registration silently converts malformed or mismatched email addresses to
+    an accepted blank address. OWASP A04:2021 Insecure Design.
+23. `SolutionSubmit` and `FeedbackSubmit` log submitted and expected solution
+    keys, compare them non-constantly, dereference malformed fields, and use
+    HTML encoding for JavaScript string contexts. OWASP A02:2021 Cryptographic
+    Failures / A03:2021 Injection / A09:2021 Security Logging and Monitoring
+    Failures.
+24. The installation gate uses a substring match on the full request URL, so
+    paths such as `/notsetup` bypass the pre-installation route restriction.
+    OWASP A01:2021 Broken Access Control.
+25. The process-wide HMAC key is returned as a mutable array, allowing an
+    in-process caller to alter all subsequent generated solutions. OWASP
+    A02:2021 Cryptographic Failures.
+26. The suspension kick list uses an unsynchronized mutable list and
+    check-then-remove sequence, allowing duplicate entries and race-induced
+    authorization inconsistencies. OWASP A01:2021 Broken Access Control.
+27. Five platform servlet mappings point to classes that do not exist, leaving
+    stale, error-producing administrative routes exposed. OWASP A05:2021
+    Security Misconfiguration.
 
 ## Working Hypotheses
 
@@ -128,10 +171,22 @@ coverage is not yet known, so each fix will receive an explicit regression test.
   lockout, constant-time setup auth, safe property serialization, input
   validation, security headers, countdown correction, mobile-session secrecy,
   and prepared SQL in the platform template.
+- Second hardening batch implemented with focused tests: SAML SLO routing and
+  claim safety, atomic scoreboard modes, canonical username/registration
+  validation, bounded all-member admin validation, API response/session
+  handling, log sanitization, secret-safe solution submission, exact setup
+  routing, defensive HMAC key access, and thread-safe suspension enforcement.
+- Secret-prefix and private-key scans found no provider credentials or private
+  keys in tracked source. The tracked `.env` contains development/bootstrap
+  passwords and is retained for now because the official Docker build consumes
+  it; this is a deployment-hardening item rather than a safe isolated code fix.
+- GitHub device authorization accepts the code but disables final OAuth
+  approval with “You can’t perform that action at this time.” Local HTTPS and
+  SSH pushes therefore remain unavailable; no account control was bypassed.
 
 ## Next
 
-Publish the passing first batch to a draft pull request for hidden-score
-feedback, then continue with SAML logout, scoreboard state transitions,
-administrative malformed-input handling, logging hygiene, and API response
-semantics.
+Package the WAR, commit the passing second batch, then retry an authorized push
+and draft pull request. If GitHub continues blocking OAuth, report the exact
+publication blocker and preserve the ready local branch for user-assisted
+authentication.

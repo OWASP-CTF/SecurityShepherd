@@ -74,33 +74,39 @@ public class AssignPlayers extends HttpServlet {
           log.debug("Servlet root = " + ApplicationRoot);
 
           log.debug("Getting Parameters");
-          String classId = (String) request.getParameter("classId");
-          log.debug("classId = " + classId);
+          String classId = request.getParameter("classId");
           String[] players = request.getParameterValues("players[]");
-          ;
-          log.debug("players = " + players.toString());
 
           // Validation
-          notNull = (players != null);
+          notNull = players != null && players.length > 0 && players.length <= 1000;
           log.debug("Ensuring strings are not empty");
-          if (classId.isEmpty()) {
+          if (classId != null && classId.isEmpty()) {
             log.debug("classId is empty; nulling");
             classId = null;
           }
           if (notNull) {
             if (classId != null) {
               classInfo = Getter.getClassInfo(ApplicationRoot, classId);
-              if (classInfo[0] == null) {
+              if (classInfo == null
+                  || classInfo.length < 2
+                  || classInfo[0] == null
+                  || classInfo[0].isEmpty()) {
                 classId = null;
+                notNull = false;
               }
             }
-            if (classId == null) {
+            if (classId == null && notNull) {
               classInfo[1] = "Unassigned";
               classInfo[0] = "Players";
             }
-            for (int i = 0; i < players.length; i++) {
-              log.debug("Validating player " + players[i]);
-              validPlayer = Getter.findPlayerById(ApplicationRoot, players[i]);
+            validPlayer = notNull;
+            for (String player : players) {
+              if (player == null
+                  || player.isEmpty()
+                  || !Getter.findPlayerById(ApplicationRoot, player)) {
+                validPlayer = false;
+                break;
+              }
             }
           }
           if (notNull && validPlayer) {

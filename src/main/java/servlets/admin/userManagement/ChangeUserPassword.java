@@ -65,10 +65,9 @@ public class ChangeUserPassword extends HttpServlet {
           String ApplicationRoot = getServletContext().getRealPath("");
 
           log.debug("Getting Parameters");
-          String player = (String) request.getParameter("player");
-          log.debug("player = " + player.toString());
-          String newPassword = (String) request.getParameter("password");
-          log.debug("newPass = " + newPassword);
+          String player = request.getParameter("player");
+          String newPassword = request.getParameter("password");
+          log.debug("Password update parameters retrieved");
 
           // Validation
           notNull = (player != null) && (newPassword != null);
@@ -108,6 +107,9 @@ public class ChangeUserPassword extends HttpServlet {
             } else if (!validPlayer) {
               log.error("Player not found");
               errorMessage += "Player Not Found. Please try again";
+            } else if (!validPassword) {
+              log.error("Invalid replacement password");
+              errorMessage += "Invalid Request. Please try again";
             }
             out.print(
                 "<h3 class=\"title\">"

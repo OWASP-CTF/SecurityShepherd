@@ -4,6 +4,8 @@ import dbProcs.Getter;
 import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
@@ -64,7 +66,6 @@ public class FeedbackSubmit extends HttpServlet {
 
     String htmlOutput = new String();
     PrintWriter out = response.getWriter();
-    out.print(getServletInfo());
     request.setCharacterEncoding("UTF-8");
     HttpSession ses = request.getSession(false);
     if (Validate.validateSession(ses)) {
@@ -82,32 +83,28 @@ public class FeedbackSubmit extends HttpServlet {
           String ApplicationRoot = getServletContext().getRealPath("");
 
           log.debug("Getting Parameters");
-          String moduleId = (String) request.getParameter("moduleId");
-          ;
-          log.debug("moduleId = " + moduleId.toString());
-
+          String moduleId = request.getParameter("moduleId");
+          String submittedSolution = request.getParameter("solutionKey");
           String solutionKey =
-              Parser.unescapeEntities((String) request.getParameter("solutionKey"), false);
-          log.debug("solutionKey = " + solutionKey.toString());
-          int before =
-              Integer.parseInt(Validate.validateParameter(request.getParameter("before"), 1));
-          log.debug("before = " + before);
-          int after =
-              Integer.parseInt(Validate.validateParameter(request.getParameter("after"), 1));
-          log.debug("after = " + after);
-          int difficulty =
-              Integer.parseInt(Validate.validateParameter(request.getParameter("difficulty"), 1));
-          log.debug("difficulty = " + difficulty);
-          String additionalInfo = Validate.validateParameter(request.getParameter("extra"), 5012);
-          log.debug("additionalInfo = " + additionalInfo);
+              submittedSolution == null ? null : Parser.unescapeEntities(submittedSolution, false);
+          Integer before = parseRating(request.getParameter("before"));
+          Integer after = parseRating(request.getParameter("after"));
+          Integer difficulty = parseRating(request.getParameter("difficulty"));
+          String submittedAdditionalInfo = request.getParameter("extra");
+          String additionalInfo = Validate.validateParameter(submittedAdditionalInfo, 5012);
 
           log.debug("Getting session parameters");
           String userId = (String) ses.getAttribute("userStamp");
           String userName = (String) ses.getAttribute("userName");
-          log.debug("userId = " + userId);
-
           // Validation
-          notNull = (moduleId != null && solutionKey != null);
+          notNull =
+              moduleId != null
+                  && solutionKey != null
+                  && before != null
+                  && after != null
+                  && difficulty != null
+                  && submittedAdditionalInfo != null
+                  && submittedAdditionalInfo.equals(additionalInfo);
           if (notNull) {
             storedResult = Getter.getModuleResult(ApplicationRoot, moduleId);
           }
@@ -119,15 +116,13 @@ public class FeedbackSubmit extends HttpServlet {
             boolean validKey = false;
             // Identify if solution is a user Specific key (Does it need to be decrypted?)
             if (Getter.getModuleKeyType(ApplicationRoot, moduleId)) {
-              validKey = storedResult.compareTo(solutionKey) == 0;
+              validKey = secretsEqual(storedResult, solutionKey);
             } else {
               // User has submitted a string. Lets see if it matches a freshly computed Key
               storedResult =
                   Hash.generateUserSolutionKeyOnly(
                       Getter.getModuleResult(ApplicationRoot, moduleId), userName);
-              validKey = storedResult.compareTo(solutionKey) == 0;
-              log.debug("Submitted Key: " + solutionKey);
-              log.debug("Expected Key : " + storedResult);
+              validKey = secretsEqual(storedResult, solutionKey);
             }
             if (validKey) {
               log.debug("Correct key submitted, checking user has not already completed");
@@ -154,8 +149,7 @@ public class FeedbackSubmit extends HttpServlet {
                               + " completed! Congratulations.");
                   htmlOutput += "</p>";
                   // Refresh Side Menu
-                  htmlOutput +=
-                      refreshMenuScript(Encode.forHtml((String) tokenParmeter), "Refresh Error");
+                  htmlOutput += refreshMenuScript(tokenParmeter.toString(), "Refresh Error");
                 } else {
                   htmlOutput = new String("Could not update user result");
                   out.print(
@@ -182,7 +176,7 @@ public class FeedbackSubmit extends HttpServlet {
 
               log.error("Invoking Bad Submission procedure...");
               Setter.incrementBadSubmission(ApplicationRoot, userId);
-              log.error(userName + " has been warned and potentially has lost points");
+              log.error("A user has been warned and may have lost points");
             }
           } else {
             // Validation Error Responses
@@ -234,6 +228,24 @@ public class FeedbackSubmit extends HttpServlet {
   }
 
   public static String refreshMenuScript(String csrfToken, String localError) {
-    return "<script>refreshSideMenu(\"" + csrfToken + "\", \"" + localError + "\")</script>";
+    return "<script>refreshSideMenu(\""
+        + Encode.forJavaScript(csrfToken)
+        + "\", \""
+        + Encode.forJavaScript(localError)
+        + "\")</script>";
+  }
+
+  static Integer parseRating(String value) {
+    if (value == null || !value.matches("[0-5]")) {
+      return null;
+    }
+    return Integer.valueOf(value);
+  }
+
+  static boolean secretsEqual(String expected, String submitted) {
+    return expected != null
+        && submitted != null
+        && MessageDigest.isEqual(
+            expected.getBytes(StandardCharsets.UTF_8), submitted.getBytes(StandardCharsets.UTF_8));
   }
 }

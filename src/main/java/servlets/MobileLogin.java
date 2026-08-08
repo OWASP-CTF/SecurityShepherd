@@ -62,7 +62,6 @@ public class MobileLogin extends HttpServlet {
     response.setContentType("application/json");
     // params
     String p_login = request.getParameter("login");
-    log.debug("userName: " + p_login);
     String p_pwd = request.getParameter("pwd");
     String csrfToken = new String();
 

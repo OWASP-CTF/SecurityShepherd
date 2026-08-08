@@ -63,20 +63,18 @@ public class GiveTakePoints extends HttpServlet {
           String ApplicationRoot = getServletContext().getRealPath("");
 
           log.debug("Getting Parameters");
-          String player = (String) request.getParameter("player");
-          log.debug("player = " + player.toString());
-          String amountOfPointsString = (String) request.getParameter("numberOfPoints");
-          log.debug("amountOfPointsString = " + amountOfPointsString);
-          int amountOfPoints = Integer.parseInt(amountOfPointsString);
+          String player = request.getParameter("player");
+          String amountOfPointsString = request.getParameter("numberOfPoints");
+          Integer amountOfPoints = parseNonZeroInt(amountOfPointsString);
 
           // Validation
-          notNull = (player != null) && (amountOfPoints != 0);
+          notNull = player != null && amountOfPoints != null;
           if (notNull) {
             validPlayer = Getter.findPlayerById(ApplicationRoot, player);
           }
           if (notNull && validPlayer) {
             // Data is good, Add user
-            log.debug("Updating Player Score by " + amountOfPointsString + " points");
+            log.debug("Updating player score");
             String responseMessage = new String();
             if (Setter.updateUserPoints(ApplicationRoot, player, amountOfPoints)) {
               String userName = new String(Getter.getUserName(ApplicationRoot, player));
@@ -146,5 +144,17 @@ public class GiveTakePoints extends HttpServlet {
               + " administrator functions!</font><p>");
     }
     log.debug("*** " + functionName + " END ***");
+  }
+
+  static Integer parseNonZeroInt(String value) {
+    if (value == null) {
+      return null;
+    }
+    try {
+      int parsed = Integer.parseInt(value);
+      return parsed == 0 ? null : parsed;
+    } catch (NumberFormatException e) {
+      return null;
+    }
   }
 }

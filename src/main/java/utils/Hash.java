@@ -30,7 +30,7 @@ public class Hash {
 
   private static final Logger log = LogManager.getLogger(Hash.class);
   private static final SecureRandom secureRandom = new SecureRandom();
-  private static byte[] serverEncryptionKey = randomKeyBytes();
+  private static final byte[] serverEncryptionKey = randomKeyBytes();
 
   /**
    * Generates HMAC with servers random encryption key on user name concatenated with level's base
@@ -90,7 +90,7 @@ public class Hash {
   }
 
   public static byte[] getCurrentKey() {
-    return serverEncryptionKey;
+    return serverEncryptionKey.clone();
   }
 
   public static byte[] randomKeyBytes() {

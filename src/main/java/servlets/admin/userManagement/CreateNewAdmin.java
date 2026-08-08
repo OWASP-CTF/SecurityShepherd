@@ -79,32 +79,35 @@ public class CreateNewAdmin extends HttpServlet {
           log.debug("Servlet root = " + ApplicationRoot);
 
           log.debug("Getting Parameters");
-          String userName = (String) request.getParameter("userName");
-          log.debug("userName = " + userName);
-          String passWord = (String) request.getParameter("passWord");
+          String userName = request.getParameter("userName");
+          String passWord = request.getParameter("passWord");
           log.debug("passWord retrieved");
-          String passWordConfirm = (String) request.getParameter("passWordConfirm");
+          String passWordConfirm = request.getParameter("passWordConfirm");
           log.debug("passWordConfirm retrieved");
-          String userAddress = Validate.validateParameter(request.getParameter("userAddress"), 128);
-          log.debug("userAddress = " + userAddress);
-          String userAddressCnf =
-              Validate.validateParameter(request.getParameter("userAddressCnf"), 128);
-          log.debug("userAddressCnf = " + userAddressCnf);
+          String submittedAddress = request.getParameter("userAddress");
+          String submittedAddressConfirmation = request.getParameter("userAddressCnf");
+          String userAddress = Validate.validateParameter(submittedAddress, 128);
+          String userAddressCnf = Validate.validateParameter(submittedAddressConfirmation, 128);
 
           // Validation
           log.debug("String Casting should have set off any null alarms... Checking again anyway");
-          notNull = (userName != null && passWord != null);
+          notNull =
+              userName != null
+                  && passWord != null
+                  && passWordConfirm != null
+                  && submittedAddress != null
+                  && submittedAddressConfirmation != null;
           log.debug("Ensuring strings are not empty");
-          notEmpty = (!userName.isEmpty() && !passWord.isEmpty());
+          notEmpty = notNull && !userName.isEmpty() && !passWord.isEmpty();
           log.debug("Validating passwords");
-          validPasswords = passWord.compareTo(passWordConfirm) == 0; // 0 returned if the same
+          validPasswords = notNull && passWord.equals(passWordConfirm);
           log.debug("Validating addresses");
-          if (userAddress.isEmpty()) {
-            validAddress = true;
-          } else {
-            validAddress = userAddress.compareTo(userAddressCnf) == 0;
-            validAddress = (Validate.isValidEmailAddress(userAddress) && validAddress);
-          }
+          validAddress =
+              notNull
+                  && submittedAddress.equals(userAddress)
+                  && submittedAddressConfirmation.equals(userAddressCnf)
+                  && userAddress.equals(userAddressCnf)
+                  && (userAddress.isEmpty() || Validate.isValidEmailAddress(userAddress));
           boolean basicValidation = validPasswords && validAddress && notNull && notEmpty;
           if (basicValidation) {
             userValidate = (Validate.isValidUser(userName, passWord, userAddress));

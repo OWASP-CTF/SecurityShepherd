@@ -64,11 +64,9 @@ public class SuspendUser extends HttpServlet {
           String ApplicationRoot = getServletContext().getRealPath("");
 
           log.debug("Getting Parameters");
-          String player = (String) request.getParameter("player");
-          log.debug("player = " + player.toString());
-          String amountOfMinutesString = (String) request.getParameter("numberOfMinutes");
-          log.debug("amountOfMinutesString = " + amountOfMinutesString);
-          int amountOfMinutes = Integer.parseInt(amountOfMinutesString);
+          String player = request.getParameter("player");
+          String amountOfMinutesString = request.getParameter("numberOfMinutes");
+          int amountOfMinutes = parsePositiveInt(amountOfMinutesString);
 
           // Validation
           notNull = (player != null) && (amountOfMinutes > 0);
@@ -145,5 +143,17 @@ public class SuspendUser extends HttpServlet {
               + " administrator functions!</font><p>");
     }
     log.debug("*** " + functionName + " END ***");
+  }
+
+  static int parsePositiveInt(String value) {
+    if (value == null) {
+      return -1;
+    }
+    try {
+      int parsed = Integer.parseInt(value);
+      return parsed > 0 ? parsed : -1;
+    } catch (NumberFormatException e) {
+      return -1;
+    }
   }
 }

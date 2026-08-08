@@ -75,20 +75,22 @@ public class CreateClass extends HttpServlet {
           log.debug("Servlet root = " + ApplicationRoot);
 
           log.debug("Getting Parameters");
-          String className = (String) request.getParameter("className");
-          log.debug("className = " + className);
-          String classYear = (String) request.getParameter("classYear");
-          log.debug("classYear = " + classYear);
+          String className = request.getParameter("className");
+          String classYear = request.getParameter("classYear");
 
           // Validation
           log.debug("Checking for nulls");
           notNull = (classYear != null && className != null);
           log.debug("Ensuring strings are not empty");
-          notEmpty = (!classYear.isEmpty() && !className.isEmpty());
+          notEmpty = notNull && !classYear.isEmpty() && !className.isEmpty();
           log.debug("Validating Year");
-          validYear = Validate.isValidClassYear(classYear);
+          validYear = notNull && Validate.isValidClassYear(classYear);
           log.debug("Validating Name");
-          classValidate = className.length() > 4 && className.length() <= 32;
+          classValidate =
+              notNull
+                  && className.length() > 4
+                  && className.length() <= 32
+                  && className.codePoints().noneMatch(Character::isISOControl);
 
           if (notNull && notEmpty && validYear && classValidate) {
             String reponseMessage = new String();
