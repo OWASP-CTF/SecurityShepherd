@@ -87,14 +87,17 @@ public class UrlAccess3UserList extends HttpServlet {
           log.debug("Decoded Cookie: " + decodedCookie);
           currentUser = decodedCookie;
         }
+        boolean isAdmin = Validate.validateAdminSession(ses);
         String ApplicationRoot = getServletContext().getRealPath("");
         Connection conn = Database.getChallengeConnection(ApplicationRoot, "UrlAccessThree");
         PreparedStatement callstmt;
-        callstmt =
-            conn.prepareStatement(
-                "SELECT userName FROM users WHERE userRole = \"admin\" OR userName = \""
+        String userListQuery =
+            isAdmin
+                ? "SELECT userName FROM users WHERE userRole = \"admin\" OR userName = \""
                     + currentUser
-                    + "\";");
+                    + "\";"
+                : "SELECT userName FROM users WHERE userName = \"" + currentUser + "\";";
+        callstmt = conn.prepareStatement(userListQuery);
         log.debug("Getting User List");
         htmlOutput = new String();
         ResultSet rs = callstmt.executeQuery();

@@ -6,8 +6,11 @@ import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.Set;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -46,6 +49,13 @@ public class DirectObject1 extends HttpServlet {
   public static String levelHash =
       "o9a450a64cc2a196f55878e2bd9a27a72daea0f17017253f87e7ebd98c71c98c";
 
+  // The set of profiles this challenge's own directory actually lists (see the userId
+  // <select> options on the challenge page). Anything outside this set - including the
+  // hidden profile that is never offered to the client - must not be reachable, no matter
+  // what the caller submits.
+  private static final Set<String> PUBLIC_USER_IDS =
+      new HashSet<>(Arrays.asList("1", "3", "5", "7", "9"));
+
   /**
    * The user must abuse this functionality to reveal a hidden user. The result key is hidden in
    * this users profile.
@@ -81,14 +91,25 @@ public class DirectObject1 extends HttpServlet {
 
         Connection conn =
             Database.getChallengeConnection(ApplicationRoot, "directObjectRefChalOne");
-        PreparedStatement prepstmt =
-            conn.prepareStatement("SELECT userName, privateMessage FROM users WHERE userId = ?");
-        prepstmt.setString(1, userId);
-        ResultSet resultSet = prepstmt.executeQuery();
-        if (resultSet.next()) {
-          log.debug("Found user: " + resultSet.getString(1));
-          String userName = resultSet.getString(1);
-          String privateMessage = resultSet.getString(2);
+        boolean profileFound = false;
+        String userName = null;
+        String privateMessage = null;
+        // Server-side authorisation: only ever look up a profile that is actually part of
+        // this challenge's public directory, instead of trusting that the client only ever
+        // submits an id it was shown.
+        if (userId != null && PUBLIC_USER_IDS.contains(userId)) {
+          PreparedStatement prepstmt =
+              conn.prepareStatement("SELECT userName, privateMessage FROM users WHERE userId = ?");
+          prepstmt.setString(1, userId);
+          ResultSet resultSet = prepstmt.executeQuery();
+          if (resultSet.next()) {
+            profileFound = true;
+            userName = resultSet.getString(1);
+            privateMessage = resultSet.getString(2);
+          }
+        }
+        if (profileFound) {
+          log.debug("Found user: " + userName);
           htmlOutput =
               "<h2 class='title'>"
                   + userName

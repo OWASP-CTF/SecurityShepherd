@@ -99,7 +99,7 @@ if (request.getSession() != null)
 		<div id="resultsDiv">
 			<h2 class="title"><%= bundle.getString("insecureCryptoStorage.3.ciphertextExample") %></h2>
 			<p><%= bundle.getString("insecureCryptoStorage.3.tryDecryptThis") %>
-				IAAAAEkQBhEVBwpDHAFJGhYHSBYEGgocAw==
+				A0rTmfywXXFnfVLzNZtB4UdNc8rQM1zm9KVkWBXYkk0f9GODe0Nqt3tQ1UKQSvoM+n4/pdqGsxSF7H6K2sNYCgVz6JYmmTraFXn+S7lEiDTEuvc9YKhDgomBkg==
 			</p>
 		</div>
 		</p>

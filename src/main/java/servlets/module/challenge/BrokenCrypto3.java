@@ -2,8 +2,12 @@ package servlets.module.challenge;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.security.MessageDigest;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import javax.crypto.Cipher;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -95,7 +99,9 @@ public class BrokenCrypto3 extends HttpServlet {
   }
 
   /**
-   * Decrypts the supplied string value using the submitted key
+   * Decrypts the supplied string value using the submitted key. Uses AES/GCM so the ciphertext is
+   * authenticated: tampered or attacker-crafted input fails the tag check instead of quietly
+   * decrypting to key-derived material.
    *
    * @param hash The cipher text to be decrypted
    * @param key The encryption key
@@ -104,31 +110,36 @@ public class BrokenCrypto3 extends HttpServlet {
    */
   public static String decrypt(String hash, String key) throws Exception {
     try {
-      return new String(
-          xor(org.apache.commons.codec.binary.Base64.decodeBase64(hash.getBytes()), key), "UTF-8");
+      byte[] cipherText = org.apache.commons.codec.binary.Base64.decodeBase64(hash.getBytes());
+      SecretKeySpec skeySpec = new SecretKeySpec(deriveKeyMaterial(key), "AES");
+      Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+      cipher.init(Cipher.DECRYPT_MODE, skeySpec, new GCMParameterSpec(128, deriveIv(key)));
+      return new String(cipher.doFinal(cipherText), "UTF-8");
     } catch (java.io.UnsupportedEncodingException ex) {
       throw new IllegalStateException(ex);
     }
   }
 
   /**
-   * XOR Function
+   * Derives 256 bits of AES key material from the level key so the raw level key is never used
+   * directly as cipher key bytes.
    *
-   * @param input Byte array to be XOR'd
-   * @param key Encryption Key
-   * @return
+   * @param key The encryption key
+   * @return 32 bytes of key material
    */
-  private static byte[] xor(final byte[] input, String theKey) {
-    final byte[] output = new byte[input.length];
-    final byte[] secret = theKey.getBytes();
-    int spos = 0;
-    for (int pos = 0; pos < input.length; pos += 1) {
-      output[pos] = (byte) (input[pos] ^ secret[spos]);
-      spos += 1;
-      if (spos >= secret.length) {
-        spos = 0;
-      }
-    }
-    return output;
+  private static byte[] deriveKeyMaterial(String key) throws Exception {
+    return MessageDigest.getInstance("SHA-256").digest(key.getBytes("UTF-8"));
+  }
+
+  /**
+   * Derives a 96 bit GCM nonce from the level key
+   *
+   * @param key The encryption key
+   * @return 12 bytes to use as the GCM IV
+   */
+  private static byte[] deriveIv(String key) throws Exception {
+    byte[] iv = new byte[12];
+    System.arraycopy(deriveKeyMaterial(key), 0, iv, 0, iv.length);
+    return iv;
   }
 }

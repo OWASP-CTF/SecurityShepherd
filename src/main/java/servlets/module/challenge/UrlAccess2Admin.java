@@ -70,7 +70,9 @@ public class UrlAccess2Admin extends HttpServlet {
 
       try {
         String userData = request.getParameter("adminData");
-        boolean tamperedRequest = !userData.equalsIgnoreCase("youAreAnAdminOfAwesomenessWoopWoop");
+        boolean isAdmin = Validate.validateAdminSession(ses);
+        boolean tamperedRequest =
+            !isAdmin || !userData.equalsIgnoreCase("youAreAnAdminOfAwesomenessWoopWoop");
         if (!tamperedRequest) {
           log.debug("No request tampering detected");
         } else {
@@ -95,7 +97,7 @@ public class UrlAccess2Admin extends HttpServlet {
         } else {
           htmlOutput =
               "<h2 class='title'>"
-                  + bundle.getString("response.failue")
+                  + bundle.getString("response.failure")
                   + "</h2>"
                   + "<p>"
                   + bundle.getString("response.failue.message")

@@ -16,6 +16,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -25,7 +26,9 @@ import utils.Validate;
  * <p>This function is a shell to give the appearance that a token has been set for a user. A DB
  * call is made to check if a user exists. If the user does exist the server returns an ok message
  * claiming that the user has been emailed a URL with a token embedded for resetting their password.
- * This in fact does not happen. User must find another way to sign in as an admin.
+ * The email itself is never actually sent, but a genuine, unpredictable reset token is now bound to
+ * this session and to the requested user name, so that SessionManagement5ChangePassword can later
+ * verify a submitted token was actually issued this way, to this session, for this user.
  *
  * <p><br>
  * <br>
@@ -110,6 +113,13 @@ public class SessionManagement5SetToken extends HttpServlet {
         // Is the username valid?
         if (resultSet.next()) {
           log.debug("User found");
+          // Bind a genuine, unpredictable reset token to this session and to the specific user
+          // it was issued for. The Change Password function will only ever accept a token that
+          // was actually issued this way; a token the caller invents themselves is never valid.
+          String resetToken = Hash.randomString();
+          ses.setAttribute("sessionManagement5ResetUser", userName);
+          ses.setAttribute("sessionManagement5ResetToken", resetToken);
+          ses.setAttribute("sessionManagement5ResetTokenTime", System.currentTimeMillis());
           htmlOutput =
               bundle.getString("setToken.sentTo.1")
                   + " '"

@@ -71,6 +71,13 @@ public class DirectObjectBankCurrentBalance extends HttpServlet {
         log.debug("Account Number - " + accountNumber);
         String applicationRoot = getServletContext().getRealPath("");
         String htmlOutput = new String();
+        // Authorisation: a session may only ever ask for the balance of the bank account it
+        // authenticated as, never an arbitrary account number supplied by the caller.
+        Object sessionAccountNumber = ses.getAttribute("directObjectBankAccount");
+        if (sessionAccountNumber == null
+            || !sessionAccountNumber.toString().equals(accountNumber)) {
+          throw new SQLException("Requested account is not the account bound to this session");
+        }
         long currentBalance =
             DirectObjectBankLogin.getAccountBalance(accountNumber, applicationRoot);
         log.debug("Outputting HTML");

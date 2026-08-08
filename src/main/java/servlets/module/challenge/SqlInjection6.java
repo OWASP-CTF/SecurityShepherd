@@ -50,9 +50,8 @@ public class SqlInjection6 extends HttpServlet {
   private static final Logger log = LogManager.getLogger(SqlInjection6.class);
 
   /**
-   * This controller makes an insecure call to a MySQL interpreter. User Input is first filtered for
-   * UTF-8 attacks and afterwards is decoded from \xHEX format to UTF-8 before sent to the
-   * interpreter
+   * This controller queries the MySQL interpreter for the submitted PIN using a parameterized
+   * query, so user input is always passed as data and never as part of the SQL statement.
    */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -77,17 +76,11 @@ public class SqlInjection6 extends HttpServlet {
       try {
         String userPin = (String) request.getParameter("pinNumber");
         log.debug("userPin - " + userPin);
-        userPin =
-            userPin.replaceAll("\\\\", "\\\\\\\\").replaceAll("'", ""); // Escape single quotes
-        log.debug("userPin scrubbed - " + userPin);
-        userPin =
-            java.net.URLDecoder.decode(
-                userPin.replaceAll("\\\\\\\\x", "%"), "UTF-8"); // Decode \x encoding
-        log.debug("searchTerm decoded to - " + userPin);
         Connection conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSix");
         log.debug("Looking for users");
         PreparedStatement prepstmt =
-            conn.prepareStatement("SELECT userName FROM users WHERE userPin = '" + userPin + "'");
+            conn.prepareStatement("SELECT userName FROM users WHERE userPin = ?");
+        prepstmt.setString(1, userPin);
         ResultSet users = prepstmt.executeQuery();
         try {
           if (users.next()) {
