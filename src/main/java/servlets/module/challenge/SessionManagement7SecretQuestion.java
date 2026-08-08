@@ -13,12 +13,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.servlet.ServletException;
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import utils.ShepherdLogManager;
@@ -243,30 +241,13 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
       String htmlOutput = new String();
       log.debug(levelName + " Servlet accessed");
       try {
-        log.debug("Getting Cookies");
-        Cookie userCookies[] = request.getCookies();
-        int i = 0;
-        Cookie theCookie = null;
-        for (i = 0; i < userCookies.length; i++) {
-          if (userCookies[i].getName().compareTo("ac") == 0) {
-            theCookie = userCookies[i];
-            break; // End Loop, because we found the token
-          }
-        }
-        if (theCookie != null) {
-          log.debug("Cookie value: " + theCookie.getValue());
-          log.debug("Cookie value: " + theCookie.getValue());
-          byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
-          String decodedCookie = new String(decodedCookieBytes, "UTF-8");
-          log.debug("Decoded Cookie: " + decodedCookie);
-          if (decodedCookie.equals("doNotReturnAnswers")) // Untampered Cookie
-          {
-            // Question not translated as DB will only mark English answers as correct
-            htmlOutput = new String("What is your favourite flower?");
-          } else {
-            log.debug("Tampered cookie detected");
-            htmlOutput = bundle.getString("response.configError");
-          }
+        // Whether answers may be returned is this application's decision, not the
+        // caller's. It used to be read out of an "ac" cookie, so any caller could set the
+        // value that governed it. It is settled here and no request can change it.
+        final boolean returnAnswers = false;
+        if (!returnAnswers) {
+          // Question not translated as DB will only mark English answers as correct
+          htmlOutput = new String("What is your favourite flower?");
         } else {
           log.debug("Tampered cookie detected");
           htmlOutput = bundle.getString("response.configError");
