@@ -87,9 +87,9 @@ public class SessionManagement2ChangePassword extends HttpServlet {
         // band with the account holder instead. The reply is the same for every address, so this
         // cannot be used to find out which addresses have accounts either.
         log.error(levelName + " refused a password reset for an unverified address");
-        htmlOutput = "********";
+        htmlOutput = bundle.getString("response.resetRequested");
         log.debug("Outputting HTML");
-        out.write(bundle.getString("response.changedTo") + " " + htmlOutput);
+        out.write(htmlOutput);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
