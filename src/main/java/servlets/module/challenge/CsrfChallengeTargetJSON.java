@@ -81,7 +81,7 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
         if (validContentType) {
           log.debug("Getting JSON String");
           String jsonData = extractPostRequestBody(request);
-          log.debug("POST body: " + jsonData);
+          log.debug("Received JSON CSRF target request");
           JSONObject json = new JSONObject(jsonData);
           log.debug("Getting userId");
           String plusId = (String) json.get("userId");

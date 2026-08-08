@@ -75,7 +75,7 @@ public class SqlInjection6 extends HttpServlet {
 
       try {
         String userPin = (String) request.getParameter("pinNumber");
-        log.debug("userPin - " + userPin);
+        log.debug("PIN credential submitted");
         Connection conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSix");
         log.debug("Looking for users");
         PreparedStatement prepstmt =

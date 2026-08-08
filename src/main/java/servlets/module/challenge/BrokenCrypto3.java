@@ -73,12 +73,12 @@ public class BrokenCrypto3 extends HttpServlet {
               "i18n.servlets.challenges.insecureCryptoStorage.insecureCryptoStorage", locale);
       try {
         String userData = request.getParameter("userData");
-        log.debug("User Submitted - " + userData);
+        log.debug("Ciphertext submitted for decryption");
 
         log.debug("Decrypting user input");
         // Using level key as encryption key
         String decryptedUserData = decrypt(userData, levelResult);
-        log.debug("Decrypted to: " + decryptedUserData);
+        log.debug("Ciphertext decrypted successfully");
 
         htmlOutput =
             "<h2 class='title'>"

@@ -131,7 +131,7 @@ public class NoSqlInjection1 extends HttpServlet {
             name = result.get("name");
             address = result.get("address");
 
-            log.debug(bundle.getString("results.queryResult") + result.toString());
+            log.debug("Mongo query returned a gamer record");
             htmlOutput +=
                 "<tr><td>"
                     + Encode.forHtml(id.toString())

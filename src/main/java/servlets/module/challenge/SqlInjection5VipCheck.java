@@ -67,7 +67,7 @@ public class SqlInjection5VipCheck extends HttpServlet {
 
       try {
         String couponCode = request.getParameter("couponCode");
-        log.debug("couponCode - " + couponCode);
+        log.debug("VIP coupon supplied = " + (couponCode != null && !couponCode.isEmpty()));
         if (couponCode == null || couponCode.isEmpty()) {
           couponCode = new String();
         }
