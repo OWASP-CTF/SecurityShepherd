@@ -55,6 +55,13 @@
 		
 		String ApplicationRoot = getServletContext().getRealPath("");
 		String csrfToken = Encode.forHtml(tokenCookie.getValue());
+		String targetCsrfToken = (String) ses.getAttribute("csrfChallengeTwoNonce");
+		if(targetCsrfToken == null || targetCsrfToken.isEmpty())
+		{
+			targetCsrfToken = Hash.randomString();
+			ses.setAttribute("csrfChallengeTwoNonce", targetCsrfToken);
+		}
+		targetCsrfToken = Encode.forHtml(targetCsrfToken);
 		String userClass = null;
 		if(ses.getAttribute("userClass") != null)
 		{
@@ -85,6 +92,7 @@
 			<br /> <br /> <a> POST /user/csrfchallengetwo/plusplus</a> <br />
 			<%= bundle.getString("challenge.withThisParameter") %>
 			userId = <a><%= userId %></a> <br />
+			csrfToken = <a><%= targetCsrfToken %></a> <br />
 			<br />
 			<%= bundle.getString("challenge.whereIdIsUserBeenIncremented.1") %>&nbsp;<%= bundle.getString("challenge.userIdExample") %>&nbsp;<%= bundle.getString("challenge.whereIdIsUserBeenIncremented.2") %>&nbsp;
 			<br /> <br />
