@@ -15,7 +15,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.owasp.encoder.Encode;
 import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
@@ -108,13 +107,20 @@ public class SessionManagement2ChangePassword extends HttpServlet {
           callstmt.execute();
           log.debug("Changes committed.");
 
-          htmlOutput = Encode.forHtml(newPassword);
+          // The new password must never be handed back in the HTTP response to whoever
+          // submitted the reset request - this endpoint has no way to verify the requester
+          // actually owns "subEmail" (there is no sub-schema session), so echoing the new
+          // password here previously let anyone take over any account (including admin's)
+          // just by submitting that account's email address. A real reset flow only ever
+          // delivers the new credential out-of-band (e.g. by email) to the account owner.
           Database.closeConnection(conn);
         } catch (SQLException e) {
           log.error(levelName + " SQL Error: " + e.toString());
         }
         log.debug("Outputting HTML");
-        out.write(bundle.getString("response.changedTo") + " " + htmlOutput);
+        // Respond with the same generic confirmation regardless of outcome, so this endpoint
+        // cannot be used to enumerate valid accounts or to disclose the reset password.
+        out.write(bundle.getString("response.changedTo"));
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
