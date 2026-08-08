@@ -258,6 +258,7 @@ public class ACS extends HttpServlet {
 
               log.debug("Setting CSRF cookie");
               Cookie token = new Cookie("token", Hash.randomString());
+              token.setHttpOnly(true);
               if (request.getRequestURL().toString().startsWith("https")) // If Requested over HTTPs
               {
                 token.setSecure(true);

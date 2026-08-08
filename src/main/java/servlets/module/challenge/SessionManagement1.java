@@ -13,7 +13,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -88,26 +87,16 @@ public class SessionManagement1 extends HttpServlet {
         }
         String htmlOutput = null;
         if (theCookie != null) {
-          log.debug("Cookie value: " + theCookie.getValue());
+          log.debug("Cookie present; decoding");
           byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
           String decodedCookie = new String(decodedCookieBytes, "UTF-8");
-          log.debug("Decoded Cookie: " + decodedCookie);
+          log.debug("Cookie decoded successfully");
 
-          if (decodedCookie.equals("userRole=administrator")) {
-            log.debug("Challenge Complete");
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("response.adminClub")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("response.welcomeAdmin")
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
+          // A cookie is supplied by the client and asserts nothing about who the requester is,
+          // so it cannot put anyone in the administrator view. The decoded value is only
+          // logged; every request is served the unprivileged response below.
+          if (!decodedCookie.equals("userRole=user")) {
+            log.error("Tampered role cookie rejected");
           }
         }
         if (htmlOutput == null) {

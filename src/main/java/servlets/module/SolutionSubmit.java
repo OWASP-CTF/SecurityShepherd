@@ -84,7 +84,7 @@ public class SolutionSubmit extends HttpServlet {
         log.debug("moduleId = " + moduleId.toString());
         String solutionKey = (String) request.getParameter("solutionKey");
         ;
-        log.debug("solutionKey = " + solutionKey.toString());
+        log.debug("solutionKey submitted");
 
         log.debug("Getting session parameters");
         String userId = (String) ses.getAttribute("userStamp");
@@ -120,8 +120,7 @@ public class SolutionSubmit extends HttpServlet {
                 Hash.generateUserSolutionKeyOnly(
                     Getter.getModuleResult(ApplicationRoot, moduleId), userName);
             validKey = storedResult.compareTo(solutionKey) == 0;
-            log.debug("Submitted Key: " + storedResult);
-            log.debug("Expected Key : " + solutionKey);
+            log.debug("Comparing submitted key against expected key");
           }
           if (validKey) {
             log.debug("Correct key submitted, checking that module not already completed");

@@ -91,10 +91,10 @@ public class SessionManagement6 extends HttpServlet {
           }
         }
         if (theCookie != null) {
-          log.debug("Cookie value: " + theCookie.getValue());
+          log.debug("Cookie present; decoding");
           byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
           String decodedCookie = new String(decodedCookieBytes, "UTF-8");
-          log.debug("Decoded Cookie: " + decodedCookie);
+          log.debug("Cookie decoded successfully");
 
           if (decodedCookie.equals("doNotReturnAnswers")) // Untampered Cookie
           {
@@ -111,7 +111,7 @@ public class SessionManagement6 extends HttpServlet {
               subPass = (String) passObj;
             }
             log.debug("subName = " + subName);
-            log.debug("subPass = " + subPass);
+            log.debug("subPass submitted");
 
             log.debug("Getting ApplicationRoot");
             String ApplicationRoot = getServletContext().getRealPath("");
@@ -158,22 +158,11 @@ public class SessionManagement6 extends HttpServlet {
                       + "</a>"
                       + "</p>";
             } else {
-              log.debug("Incorrect credentials, checking if user name correct");
-              callstmt = conn.prepareStatement("SELECT userAddress FROM users WHERE userName = ?");
-              callstmt.setString(1, subName);
-              log.debug("Executing getAddress");
-              resultSet = callstmt.executeQuery();
-              if (resultSet.next()) {
-                log.debug("User Found");
-                userAddress =
-                    ""
-                        + bundle.getString("response.badPass")
-                        + " <a>"
-                        + Encode.forHtml(resultSet.getString(1))
-                        + "</a><br/>";
-              } else {
-                userAddress = "" + bundle.getString("response.badUser") + "<br/>";
-              }
+              // The same reply whether or not the account exists, and never its email address.
+              // Naming the account tells an attacker which ones are real, and handing back the
+              // address tells them where to aim the account recovery this challenge is about.
+              log.debug("Incorrect credentials");
+              userAddress = "" + bundle.getString("response.badUser") + "<br/>";
               htmlOutput = makeTable(userAddress, bundle);
             }
             Database.closeConnection(conn);

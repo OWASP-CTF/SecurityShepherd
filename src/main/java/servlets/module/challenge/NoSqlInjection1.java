@@ -113,7 +113,17 @@ public class NoSqlInjection1 extends HttpServlet {
         String gamerId = request.getParameter("theGamerName");
         log.debug("User Submitted: " + gamerId);
 
-        DBObject whereQuery = new BasicDBObject("$where", "this._id == '" + gamerId + "'");
+        // Reject parameters containing MongoDB operator characters to prevent NoSQL injection
+        if (gamerId == null || gamerId.contains("$") || gamerId.contains("{")) {
+          htmlOutput = "<p>" + bundle.getString("result.none") + "</p>";
+          log.debug("Rejected input containing injection characters");
+          out.write(htmlOutput);
+          mongoClient.close();
+          return;
+        }
+
+        // Use structured exact-match query instead of $where JavaScript expression
+        DBObject whereQuery = new BasicDBObject("_id", gamerId);
         cursor = dbCollection.find(whereQuery);
 
         try {

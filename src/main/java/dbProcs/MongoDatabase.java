@@ -331,7 +331,7 @@ public class MongoDatabase {
     return credentialClients.computeIfAbsent(
         credentialKey,
         key -> {
-          log.debug("Creating new MongoClient for credential: " + credentialKey);
+          log.debug("Creating new MongoClient for supplied credential");
           return createMongoClient(credential);
         });
   }
@@ -383,7 +383,7 @@ public class MongoDatabase {
 
     CommandResult result = db.command(script);
 
-    log.debug("Mongo Result: " + result);
+    log.debug("Mongo command executed");
   }
 
   /**

@@ -75,11 +75,28 @@ public class PoorValidation1 extends HttpServlet {
         int bananaAmount = Integer.parseInt(request.getParameter("bananaAmount"));
         log.debug("bananaAmount - " + bananaAmount);
 
-        // Working out costs
-        int pineappleCost = pineappleAmount * 30;
-        int orangeCost = orangeAmount * 3000;
-        int appleCost = appleAmount * 45;
-        int bananaCost = bananaAmount * 15;
+        // Reject negative quantities — client-side bypass is now blocked server-side
+        if (pineappleAmount < 0 || orangeAmount < 0 || appleAmount < 0 || bananaAmount < 0) {
+          htmlOutput = "<p>" + bundle.getString("poorValidation.badOrder") + "</p>";
+          out.write(htmlOutput);
+          return;
+        }
+
+        // Working out costs using exact arithmetic to prevent overflow exploitation
+        int pineappleCost;
+        int orangeCost;
+        int appleCost;
+        int bananaCost;
+        try {
+          pineappleCost = Math.multiplyExact(pineappleAmount, 30);
+          orangeCost = Math.multiplyExact(orangeAmount, 3000);
+          appleCost = Math.multiplyExact(appleAmount, 45);
+          bananaCost = Math.multiplyExact(bananaAmount, 15);
+        } catch (ArithmeticException ex) {
+          htmlOutput = "<p>" + bundle.getString("poorValidation.badOrder") + "</p>";
+          out.write(htmlOutput);
+          return;
+        }
 
         htmlOutput = new String();
 

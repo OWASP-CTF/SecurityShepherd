@@ -11,6 +11,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import utils.CsrfNonce;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -37,7 +38,17 @@ public class CsrfLessonTarget extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(CsrfLesson.class);
 
+  /** Reject GET requests — state-changing operations require POST with a CSRF nonce. */
   public void doGet(HttpServletRequest request, HttpServletResponse response)
+      throws ServletException, IOException {
+    response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
+  }
+
+  /**
+   * CSRF-protected lesson target. Requires a valid {@code csrfToken} POST parameter matching the
+   * session nonce before recording the simulated admin action.
+   */
+  public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
     // Setting IpAddress To Log and taking header for original IP if forwarded from proxy
     ShepherdLogManager.setRequestIp(request.getRemoteAddr(), request.getHeader("X-Forwarded-For"));
@@ -57,6 +68,14 @@ public class CsrfLessonTarget extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug("Current User: " + ses.getAttribute("userName").toString());
+
+        String submittedToken = request.getParameter("csrfToken");
+        if (!CsrfNonce.isValid(ses, submittedToken)) {
+          log.debug("Invalid or missing CSRF nonce — lesson target request blocked");
+          out.write("<p>" + bundle.getString("target.notAdmin") + "</p>");
+          return;
+        }
+
         log.debug("CSRF Lesson Target Hit By Admin");
         out.write("<p>" + bundle.getString("target.success") + "</p>");
       } else {

@@ -130,7 +130,7 @@ public class GetModule extends HttpServlet {
             String theHash =
                 Encode.forHtmlAttribute(Getter.getModuleAddress(ApplicationRoot, moduleId, userId));
             out.write(theHash);
-            log.debug("Returning: " + theHash);
+            log.debug("Returning module address to client");
           }
         } else {
           // Validation Error Responses

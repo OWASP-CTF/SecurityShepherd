@@ -139,8 +139,9 @@ public class XxeLesson extends HttpServlet {
     Document doc;
     String result;
 
+    // Secure configuration: disallow DOCTYPE declarations and external entities
     DocumentBuilder dBuilder =
-        XmlDocumentBuilder.xmlDocBuilder(false, true, true, true, true, true);
+        XmlDocumentBuilder.xmlDocBuilder(true, false, false, false, false, false);
     InputSource is = new InputSource(xmlEmail);
 
     try {

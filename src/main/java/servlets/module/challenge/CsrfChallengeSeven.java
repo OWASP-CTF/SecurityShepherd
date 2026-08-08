@@ -14,6 +14,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import utils.CsrfNonce;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -70,6 +71,7 @@ public class CsrfChallengeSeven extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+        CsrfNonce.getOrCreate(ses);
         Cookie tokenCookie = Validate.getToken(request.getCookies());
         Object tokenParameter = request.getParameter("csrfToken");
         if (Validate.validateTokens(tokenCookie, tokenParameter)) {

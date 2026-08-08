@@ -75,6 +75,18 @@ public class DirectObjectBankTransfer extends HttpServlet {
       try {
         String senderAccountNumber = request.getParameter("senderAccountNumber");
         log.debug("Sender Account Number - " + senderAccountNumber);
+        // Ownership check: sender must match the authenticated bank session account
+        String sessionAccount = (String) ses.getAttribute("directObjectBankAccount");
+        if (sessionAccount == null || !sessionAccount.equals(senderAccountNumber)) {
+          log.warn(
+              levelName
+                  + " - IDOR attempt: session user "
+                  + ses.getAttribute("userName")
+                  + " tried to transfer from accountNumber "
+                  + senderAccountNumber);
+          out.write(errors.getString("error.funky"));
+          return;
+        }
         String receiverAccountNumber = request.getParameter("receiverAccountNumber");
         log.debug("Receiver Account Number - " + receiverAccountNumber);
         String transferAmountString = request.getParameter("transferAmount");

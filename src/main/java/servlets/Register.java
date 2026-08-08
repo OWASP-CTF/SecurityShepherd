@@ -153,8 +153,7 @@ public class Register extends HttpServlet {
             response.sendRedirect("register.jsp");
           }
         } else {
-          log.debug("paramToken = " + paramToken);
-          log.debug("sessToken = " + sessToken);
+          log.debug("Comparing submitted and session registration tokens");
         }
       } catch (Exception e) {
         log.error("Registration Error: " + e.toString());

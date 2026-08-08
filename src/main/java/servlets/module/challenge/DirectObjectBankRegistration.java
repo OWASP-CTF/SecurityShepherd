@@ -70,7 +70,7 @@ public class DirectObjectBankRegistration extends HttpServlet {
         String accountHolder = request.getParameter("accountHolder");
         log.debug("Account Holder - " + accountHolder);
         String accountPass = request.getParameter("accountPass");
-        log.debug("Account Pass - " + accountPass);
+        log.debug("Account password submitted");
         String applicationRoot = getServletContext().getRealPath("");
         String htmlOutput = new String();
 

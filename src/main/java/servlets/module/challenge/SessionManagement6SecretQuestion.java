@@ -88,7 +88,7 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
         log.debug("subEmail = " + subEmail);
         Object ansObj = request.getParameter("subAnswer");
         String subAns = Validate.validateParameter(ansObj, 128);
-        log.debug("subAnswer = " + subAns);
+        log.debug("Secret answer submitted");
 
         String ApplicationRoot = getServletContext().getRealPath("");
         try {
@@ -200,7 +200,7 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
         if (theCookie != null) {
           byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
           String decodedCookie = new String(decodedCookieBytes, "UTF-8");
-          log.debug("Decoded Cookie: " + decodedCookie);
+          log.debug("Cookie decoded successfully");
 
           if (decodedCookie.equals("doNotReturnAnswers")) // Untampered Cookie
           {
@@ -224,15 +224,14 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
                     Database.getChallengeConnection(
                         ApplicationRoot, "BrokenAuthAndSessMangChalSix");
                 log.debug("Getting Secret Question");
+                // FIX: parameterize query to prevent SQL injection via subEmail
                 PreparedStatement callstmt =
-                    conn.prepareStatement(
-                        "SELECT secretQuestion FROM users WHERE userAddress = \""
-                            + subEmail
-                            + "\"");
+                    conn.prepareStatement("SELECT secretQuestion FROM users WHERE userAddress = ?");
+                callstmt.setString(1, subEmail);
                 ResultSet rs = callstmt.executeQuery();
                 if (rs.next()) {
                   log.debug("'Valid' User Detected");
-                  log.debug("Encoding for output: " + rs.getString(1));
+                  log.debug("Encoding secret question for output");
                   // rs.getString(1) contains the question for the user to answer. This question is
                   // asked in English as it must be answered in English to successfully pass the
                   // level

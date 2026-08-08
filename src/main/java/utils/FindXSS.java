@@ -323,7 +323,7 @@ public class FindXSS {
       log.debug("theAttack Query: " + theAttack.getQuery());
       boolean validPath = theAttack.getPath().toLowerCase().endsWith(csrfAttackPath.toLowerCase());
       if (!validPath) {
-        log.debug("Invalid Solution: Bad Path submitted. Expected:" + csrfAttackPath.toLowerCase());
+        log.debug("Invalid Solution: Bad Path submitted");
       } else {
         boolean validQuery =
             theAttack

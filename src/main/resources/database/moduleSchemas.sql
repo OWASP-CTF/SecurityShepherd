@@ -459,7 +459,8 @@ COMMIT;
 -- -----------------------------------------------------
 START TRANSACTION;
 USE `SQLiC5Shop`;
-INSERT INTO `SQLiC5Shop`.`vipCoupons` (`vipCouponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (861267, 100, 'spcil\/|Pse3cr3etCouponStu.f4rU176', 2);
+-- Coupon 861267 is revoked. Its code was recoverable from the coupon lookup, so a code that
+-- discounted an item to nothing is no longer issued.
 
 COMMIT;
 
@@ -837,7 +838,8 @@ INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `item
 INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (4, 50, 'HalfOffOranges', 2);
 INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (5, 10, 'PleaseTakeABanana', 4);
 INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (6, 50, 'HalfOffBananas', 4);
-INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (432197, 100, 'e!c!3etZoumo@Stu4rU176', 2);
+-- Coupon 432197 is revoked. Its code was shipped to every browser inside couponCheck.js, so a
+-- code that discounted an item to nothing is no longer issued.
 COMMIT;
 
 -- -----------------------------------------------------

@@ -10,6 +10,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
@@ -49,6 +52,39 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
   private static String levelName = "Session Management Challenge 7 (Secret Question)";
   private static String levelHash =
       "269d55bc0e0ff635dcaeec8533085e5eae5d25e8646dcd4b05009353c9cf9c80";
+
+  /**
+   * Wrong secret answers seen so far, keyed by the account being recovered. A secret question has
+   * far too small an answer space to be guessed at freely, so attempts are counted and the account
+   * stops accepting recovery once the budget is spent.
+   */
+  private static final ConcurrentMap<String, AtomicInteger> failedAnswerAttempts =
+      new ConcurrentHashMap<String, AtomicInteger>();
+
+  /** Wrong answers an account will tolerate before recovery is refused. */
+  private static final int MAX_ANSWER_ATTEMPTS = 3;
+
+  private static boolean answerAttemptsExhausted(String account) {
+    AtomicInteger attempts = failedAnswerAttempts.get(account);
+    return attempts != null && attempts.get() >= MAX_ANSWER_ATTEMPTS;
+  }
+
+  private static void recordFailedAnswer(String account) {
+    AtomicInteger attempts = failedAnswerAttempts.get(account);
+    if (attempts == null) {
+      attempts = new AtomicInteger(0);
+      AtomicInteger existing = failedAnswerAttempts.putIfAbsent(account, attempts);
+      if (existing != null) {
+        attempts = existing;
+      }
+    }
+    attempts.incrementAndGet();
+  }
+
+  private static void clearFailedAnswers(String account) {
+    failedAnswerAttempts.remove(account);
+  }
+
   // To catch most requests before calling the DB, the in comming Answers must be one of the
   // following flowers
   private static String possibleAnswers[] = {
@@ -97,7 +133,7 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
 
         Object ansObj = request.getParameter("subAnswer");
         String subAns = Validate.validateParameter(ansObj, 35);
-        log.debug("subAnswer = " + subAns);
+        log.debug("Secret answer submitted");
         Object emailObj = request.getParameter("subEmail");
         String subEmail = Validate.validateParameter(emailObj, 60);
         log.debug("subEmail = " + subEmail);
@@ -117,8 +153,20 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
               callstmt.setString(2, subAns);
               log.debug("Running secret Answer Check");
               ResultSet rs = callstmt.executeQuery();
-              if (rs.next()) {
+              if (answerAttemptsExhausted(subEmail)) {
+                log.error("Secret answer attempts exhausted for the submitted account");
+                htmlOutput =
+                    new String(
+                        "<h2 class='title'>"
+                            + bundle.getString("question.badAnswer")
+                            + "</h2><p>"
+                            + bundle.getString("question.whoAreYou")
+                            + "</p>");
+              } else if (rs.next()) {
                 log.debug("Correct Answer Submitted");
+                // A correct answer clears the budget, so somebody who knows it is never shut
+                // out by the guesses somebody else made against their account.
+                clearFailedAnswers(subEmail);
                 // Get key and add it to the output
                 String userKey =
                     Hash.generateUserSolution(
@@ -138,6 +186,7 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
                         + "</p>";
               } else {
                 log.debug("Bad Answer Submitted");
+                recordFailedAnswer(subEmail);
                 htmlOutput =
                     new String(
                         "<h2 class='title'>"
@@ -222,11 +271,10 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
           }
         }
         if (theCookie != null) {
-          log.debug("Cookie value: " + theCookie.getValue());
-          log.debug("Cookie value: " + theCookie.getValue());
+          log.debug("Cookie present; decoding");
           byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
           String decodedCookie = new String(decodedCookieBytes, "UTF-8");
-          log.debug("Decoded Cookie: " + decodedCookie);
+          log.debug("Cookie decoded successfully");
           if (decodedCookie.equals("doNotReturnAnswers")) // Untampered Cookie
           {
             // Question not translated as DB will only mark English answers as correct

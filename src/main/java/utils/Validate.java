@@ -324,7 +324,7 @@ public class Validate {
         newKey = newKey.concat(userSalt.substring(0, toAdd));
       }
     }
-    log.debug("Encryption key is '" + newKey + "'");
+    log.debug("Encryption key prepared");
     return newKey;
   }
 

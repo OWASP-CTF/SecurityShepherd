@@ -81,7 +81,7 @@ public class BrokenCrypto4 extends HttpServlet {
         int bananaAmount = validateAmount(Integer.parseInt(request.getParameter("bananaAmount")));
         log.debug("bananaAmount - " + bananaAmount);
         String couponCode = request.getParameter("couponCode");
-        log.debug("couponCode - " + couponCode);
+        log.debug("Coupon supplied = " + (couponCode != null && !couponCode.isEmpty()));
 
         // Working out costs
         int pineappleCost = pineappleAmount * 30;
@@ -105,19 +105,19 @@ public class BrokenCrypto4 extends HttpServlet {
             if (coupons.getInt(1) == 1) // Pineapple
             {
               log.debug("Found coupon for %" + coupons.getInt(2) + " off Pineapple");
-              perCentOffPineapple = coupons.getInt(2);
+              perCentOffPineapple = validateDiscount(coupons.getInt(2));
             } else if (coupons.getInt(1) == 2) // Orange
             {
               log.debug("Found coupon for %" + coupons.getInt(2) + " off Orange");
-              perCentOffOrange = coupons.getInt(2);
+              perCentOffOrange = validateDiscount(coupons.getInt(2));
             } else if (coupons.getInt(1) == 3) // Apple
             {
               log.debug("Found coupon for %" + coupons.getInt(2) + " off Apple");
-              perCentOffApple = coupons.getInt(2);
+              perCentOffApple = validateDiscount(coupons.getInt(2));
             } else if (coupons.getInt(1) == 4) // Banana
             {
               log.debug("Found coupon for %" + coupons.getInt(2) + " off Banana");
-              perCentOffBanana = coupons.getInt(2);
+              perCentOffBanana = validateDiscount(coupons.getInt(2));
             }
           } else {
             log.debug("Invalid Coupon Code");
@@ -128,11 +128,11 @@ public class BrokenCrypto4 extends HttpServlet {
         conn.close();
 
         // Work Out Final Cost
-        pineappleCost = pineappleCost - (pineappleCost * (perCentOffPineapple / 100));
-        appleCost = appleCost - (appleCost * (perCentOffApple / 100));
-        bananaCost = bananaCost - (bananaCost * (perCentOffBanana / 100));
-        orangeCost = orangeCost - (orangeCost * (perCentOffOrange / 100));
-        int finalCost = pineappleCost + appleCost + bananaAmount + orangeCost;
+        pineappleCost = pineappleCost - (pineappleCost * perCentOffPineapple / 100);
+        appleCost = appleCost - (appleCost * perCentOffApple / 100);
+        bananaCost = bananaCost - (bananaCost * perCentOffBanana / 100);
+        orangeCost = orangeCost - (orangeCost * perCentOffOrange / 100);
+        int finalCost = pineappleCost + appleCost + bananaCost + orangeCost;
 
         // Output Order
         htmlOutput =
@@ -179,5 +179,14 @@ public class BrokenCrypto4 extends HttpServlet {
       amount = 0;
     }
     return amount;
+  }
+
+  static int validateDiscount(int discount) {
+    // A client-discoverable coupon must never make an order free. Normal bounded discounts remain
+    // usable, while corrupted or 100%-off database values fail closed.
+    if (discount < 0 || discount >= 100) {
+      return 0;
+    }
+    return discount;
   }
 }

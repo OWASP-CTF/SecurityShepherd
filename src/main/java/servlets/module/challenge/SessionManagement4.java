@@ -13,7 +13,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -87,35 +86,20 @@ public class SessionManagement4 extends HttpServlet {
         }
         String htmlOutput = null;
         if (theCookie != null) {
-          log.debug("Cookie value: " + theCookie.getValue());
+          log.debug("Cookie present; decoding (twice)");
           // Decode Twice
           byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
           String decodedCookie = new String(decodedCookieBytes, "UTF-8");
           decodedCookieBytes = Base64.decodeBase64(decodedCookie.getBytes());
           decodedCookie = new String(decodedCookieBytes, "UTF-8");
-          log.debug("Decoded Cookie: " + decodedCookie);
+          log.debug("Cookie decoded successfully");
+          // The session id is supplied by the client, so guessing or editing it cannot move
+          // the requester into another session. No value in this cookie grants a privileged
+          // view; anything but the guest session is treated as dead.
           if (decodedCookie.equals("0000000000000001")) // Guest Session
           {
             log.debug("Guest Session Detected");
-          } else if (decodedCookie.equals("0000000000000009")) // Admin Session
-          {
-            log.debug("Admin Session Detected: Challenge Complete");
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("response.adminClub")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("response.welcomeAdmin")
-                    + " "
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
-          } else // Unknown or Dead session
-          {
+          } else {
             log.debug("Dead Session Detected");
           }
         }

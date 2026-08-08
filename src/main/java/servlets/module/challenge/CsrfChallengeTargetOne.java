@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import utils.CsrfNonce;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -40,13 +41,18 @@ public class CsrfChallengeTargetOne extends HttpServlet {
   private static final Logger log = LogManager.getLogger(CsrfChallengeTargetOne.class);
   private static String levelName = "CSRF 1 Target";
 
+  /** Reject GET requests — state-changing operations require POST. */
+  public void doGet(HttpServletRequest request, HttpServletResponse response)
+      throws ServletException, IOException {
+    response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
+  }
+
   /**
-   * CSRF vulnerable function that can be used by users to force other users to mark their CSRF
-   * challenge One as complete.
+   * CSRF-protected function. Requires a valid session nonce via {@code csrfToken} POST parameter.
    *
    * @param userId User identifier to be incremented
    */
-  public void doGet(HttpServletRequest request, HttpServletResponse response)
+  public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
     // Setting IpAddress To Log and taking header for original IP if forwarded from proxy
     ShepherdLogManager.setRequestIp(request.getRemoteAddr(), request.getHeader("X-Forwarded-For"));
@@ -69,6 +75,14 @@ public class CsrfChallengeTargetOne extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+
+        String submittedToken = request.getParameter("csrfToken");
+        if (!CsrfNonce.isValid(ses, submittedToken)) {
+          log.debug("Invalid or missing CSRF nonce — request blocked");
+          out.write(csrfGenerics.getString("target.incrementFailed"));
+          return;
+        }
+
         String plusId = request.getParameter("userid");
         log.debug("User Submitted - " + plusId);
         String userId = (String) ses.getAttribute("userStamp");

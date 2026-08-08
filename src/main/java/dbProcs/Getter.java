@@ -1388,7 +1388,7 @@ public class Getter {
    */
   public static String getModuleIdFromHash(String ApplicationRoot, String moduleHash) {
     log.debug("*** Getter.getModuleIdFromHash ***");
-    log.debug("Getting ID from Hash: " + moduleHash);
+    log.debug("Getting ID from supplied module hash");
     String result = new String();
     try (Connection conn = Database.getCoreConnection(ApplicationRoot);
         CallableStatement callstmt = conn.prepareCall("call moduleGetIdFromHash(?)")) {
@@ -1501,7 +1501,7 @@ public class Getter {
   public static String getModuleResultFromHash(String ApplicationRoot, String moduleHash) {
     log.debug("*** Getter.getModuleResultFromHash ***");
     String result = new String();
-    log.debug("hash '" + moduleHash + "'");
+    log.debug("Looking up result from supplied module hash");
     try (Connection conn = Database.getCoreConnection(ApplicationRoot);
         CallableStatement callstmt = conn.prepareCall("call moduleGetResultFromHash(?)")) {
       log.debug("Gathering moduleGetResultFromHash ResultSet");

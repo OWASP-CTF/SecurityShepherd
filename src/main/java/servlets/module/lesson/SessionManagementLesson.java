@@ -12,7 +12,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -81,26 +80,12 @@ public class SessionManagementLesson extends HttpServlet {
         }
         String htmlOutput = null;
         if (theCookie != null) {
-          log.debug("Cookie value: " + theCookie.getValue());
+          log.debug("Lesson tracking cookie present; validating");
 
-          if (theCookie.getValue().equals("lessonComplete")) {
-            log.debug("Lesson Complete");
-
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
-
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("result.lessonComplete")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("result.youDidIt")
-                    + " "
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
+          // The tracking cookie is written by the browser and records nothing the server ever
+          // witnessed, so whatever it says the user did, it cannot mark the lesson as complete.
+          if (!theCookie.getValue().equals("lessonNotComplete")) {
+            log.error(levelName + " received a lesson tracking cookie that had been edited");
           }
         }
         if (htmlOutput == null) {

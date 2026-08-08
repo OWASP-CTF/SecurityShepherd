@@ -88,7 +88,7 @@ public class FeedbackSubmit extends HttpServlet {
 
           String solutionKey =
               Parser.unescapeEntities((String) request.getParameter("solutionKey"), false);
-          log.debug("solutionKey = " + solutionKey.toString());
+          log.debug("solutionKey submitted");
           int before =
               Integer.parseInt(Validate.validateParameter(request.getParameter("before"), 1));
           log.debug("before = " + before);
@@ -126,8 +126,7 @@ public class FeedbackSubmit extends HttpServlet {
                   Hash.generateUserSolutionKeyOnly(
                       Getter.getModuleResult(ApplicationRoot, moduleId), userName);
               validKey = storedResult.compareTo(solutionKey) == 0;
-              log.debug("Submitted Key: " + solutionKey);
-              log.debug("Expected Key : " + storedResult);
+              log.debug("Comparing submitted key against expected key");
             }
             if (validKey) {
               log.debug("Correct key submitted, checking user has not already completed");
