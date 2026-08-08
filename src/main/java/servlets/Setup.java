@@ -182,22 +182,32 @@ public class Setup extends HttpServlet {
       mongoProp.append("\n");
 
       try {
-        auth = new String(Files.readAllBytes(Paths.get(Constants.SETUP_AUTH)));
+        auth = new String(Files.readAllBytes(Paths.get(Constants.SETUP_AUTH))).trim();
       } catch (NoSuchFileException e) {
         // Auth file could not be found.
         htmlOutput += "Auth file could not be found";
         log.error("Auth file could not be found: " + e.toString());
       }
 
-      if (auth == "") {
+      if (auth.isEmpty()) {
         // No auth loaded, could be because user never reloaded setup page after an
-        // error. Generate it again
+        // error. Generate it again, then load the freshly generated secret so the
+        // comparison below is made against the value actually on disk.
         log.debug("Generating auth file");
 
         generateAuth();
+
+        try {
+          auth = new String(Files.readAllBytes(Paths.get(Constants.SETUP_AUTH))).trim();
+        } catch (IOException e) {
+          // Still unreadable: leave auth empty so the request is rejected below.
+          log.error("Generated auth file could not be read: " + e.toString());
+        }
       }
 
-      if (!auth.equals(dbAuth)) {
+      // Fail closed: if no auth secret could be established, reject rather than
+      // accepting an empty dbauth parameter from the request.
+      if (auth.isEmpty() || !auth.equals(dbAuth)) {
         log.debug("Invalid auth supplied");
 
         // The supplied auth data was incorrect
