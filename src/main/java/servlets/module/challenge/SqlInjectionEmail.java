@@ -76,6 +76,7 @@ public class SqlInjectionEmail extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
 
+      Connection conn = null;
       try {
         String userIdentity = request.getParameter("userIdentity");
         log.debug("User Submitted - " + userIdentity);
@@ -85,7 +86,7 @@ public class SqlInjectionEmail extends HttpServlet {
           log.debug("Servlet root = " + ApplicationRoot);
 
           log.debug("Getting Connection to Database");
-          Connection conn = Database.getChallengeConnection(ApplicationRoot, "SqlChallengeEmail");
+          conn = Database.getChallengeConnection(ApplicationRoot, "SqlChallengeEmail");
           Statement stmt = conn.createStatement();
           log.debug("Gathering result set");
           ResultSet resultSet =
@@ -116,7 +117,6 @@ public class SqlInjectionEmail extends HttpServlet {
                     + "</td></tr>";
             i++;
           }
-          conn.close();
           htmlOutput += "</table>";
           if (i == 0) {
             htmlOutput = "<p>" + bundle.getString("response.noResults") + "</p>";
@@ -142,6 +142,8 @@ public class SqlInjectionEmail extends HttpServlet {
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
+      } finally {
+        Database.closeConnection(conn);
       }
       log.debug("Outputting HTML");
       out.write(htmlOutput);

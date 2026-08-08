@@ -178,8 +178,9 @@ public class SecurityMisconfigStealTokens extends HttpServlet {
     } catch (SQLException e) {
       log.error("Could not get user SecurityMisconfigStealToken token: " + e.toString());
       throw e;
+    } finally {
+      Database.closeConnection(conn);
     }
-    conn.close();
     if (!userToken.isEmpty()) {
       log.debug("Found token: " + userToken);
     }
@@ -222,8 +223,9 @@ public class SecurityMisconfigStealTokens extends HttpServlet {
     } catch (SQLException e) {
       log.error("Could not verify token: " + e.toString());
       throw e;
+    } finally {
+      Database.closeConnection(conn);
     }
-    conn.close();
     return validToken;
   }
 }

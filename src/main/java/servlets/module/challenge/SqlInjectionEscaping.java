@@ -74,6 +74,7 @@ public class SqlInjectionEscaping extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
 
+      Connection conn = null;
       try {
         String aUserId = request.getParameter("aUserId");
         log.debug("User Submitted - " + aUserId);
@@ -82,7 +83,7 @@ public class SqlInjectionEscaping extends HttpServlet {
         String ApplicationRoot = getServletContext().getRealPath("");
 
         log.debug("Getting Connection to Database");
-        Connection conn = Database.getChallengeConnection(ApplicationRoot, "SqlChallengeEscape");
+        conn = Database.getChallengeConnection(ApplicationRoot, "SqlChallengeEscape");
         Statement stmt = conn.createStatement();
         log.debug("Gathering result set");
         ResultSet resultSet =
@@ -128,6 +129,8 @@ public class SqlInjectionEscaping extends HttpServlet {
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
+      } finally {
+        Database.closeConnection(conn);
       }
       log.debug("Outputting HTML");
       out.write(htmlOutput);

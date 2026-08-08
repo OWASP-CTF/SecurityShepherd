@@ -82,6 +82,7 @@ public class SessionManagement3 extends HttpServlet {
 
       String htmlOutput = new String();
       log.debug(levelName + " Servlet Accessed");
+      Connection conn = null;
       try {
         log.debug("Getting Challenge Parameters");
         Object nameObj = request.getParameter("subUserName");
@@ -102,8 +103,7 @@ public class SessionManagement3 extends HttpServlet {
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
 
-        Connection conn =
-            Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalThree");
+        conn = Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalThree");
         log.debug("Checking credentials");
         PreparedStatement callstmt;
 
@@ -171,12 +171,13 @@ public class SessionManagement3 extends HttpServlet {
           userAddress = bundle.getString("response.badUser") + "<br/>";
           htmlOutput = makeTable(userAddress, bundle);
         }
-        Database.closeConnection(conn);
         log.debug("Outputting HTML");
         out.write(htmlOutput);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
+      } finally {
+        Database.closeConnection(conn);
       }
     } else {
       log.error(levelName + " servlet accessed with no session");

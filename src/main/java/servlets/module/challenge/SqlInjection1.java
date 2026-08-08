@@ -78,6 +78,7 @@ public class SqlInjection1 extends HttpServlet {
 
       String htmlOutput = new String();
 
+      Connection conn = null;
       try {
         String aUserId = request.getParameter("aUserId");
         log.debug("User Submitted - " + aUserId);
@@ -85,7 +86,7 @@ public class SqlInjection1 extends HttpServlet {
         log.debug("Servlet root = " + ApplicationRoot);
 
         log.debug("Getting Connection to Database");
-        Connection conn = Database.getChallengeConnection(ApplicationRoot, "SqlChallengeOne");
+        conn = Database.getChallengeConnection(ApplicationRoot, "SqlChallengeOne");
         Statement stmt = conn.createStatement();
         log.debug("Gathering result set");
         ResultSet resultSet =
@@ -131,6 +132,8 @@ public class SqlInjection1 extends HttpServlet {
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
+      } finally {
+        Database.closeConnection(conn);
       }
       log.debug("Outputting HTML");
       out.write(htmlOutput);

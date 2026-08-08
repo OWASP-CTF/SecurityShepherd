@@ -91,9 +91,9 @@ public class SessionManagement2ChangePassword extends HttpServlet {
         String ApplicationRoot = getServletContext().getRealPath("");
 
         String newPassword = Hash.randomString();
+        Connection conn = null;
         try {
-          Connection conn =
-              Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
+          conn = Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
           log.debug("Checking credentials");
           PreparedStatement callstmt =
               conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userAddress = ?");
@@ -109,9 +109,10 @@ public class SessionManagement2ChangePassword extends HttpServlet {
           log.debug("Changes committed.");
 
           htmlOutput = Encode.forHtml(newPassword);
-          Database.closeConnection(conn);
         } catch (SQLException e) {
           log.error(levelName + " SQL Error: " + e.toString());
+        } finally {
+          Database.closeConnection(conn);
         }
         log.debug("Outputting HTML");
         out.write(bundle.getString("response.changedTo") + " " + htmlOutput);

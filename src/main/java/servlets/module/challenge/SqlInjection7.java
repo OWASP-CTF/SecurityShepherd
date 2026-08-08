@@ -68,6 +68,7 @@ public class SqlInjection7 extends HttpServlet {
       String htmlOutput = new String();
       String applicationRoot = getServletContext().getRealPath("");
 
+      Connection conn = null;
       try {
         String subEmail = Validate.validateParameter(request.getParameter("subEmail"), 60);
         log.debug("subEmail - " + subEmail.replaceAll("\n", " \\\\n ")); // Escape \n's
@@ -76,7 +77,7 @@ public class SqlInjection7 extends HttpServlet {
         boolean validEmail =
             Validate.isValidEmailAddress(subEmail.replaceAll("\n", "")); // Ignore \n 's
         if (!subPassword.isEmpty() && !subPassword.isEmpty() && validEmail) {
-          Connection conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSeven");
+          conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSeven");
           try {
             log.debug("Signing in with subitted details");
             PreparedStatement prepstmt =
@@ -122,7 +123,6 @@ public class SqlInjection7 extends HttpServlet {
               log.error("Failed to Pause: " + e1.toString());
             }
           }
-          conn.close();
         } else {
           htmlOutput = new String("Invalid data submitted");
           if (!validEmail) {
@@ -137,6 +137,8 @@ public class SqlInjection7 extends HttpServlet {
         } catch (Exception e2) {
           log.error("Failed to Pause: " + e2.toString());
         }
+      } finally {
+        Database.closeConnection(conn);
       }
       log.debug("*** " + levelName + " End ***");
       out.write(htmlOutput);

@@ -70,14 +70,14 @@ public class SqlInjectionStoredProcedure extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
 
+      Connection conn = null;
       try {
         String userIdentity = request.getParameter("userIdentity");
         log.debug("User Submitted - " + userIdentity);
         String ApplicationRoot = getServletContext().getRealPath("");
 
         log.debug("Getting Connection to Database");
-        Connection conn =
-            Database.getChallengeConnection(ApplicationRoot, "SqlChallengeStoredProc");
+        conn = Database.getChallengeConnection(ApplicationRoot, "SqlChallengeStoredProc");
         // CallableStatement callstmt = conn.prepareCall("CALL findUser('" + userIdentity + "');");
         Statement stmt = conn.createStatement();
         ResultSet resultSet = stmt.executeQuery("CALL findUser('" + userIdentity + "');");
@@ -106,7 +106,6 @@ public class SqlInjectionStoredProcedure extends HttpServlet {
                   + "</td></tr>";
           i++;
         }
-        conn.close();
         htmlOutput += "</table>";
         if (i == 0) {
           htmlOutput = "<p>" + bundle.getString("response.noResults") + "</p>";
@@ -123,6 +122,8 @@ public class SqlInjectionStoredProcedure extends HttpServlet {
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
+      } finally {
+        Database.closeConnection(conn);
       }
       log.debug("Outputting HTML");
       out.write(htmlOutput);

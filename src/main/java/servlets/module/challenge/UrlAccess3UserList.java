@@ -69,6 +69,7 @@ public class UrlAccess3UserList extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
 
+      Connection conn = null;
       try {
         Cookie userCookies[] = request.getCookies();
         int i = 0;
@@ -88,7 +89,7 @@ public class UrlAccess3UserList extends HttpServlet {
           currentUser = decodedCookie;
         }
         String ApplicationRoot = getServletContext().getRealPath("");
-        Connection conn = Database.getChallengeConnection(ApplicationRoot, "UrlAccessThree");
+        conn = Database.getChallengeConnection(ApplicationRoot, "UrlAccessThree");
         PreparedStatement callstmt;
         callstmt =
             conn.prepareStatement(
@@ -107,6 +108,8 @@ public class UrlAccess3UserList extends HttpServlet {
       } catch (Exception e) {
         htmlOutput = new String(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
+      } finally {
+        Database.closeConnection(conn);
       }
       log.debug("Outputting HTML");
       out.write(htmlOutput);

@@ -65,6 +65,7 @@ public class SqlInjection5CouponCheck extends HttpServlet {
       String htmlOutput = new String();
       String applicationRoot = getServletContext().getRealPath("");
 
+      Connection conn = null;
       try {
         String couponCode = request.getParameter("couponCode");
         log.debug("couponCode - " + couponCode);
@@ -73,8 +74,7 @@ public class SqlInjection5CouponCheck extends HttpServlet {
         }
 
         htmlOutput = new String("");
-        Connection conn =
-            Database.getChallengeConnection(applicationRoot, "SqlInjectionChallenge5ShopCoupon");
+        conn = Database.getChallengeConnection(applicationRoot, "SqlInjectionChallenge5ShopCoupon");
         log.debug("Looking for Coupons Insecurely");
         PreparedStatement prepstmt =
             conn.prepareStatement(
@@ -106,10 +106,11 @@ public class SqlInjection5CouponCheck extends HttpServlet {
         } catch (Exception e) {
           log.debug("Could Not Find Coupon: " + e.toString());
         }
-        conn.close();
       } catch (Exception e) {
         log.debug("Did complete Check: " + e.toString());
         htmlOutput = "" + bundle.getString("errors.Occurred") + "" + Encode.forHtml(e.toString());
+      } finally {
+        Database.closeConnection(conn);
       }
       try {
         Thread.sleep(1000);

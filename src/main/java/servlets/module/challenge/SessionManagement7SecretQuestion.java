@@ -104,9 +104,10 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
         if (validAnswer(subAns)) {
           log.debug("Submitted answer is a possible valid answer");
           String ApplicationRoot = getServletContext().getRealPath("");
+          Connection conn = null;
           try {
             if (Validate.isValidEmailAddress(subEmail) && subAns.length() > 5) {
-              Connection conn =
+              conn =
                   Database.getChallengeConnection(
                       ApplicationRoot, "BrokenAuthAndSessMangChalFlowers");
               log.debug("Checking Secret Answer");
@@ -146,7 +147,6 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
                             + bundle.getString("question.whoAreYou")
                             + "</p>");
               }
-              Database.closeConnection(conn);
             } else {
               log.debug("Invalid data submitted");
               htmlOutput = new String("<b>" + bundle.getString("question.invalidData") + ": </b>");
@@ -158,6 +158,8 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
             }
           } catch (SQLException e) {
             log.error(levelName + " SQL Error: " + e.toString());
+          } finally {
+            Database.closeConnection(conn);
           }
         } else {
           log.debug("Invalid answer submitted for any user, skipping rest of function");

@@ -80,6 +80,7 @@ public class SessionManagement5SetToken extends HttpServlet {
 
       String htmlOutput = new String();
       log.debug(levelName + " Servlet Accessed");
+      Connection conn = null;
       try {
         log.debug("Getting Parameters");
         Object nameObj = request.getParameter("subUserName");
@@ -93,8 +94,7 @@ public class SessionManagement5SetToken extends HttpServlet {
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
 
-        Connection conn =
-            Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalFive");
+        conn = Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalFive");
         log.debug("Checking name");
         PreparedStatement callstmt;
 
@@ -120,12 +120,13 @@ public class SessionManagement5SetToken extends HttpServlet {
           log.debug("User not Found");
           htmlOutput = bundle.getString("response.badUser") + "" + Encode.forHtml(userName);
         }
-        Database.closeConnection(conn);
         log.debug("Outputting HTML");
         out.write(htmlOutput);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
+      } finally {
+        Database.closeConnection(conn);
       }
     } else {
       log.error(levelName + " servlet accessed with no session");

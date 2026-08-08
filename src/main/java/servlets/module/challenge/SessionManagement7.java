@@ -79,6 +79,7 @@ public class SessionManagement7 extends HttpServlet {
 
       String htmlOutput = new String();
       log.debug(levelName + " Servlet Accessed");
+      Connection conn = null;
       try {
         log.debug("Getting Cookies");
         Cookie userCookies[] = request.getCookies();
@@ -113,7 +114,7 @@ public class SessionManagement7 extends HttpServlet {
             log.debug("subPass = " + subPass);
 
             String ApplicationRoot = getServletContext().getRealPath("");
-            Connection conn =
+            conn =
                 Database.getChallengeConnection(
                     ApplicationRoot, "BrokenAuthAndSessMangChalFlowers");
             log.debug("Checking credentials");
@@ -174,7 +175,6 @@ public class SessionManagement7 extends HttpServlet {
               }
               htmlOutput = makeTable(userAddress, bundle);
             }
-            Database.closeConnection(conn);
             log.debug("Outputting HTML");
           } else {
             log.debug("Tampered cookie detected");
@@ -188,6 +188,8 @@ public class SessionManagement7 extends HttpServlet {
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
+      } finally {
+        Database.closeConnection(conn);
       }
     } else {
       log.error(levelName + " servlet accessed with no session");

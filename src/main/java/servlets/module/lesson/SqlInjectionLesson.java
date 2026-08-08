@@ -129,8 +129,9 @@ public class SqlInjectionLesson extends HttpServlet {
   public static String[][] getSqlInjectionResult(String ApplicationRoot, String username) {
 
     String[][] result = new String[10][3];
+    Connection conn = null;
     try {
-      Connection conn = Database.getSqlInjLessonConnection(ApplicationRoot);
+      conn = Database.getSqlInjLessonConnection(ApplicationRoot);
       Statement stmt;
       stmt = conn.createStatement();
       ResultSet resultSet =
@@ -149,6 +150,8 @@ public class SqlInjectionLesson extends HttpServlet {
       result[0][1] = Encode.forHtml(e.toString());
     } catch (Exception e) {
       log.fatal("Error: " + e.toString());
+    } finally {
+      Database.closeConnection(conn);
     }
     return result;
   }

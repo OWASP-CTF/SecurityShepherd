@@ -80,6 +80,7 @@ public class SessionManagement2 extends HttpServlet {
 
       String htmlOutput = new String();
       log.debug(levelName + " Servlet accessed");
+      Connection conn = null;
       try {
         log.debug("Getting Challenge Parameters");
         Object nameObj = request.getParameter("subName");
@@ -100,8 +101,7 @@ public class SessionManagement2 extends HttpServlet {
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
 
-        Connection conn =
-            Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
+        conn = Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
         log.debug("Checking credentials");
         PreparedStatement callstmt;
 
@@ -155,12 +155,13 @@ public class SessionManagement2 extends HttpServlet {
           }
           htmlOutput = makeTable(userAddress, bundle);
         }
-        Database.closeConnection(conn);
         log.debug("Outputting HTML");
         out.write(htmlOutput);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
+      } finally {
+        Database.closeConnection(conn);
       }
     } else {
       log.error(levelName + " servlet accessed with no session");

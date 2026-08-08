@@ -91,10 +91,10 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
         log.debug("subAnswer = " + subAns);
 
         String ApplicationRoot = getServletContext().getRealPath("");
+        Connection conn = null;
         try {
           if (Validate.isValidEmailAddress(subEmail) && subAns.length() > 5) {
-            Connection conn =
-                Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalSix");
+            conn = Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalSix");
             log.debug("Checking Secret Answer");
             PreparedStatement callstmt =
                 conn.prepareStatement(
@@ -131,7 +131,6 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
                           + "</h2><p>"
                           + bundle.getString("question.whoAreYou"));
             }
-            Database.closeConnection(conn);
           } else {
             log.debug("Invalid data submitted");
             htmlOutput = new String("<b>" + bundle.getString("question.invalidData") + ": </b>");
@@ -143,6 +142,8 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
           }
         } catch (SQLException e) {
           log.error(levelName + " SQL Error: " + e.toString());
+        } finally {
+          Database.closeConnection(conn);
         }
         log.debug("Outputting HTML");
         out.write(htmlOutput);
@@ -210,6 +211,7 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
             log.debug("subEmail = " + subEmail);
 
             String ApplicationRoot = getServletContext().getRealPath("");
+            Connection conn = null;
             try {
               if (subEmail.length() < 10) {
                 log.debug("Invalid data submitted");
@@ -220,7 +222,7 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
                             + ": </b>"
                             + bundle.getString("question.invalidEmail"));
               } else {
-                Connection conn =
+                conn =
                     Database.getChallengeConnection(
                         ApplicationRoot, "BrokenAuthAndSessMangChalSix");
                 log.debug("Getting Secret Question");
@@ -241,12 +243,13 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
                   log.debug("No question found for user");
                   htmlOutput = bundle.getString("question.noQuestion");
                 }
-                Database.closeConnection(conn);
               }
             } catch (SQLException e) {
               log.debug(levelName + " SQL Error: " + e.toString());
               log.debug("Outputting error to user");
               htmlOutput = new String(e.toString());
+            } finally {
+              Database.closeConnection(conn);
             }
           } else {
             log.debug("Tampered cookie detected");
