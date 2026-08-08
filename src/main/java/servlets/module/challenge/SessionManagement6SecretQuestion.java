@@ -1,24 +1,16 @@
 package servlets.module.challenge;
 
-import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.owasp.encoder.Encode;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -45,8 +37,6 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(SessionManagement6SecretQuestion.class);
   private static String levelName = "Session Management Challenge Six (Secret Question)";
-  private static String levelHash =
-      "b5e1020e3742cf2c0880d4098146c4dde25ebd8ceab51807bad88ff47c316ece";
 
   /**
    * A user submits a username and answer, these values are checked against the DB to see if they
@@ -86,48 +76,22 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
         log.debug("subEmail = " + subEmail);
         Object ansObj = request.getParameter("subAnswer");
         String subAns = Validate.validateParameter(ansObj, 128);
-        log.debug("subAnswer = " + subAns);
 
-        String ApplicationRoot = getServletContext().getRealPath("");
-        try {
-          if (Validate.isValidEmailAddress(subEmail) && subAns.length() > 5) {
-            Connection conn =
-                Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalSix");
-            log.debug("Checking Secret Answer");
-            PreparedStatement callstmt =
-                conn.prepareStatement(
-                    "SELECT userName FROM users WHERE userAddress = ? AND secretAnswer = ?");
-            callstmt.setString(1, subEmail);
-            callstmt.setString(2, subAns);
-            log.debug("Running secret Answer Check");
-            ResultSet rs = callstmt.executeQuery();
-            if (rs.next()) {
-              log.debug("Correct Answer Submitted");
-              htmlOutput =
-                  "<h2 class='title'>"
-                      + bundle.getString("response.welcome")
-                      + "</h2><p>Identity verification alone cannot authorize access.</p>";
-            } else {
-              log.debug("Bad Answer Submitted");
-              htmlOutput =
-                  new String(
-                      "<h2 class='title'>"
-                          + bundle.getString("question.badAnswer")
-                          + "</h2><p>"
-                          + bundle.getString("question.whoAreYou"));
-            }
-            Database.closeConnection(conn);
+        if (Validate.isValidEmailAddress(subEmail) && subAns.length() > 5) {
+          log.debug("Recovery verification submitted");
+          htmlOutput =
+              "<h2 class='title'>"
+                  + bundle.getString("response.welcome")
+                  + "</h2><p>If the account exists, recovery instructions have been sent through"
+                  + " the registered contact channel.</p>";
+        } else {
+          log.debug("Invalid data submitted");
+          htmlOutput = new String("<b>" + bundle.getString("question.invalidData") + ": </b>");
+          if (subAns.length() < 5) {
+            htmlOutput += bundle.getString("question.invalidAns");
           } else {
-            log.debug("Invalid data submitted");
-            htmlOutput = new String("<b>" + bundle.getString("question.invalidData") + ": </b>");
-            if (subAns.length() < 5) {
-              htmlOutput += bundle.getString("question.invalidAns");
-            } else {
-              htmlOutput += bundle.getString("question.invalidEmail");
-            }
+            htmlOutput += bundle.getString("question.invalidEmail");
           }
-        } catch (SQLException e) {
-          log.error(levelName + " SQL Error: " + e.toString());
         }
         log.debug("Outputting HTML");
         out.write(htmlOutput);
@@ -141,8 +105,8 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
   }
 
   /**
-   * A user submits an email address to get that user's Secret QUestion. This is vulnerable to SQL
-   * injection
+   * A user submits an email address to begin account recovery without disclosing whether the
+   * account or its recovery question exists.
    *
    * @param subEmail Sub schema user email to search DB with
    */
@@ -172,72 +136,22 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
       String htmlOutput = new String();
       log.debug(levelName + " Servlet accessed");
       try {
-        log.debug("Getting Cookies");
-        Cookie userCookies[] = request.getCookies();
-        int i = 0;
-        Cookie theCookie = null;
-        for (i = 0; i < userCookies.length; i++) {
-          if (userCookies[i].getName().compareTo("ac") == 0) {
-            theCookie = userCookies[i];
-            break; // End Loop, because we found the token
-          }
-        }
-        if (theCookie != null) {
-          byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
-          String decodedCookie = new String(decodedCookieBytes, "UTF-8");
-          log.debug("Decoded Cookie: " + decodedCookie);
-
-          if (decodedCookie.equals("doNotReturnAnswers")) // Untampered Cookie
-          {
-            log.debug("Getting Parameter");
-            Object emailObj = request.getParameter("subEmail");
-            String subEmail = Validate.validateParameter(emailObj, 75);
-            log.debug("subEmail = " + subEmail);
-
-            String ApplicationRoot = getServletContext().getRealPath("");
-            try {
-              if (subEmail.length() < 10) {
-                log.debug("Invalid data submitted");
-                htmlOutput =
-                    new String(
-                        "<b>"
-                            + bundle.getString("question.invalidData")
-                            + ": </b>"
-                            + bundle.getString("question.invalidEmail"));
-              } else {
-                Connection conn =
-                    Database.getChallengeConnection(
-                        ApplicationRoot, "BrokenAuthAndSessMangChalSix");
-                log.debug("Getting Secret Question");
-                PreparedStatement callstmt =
-                    conn.prepareStatement("SELECT secretQuestion FROM users WHERE userAddress = ?");
-                callstmt.setString(1, subEmail);
-                ResultSet rs = callstmt.executeQuery();
-                if (rs.next()) {
-                  log.debug("'Valid' User Detected");
-                  log.debug("Encoding for output: " + rs.getString(1));
-                  // rs.getString(1) contains the question for the user to answer. This question is
-                  // asked in English as it must be answered in English to successfully pass the
-                  // level
-                  htmlOutput = new String(Encode.forHtml(rs.getString(1)));
-                } else {
-                  log.debug("No question found for user");
-                  htmlOutput = bundle.getString("question.noQuestion");
-                }
-                Database.closeConnection(conn);
-              }
-            } catch (SQLException e) {
-              log.debug(levelName + " SQL Error: " + e.toString());
-              log.debug("Outputting error to user");
-              htmlOutput = new String(e.toString());
-            }
-          } else {
-            log.debug("Tampered cookie detected");
-            htmlOutput = new String(bundle.getString("response.configError"));
-          }
+        log.debug("Getting Parameter");
+        Object emailObj = request.getParameter("subEmail");
+        String subEmail = Validate.validateParameter(emailObj, 75);
+        if (!Validate.isValidEmailAddress(subEmail)) {
+          log.debug("Invalid data submitted");
+          htmlOutput =
+              new String(
+                  "<b>"
+                      + bundle.getString("question.invalidData")
+                      + ": </b>"
+                      + bundle.getString("question.invalidEmail"));
         } else {
-          log.debug("Tampered cookie detected");
-          htmlOutput = new String(bundle.getString("response.configError"));
+          log.debug("Recovery question requested");
+          htmlOutput =
+              "If the account exists, recovery instructions have been sent through the registered"
+                  + " contact channel.";
         }
         log.debug("Outputting HTML");
         out.write(htmlOutput);

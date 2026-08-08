@@ -94,7 +94,6 @@ public class SessionManagement2 extends HttpServlet {
           subPass = (String) passObj;
         }
         log.debug("subName = " + subName);
-        log.debug("subPass = " + subPass);
 
         log.debug("Getting ApplicationRoot");
         String ApplicationRoot = getServletContext().getRealPath("");
