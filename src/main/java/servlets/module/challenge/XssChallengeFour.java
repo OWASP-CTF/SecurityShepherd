@@ -13,11 +13,11 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
 import utils.FindXSS;
 import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
-import utils.XssFilter;
 
 /**
  * Cross Site Scripting Challenge Four control class. <br>
@@ -89,7 +89,11 @@ public class XssChallengeFour extends HttpServlet {
                     + "</a>";
           } else {
 
-            searchTerm = XssFilter.encodeForHtml(searchTerm);
+            // The submitted URL is emitted inside double quoted HTML attributes and as element
+            // text below, so it must be encoded for that context. XssFilter.encodeForHtml leaves
+            // the first double quote un-escaped, which allowed the href attribute to be broken out
+            // of, so encode here at the sink instead.
+            searchTerm = Encode.forHtml(searchTerm);
             userPost =
                 "<a href=\"" + searchTerm + "\" alt=\"" + searchTerm + "\">" + searchTerm + "</a>";
             log.debug("After Encoding - " + searchTerm);

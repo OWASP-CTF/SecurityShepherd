@@ -6,6 +6,9 @@ import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -47,6 +50,14 @@ public class DirectObject1 extends HttpServlet {
       "o9a450a64cc2a196f55878e2bd9a27a72daea0f17017253f87e7ebd98c71c98c";
 
   /**
+   * The set of profiles this module actually exposes. Object references supplied by the client are
+   * checked against this list before any lookup, so a tampered userId cannot reach a record the
+   * application never offered.
+   */
+  private static final List<String> ALLOWED_USER_IDS =
+      Collections.unmodifiableList(Arrays.asList("1", "3", "5", "7", "9"));
+
+  /**
    * The user must abuse this functionality to reveal a hidden user. The result key is hidden in
    * this users profile.
    *
@@ -75,6 +86,24 @@ public class DirectObject1 extends HttpServlet {
       try {
         String userId = request.getParameter("userId[]");
         log.debug("User Submitted - " + userId);
+
+        // Authorise the object reference server side. Anything the module does not expose is
+        // answered exactly like a profile that does not exist.
+        if (userId == null || !ALLOWED_USER_IDS.contains(userId)) {
+          log.debug("Rejected out-of-scope object reference: " + userId);
+          out.write(
+              "<h2 class='title'>"
+                  + bundle.getString("response.notFound")
+                  + "</h2><p>"
+                  + bundle.getString("response.notFoundMessage.1")
+                  + " '"
+                  + Encode.forHtml(String.valueOf(userId))
+                  + "' "
+                  + bundle.getString("response.notFoundMessage.2")
+                  + "</p>");
+          return;
+        }
+
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
         String htmlOutput = new String();

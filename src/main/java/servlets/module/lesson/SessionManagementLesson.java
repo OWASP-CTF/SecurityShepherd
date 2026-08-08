@@ -44,11 +44,15 @@ public class SessionManagementLesson extends HttpServlet {
   private static String levelResult = "6594dec9ff7c4e60d9f8945ca0d4";
 
   /**
-   * Controller is tracking the user completion through the "lessonComplete" cookie. If this cookie
-   * is changed the user can complete the level
-   *
-   * @param lessonComplete Tracking cookie
+   * Lesson completion is tracked in server side session state. The "lessonComplete" cookie the
+   * lesson page issues is client controlled, so it is never used to decide whether the lesson
+   * result key is released.
    */
+  private static final String COMPLETION_ATTRIBUTE = "sessionManagementLessonState";
+
+  private static final String NOT_COMPLETE = "lessonNotComplete";
+  private static final String COMPLETE = "lessonComplete";
+
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
     // Setting IpAddress To Log and taking header for original IP if forwarded from proxy
@@ -70,38 +74,44 @@ public class SessionManagementLesson extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
-        Cookie userCookies[] = request.getCookies();
-        int i = 0;
-        Cookie theCookie = null;
-        for (i = 0; i < userCookies.length; i++) {
-          if (userCookies[i].getName().compareTo("lessonComplete") == 0) {
-            theCookie = userCookies[i];
-            break; // End Loop, because we found the token
+        // request.getCookies() returns null when the client submits no cookies at all, so the
+        // lookup below must be null safe. The cookie is only read for debug logging: it is
+        // attacker controlled and must not drive the completion decision.
+        Cookie[] userCookies = request.getCookies();
+        if (userCookies != null) {
+          for (int i = 0; i < userCookies.length; i++) {
+            if (userCookies[i].getName().compareTo(COMPLETE) == 0) {
+              log.debug("Cookie value: " + userCookies[i].getValue());
+              break; // End Loop, because we found the token
+            }
           }
         }
         String htmlOutput = null;
-        if (theCookie != null) {
-          log.debug("Cookie value: " + theCookie.getValue());
+        // Completion is authoritative on the server. The session attribute is seeded to the
+        // same "not complete" state the lesson page starts from.
+        String lessonState = (String) ses.getAttribute(COMPLETION_ATTRIBUTE);
+        if (lessonState == null) {
+          lessonState = NOT_COMPLETE;
+          ses.setAttribute(COMPLETION_ATTRIBUTE, lessonState);
+        }
+        if (lessonState.equals(COMPLETE)) {
+          log.debug("Lesson Complete");
 
-          if (theCookie.getValue().equals("lessonComplete")) {
-            log.debug("Lesson Complete");
+          // Get key and add it to the output
+          String userKey =
+              Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
 
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
-
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("result.lessonComplete")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("result.youDidIt")
-                    + " "
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
-          }
+          htmlOutput =
+              "<h2 class='title'>"
+                  + bundle.getString("result.lessonComplete")
+                  + "</h2>"
+                  + "<p>"
+                  + bundle.getString("result.youDidIt")
+                  + " "
+                  + "<a>"
+                  + userKey
+                  + "</a>"
+                  + "</p>";
         }
         if (htmlOutput == null) {
           log.debug("Lesson Not Complete");

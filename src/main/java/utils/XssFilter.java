@@ -40,13 +40,7 @@ public class XssFilter {
     input = input.toLowerCase();
     if (input.startsWith("http")) {
       try {
-        URL theUrl =
-            new URL(
-                input
-                    .replaceAll("#", "&#x23;")
-                    .replaceFirst("<", "&#x3c;")
-                    .replaceFirst(">", "&#x3e;")
-                    .replaceFirst("\"", "&quot;"));
+        URL theUrl = new URL(input);
         input = theUrl.toString();
       } catch (MalformedURLException e) {
         log.debug("Could not Cast URL from input: " + e.toString());
@@ -56,7 +50,10 @@ public class XssFilter {
       log.debug("Was not a HTTP URL");
       input = howToMakeAUrlUrl;
     }
-    return input;
+    // The result is emitted inside a double quoted HTML attribute, so encode it for that context.
+    // Escaping only the first occurrence of each dangerous character (as this method used to) left
+    // the attribute trivially breakable.
+    return Encode.forHtml(input);
   }
 
   /**
@@ -71,13 +68,7 @@ public class XssFilter {
     input = input.toLowerCase();
     if (input.startsWith("http")) {
       try {
-        URL theUrl =
-            new URL(
-                input
-                    .replaceAll("#", "&#x23;")
-                    .replaceAll("<", "&#x3c;")
-                    .replaceAll(">", "&#x3e;")
-                    .replaceFirst("\"", "&quot;"));
+        URL theUrl = new URL(input);
         input = theUrl.toString();
       } catch (MalformedURLException e) {
         log.debug("Could not Cast URL from input: " + e.toString());
@@ -87,7 +78,10 @@ public class XssFilter {
       log.debug("Was not a HTTP URL");
       input = howToMakeAUrlUrl;
     }
-    return input;
+    // The result is emitted inside a double quoted HTML attribute, so encode it for that context.
+    // Escaping only the first occurrence of each dangerous character (as this method used to) left
+    // the attribute trivially breakable.
+    return Encode.forHtml(input);
   }
 
   /**

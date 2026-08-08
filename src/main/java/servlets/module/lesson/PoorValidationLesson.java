@@ -11,7 +11,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -44,7 +43,8 @@ public class PoorValidationLesson extends HttpServlet {
       "6680b08b175c9f3d521764b41349fcbd3c0ad0a76655a10d42372ebccdfdb4bb";
 
   /**
-   * Data is only validated on the client side. No Server Side Validation is Performed
+   * Submitted data is validated on the server. The client side check in the lesson page is a
+   * usability aid only and is not treated as a security control.
    *
    * @param userdata data submitted by user
    */
@@ -73,23 +73,20 @@ public class PoorValidationLesson extends HttpServlet {
         String userData = request.getParameter("userdata");
         log.debug("User Submitted - " + userData);
         String htmlOutput = new String();
-        int userNumber = Integer.parseInt(userData);
-        if (userNumber < 0) {
-          // Get key and add it to the output
-          String userKey =
-              Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
-          log.debug("Negative Number Submitted");
+        // Server side validation. The client side check is not a security control, so the
+        // range is enforced again here. Out of range or non numeric input is rejected as a
+        // validation error rather than rewarded with the lesson result key.
+        Integer parsedNumber = parseNumber(userData);
+        if (parsedNumber == null || parsedNumber.intValue() < 0) {
+          log.debug("Invalid Number Submitted");
           htmlOutput =
               "<h2 class='title'>"
-                  + bundle.getString("result.validationBypassed")
+                  + errors.getString("error.detected")
                   + "</h2><p>"
-                  + bundle.getString("result.youDidIt")
-                  + ". "
-                  + bundle.getString("result.resultKey")
-                  + ": <a>"
-                  + userKey
-                  + "</a></p>";
+                  + errors.getString("error.funky")
+                  + "</p>";
         } else {
+          int userNumber = parsedNumber.intValue();
           log.debug("Valid Number Submitted");
           htmlOutput =
               "<h2 class='title'>"
@@ -110,6 +107,24 @@ public class PoorValidationLesson extends HttpServlet {
       }
     } else {
       log.error(levelName + " servlet accessed with no session");
+    }
+  }
+
+  /**
+   * Parses the submitted value server side.
+   *
+   * @param userData the raw request parameter, which may be null or non numeric
+   * @return the parsed value, or null when the input is missing or not an integer
+   */
+  private static Integer parseNumber(String userData) {
+    if (userData == null) {
+      return null;
+    }
+    try {
+      return Integer.valueOf(userData);
+    } catch (NumberFormatException e) {
+      // Non numeric input is a validation failure, not a server error.
+      return null;
     }
   }
 }

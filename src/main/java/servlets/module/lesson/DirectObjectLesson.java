@@ -79,26 +79,24 @@ public class DirectObjectLesson extends HttpServlet {
           log.debug("Guest Profile Found");
           htmlOutput = htmlGuest(bundle);
         } else if (userName.equalsIgnoreCase("admin")) {
-          // Get key and add it to the output
-          String userKey =
-              Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
-          log.debug("Admin Profile Found");
-          htmlOutput = htmlAdmin(bundle, userKey);
+          // The administrator profile may only be retrieved by an administrator session
+          if (Validate.validateAdminSession(ses)) {
+            // Get key and add it to the output
+            String userKey =
+                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
+            log.debug("Admin Profile Found");
+            htmlOutput = htmlAdmin(bundle, userKey);
+          } else {
+            log.error(
+                "Non administrator "
+                    + ses.getAttribute("userName").toString()
+                    + " attempted to retrieve the Admin profile");
+            htmlOutput = htmlNotFound(bundle, userName);
+          }
         } else {
           log.debug("No Profile Found");
 
-          htmlOutput =
-              "<h2 class='title'>"
-                  + bundle.getString("response.user")
-                  + ": "
-                  + bundle.getString("response.notFound")
-                  + "</h2><p>"
-                  + bundle.getString("response.user")
-                  + " '"
-                  + Encode.forHtml(userName)
-                  + "' "
-                  + bundle.getString("response.couldNotFind")
-                  + ".</p>";
+          htmlOutput = htmlNotFound(bundle, userName);
         }
         log.debug("Outputting HTML");
         out.write(htmlOutput);
@@ -110,6 +108,20 @@ public class DirectObjectLesson extends HttpServlet {
       out.write(errors.getString("error.noSession"));
       log.error(levelName + " servlet accessed with no session");
     }
+  }
+
+  private static String htmlNotFound(ResourceBundle bundle, String userName) {
+    return "<h2 class='title'>"
+        + bundle.getString("response.user")
+        + ": "
+        + bundle.getString("response.notFound")
+        + "</h2><p>"
+        + bundle.getString("response.user")
+        + " '"
+        + Encode.forHtml(userName)
+        + "' "
+        + bundle.getString("response.couldNotFind")
+        + ".</p>";
   }
 
   private static String htmlGuest(ResourceBundle bundle) {

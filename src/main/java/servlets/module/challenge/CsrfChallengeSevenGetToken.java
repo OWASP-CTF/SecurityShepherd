@@ -73,7 +73,9 @@ public class CsrfChallengeSevenGetToken extends HttpServlet {
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
         String htmlOutput = new String("Your csrf Token for this Challenge is: ");
-        String userId = request.getParameter("userId").toString();
+        // The token owner is the authenticated session holder. Any user supplied "userId"
+        // parameter is ignored so that a user can only ever retrieve their own CSRF token.
+        String userId = (String) ses.getAttribute("userStamp");
 
         Connection conn =
             Database.getChallengeConnection(

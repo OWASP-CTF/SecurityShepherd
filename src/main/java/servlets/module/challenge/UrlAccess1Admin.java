@@ -5,6 +5,7 @@ import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -63,7 +64,13 @@ public class UrlAccess1Admin extends HttpServlet {
     ResourceBundle bundle =
         ResourceBundle.getBundle("i18n.servlets.challenges.urlAccess.urlAccess1", locale);
 
-    if (Validate.validateSession(ses)) {
+    // This is an administrator only function. The caller's session must hold the admin role;
+    // a valid non-admin session is not sufficient to reach this functionality.
+    Cookie[] requestCookies = request.getCookies();
+    Cookie tokenCookie = (requestCookies == null) ? null : Validate.getToken(requestCookies);
+    Object tokenParmeter = request.getParameter("csrfToken");
+
+    if (Validate.validateAdminSession(ses, tokenCookie, tokenParmeter)) {
       ShepherdLogManager.setRequestIp(
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
@@ -116,7 +123,15 @@ public class UrlAccess1Admin extends HttpServlet {
       log.debug("Outputting HTML");
       out.write(htmlOutput);
     } else {
-      log.error(levelName + " servlet accessed with no session");
+      log.error(levelName + " admin servlet accessed without a valid administrator session");
+      PrintWriter out = response.getWriter();
+      out.print(getServletInfo());
+      out.write(
+          "<h2 class='title'>"
+              + bundle.getString("response.statusFail")
+              + "</h2><p><font color=\"red\">"
+              + errors.getString("error.shouldNotBeHere")
+              + "</font></p>");
     }
   }
 }
