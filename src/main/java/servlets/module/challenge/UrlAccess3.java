@@ -94,7 +94,12 @@ public class UrlAccess3 extends HttpServlet {
           String decodedCookie = new String(decodedCookieBytes, "UTF-8");
           log.debug("Decoded Cookie: " + decodedCookie);
 
-          if (decodedCookie.equals("MrJohnReillyTheSecond") && Validate.validateAdminSession(ses)) {
+          // Server-side state only: never the client-settable currentPerson cookie, and
+          // deliberately not Validate.validateAdminSession() -- that is Shepherd's own admin
+          // role, a different authority, so gating on it would still hand the key to anyone
+          // browsing as a Shepherd admin.
+          if (decodedCookie.equals("MrJohnReillyTheSecond")
+              && Boolean.TRUE.equals(ses.getAttribute("urlAccess3SimulatedAdmin"))) {
             log.debug("Super Admin Cookie detected");
             // Get key and add it to the output
             String userKey =

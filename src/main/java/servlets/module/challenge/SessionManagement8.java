@@ -92,8 +92,12 @@ public class SessionManagement8 extends HttpServlet {
         if (theCookie != null) {
           log.debug("Cookie value: " + theCookie.getValue());
 
+          // Super-user status for the simulated application is server-side state only. It is
+          // never taken from this client-settable cookie, and deliberately not from Shepherd's
+          // own userRole -- a different authority, which would hand the key back to anyone
+          // already browsing as a Shepherd admin.
           if (theCookie.getValue().equals("nmHqLjQknlHs")
-              && "admin".equalsIgnoreCase((String) ses.getAttribute("userRole"))) {
+              && Boolean.TRUE.equals(ses.getAttribute("sessionManagement8SimulatedAdmin"))) {
             log.debug("Super User Cookie detected");
             // Get key and add it to the output
             String userKey =

@@ -87,17 +87,21 @@ public class UrlAccess3UserList extends HttpServlet {
           log.debug("Decoded Cookie: " + decodedCookie);
           currentUser = decodedCookie;
         }
-        boolean isAdmin = Validate.validateAdminSession(ses);
+        // Server-side state only. Deliberately NOT Validate.validateAdminSession(): that is
+        // Shepherd's own admin role, a different authority from this simulated application's,
+        // so gating on it would still disclose the full roster to any Shepherd admin.
+        boolean isAdmin = Boolean.TRUE.equals(ses.getAttribute("urlAccess3SimulatedAdmin"));
         String ApplicationRoot = getServletContext().getRealPath("");
         Connection conn = Database.getChallengeConnection(ApplicationRoot, "UrlAccessThree");
         PreparedStatement callstmt;
+        // currentUser comes from a client-settable cookie, so it is bound as a parameter rather
+        // than concatenated into the statement text.
         String userListQuery =
             isAdmin
-                ? "SELECT userName FROM users WHERE userRole = \"admin\" OR userName = \""
-                    + currentUser
-                    + "\";"
-                : "SELECT userName FROM users WHERE userName = \"" + currentUser + "\";";
+                ? "SELECT userName FROM users WHERE userRole = \"admin\" OR userName = ?;"
+                : "SELECT userName FROM users WHERE userName = ?;";
         callstmt = conn.prepareStatement(userListQuery);
+        callstmt.setString(1, currentUser);
         log.debug("Getting User List");
         htmlOutput = new String();
         ResultSet rs = callstmt.executeQuery();

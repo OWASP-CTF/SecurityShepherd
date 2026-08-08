@@ -75,7 +75,11 @@ public class UrlAccess1Admin extends HttpServlet {
 
       try {
         String userData = request.getParameter("userData");
-        boolean isAdmin = Validate.validateAdminSession(ses);
+        // Authorisation for this simulated admin function is server-side state only. It is
+        // deliberately NOT Validate.validateAdminSession(): that reports whether the caller is
+        // an administrator of Shepherd itself, a different authority, so gating on it would
+        // still expose this function to anyone browsing as a Shepherd admin.
+        boolean isAdmin = Boolean.TRUE.equals(ses.getAttribute("urlAccess1SimulatedAdmin"));
         boolean tamperedRequest = !isAdmin || !userData.equalsIgnoreCase("4816283");
         if (!tamperedRequest) {
           log.debug("No request tampering detected");

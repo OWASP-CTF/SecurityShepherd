@@ -97,8 +97,12 @@ public class SessionManagement4 extends HttpServlet {
           if (decodedCookie.equals("0000000000000001")) // Guest Session
           {
             log.debug("Guest Session Detected");
+            // Authority for the simulated application comes from server-side state only. It is
+            // never derived from the guessable SubSessionID above, and deliberately not from
+            // Shepherd's own userRole -- that is a different authority, and gating on it would
+            // hand the key back to anyone already browsing as a Shepherd admin.
           } else if (decodedCookie.equals("0000000000000009") // Admin Session
-              && "admin".equalsIgnoreCase((String) ses.getAttribute("userRole"))) {
+              && Boolean.TRUE.equals(ses.getAttribute("sessionManagement4SimulatedAdmin"))) {
             log.debug("Admin Session Detected: Challenge Complete");
             // Get key and add it to the output
             String userKey =
