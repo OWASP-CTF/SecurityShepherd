@@ -144,11 +144,10 @@ public class SessionManagement5 extends HttpServlet {
                       + "</a>"
                       + "</p>";
             } else {
-              userAddress =
-                  bundle.getString("response.badPass")
-                      + " <a>"
-                      + Encode.forHtml(resultSet.getString(1))
-                      + "</a><br/>";
+              // The same reply as for an account that does not exist. Telling the caller that
+              // the name was right and only the password was wrong marks out the accounts worth
+              // aiming a password reset at.
+              userAddress = bundle.getString("response.badUser") + "<br/>";
               htmlOutput = makeTable(userAddress, bundle);
             }
           } else {

@@ -117,16 +117,17 @@ public class SessionManagement5SetToken extends HttpServlet {
           ses.setAttribute("sessionManagement5Token", Hash.randomString());
           ses.setAttribute("sessionManagement5TokenUser", resultSet.getString(1));
           ses.setAttribute("sessionManagement5TokenIssued", Long.valueOf(new Date().getTime()));
-          htmlOutput =
-              bundle.getString("setToken.sentTo.1")
-                  + " '"
-                  + Encode.forHtml(userName)
-                  + "' "
-                  + bundle.getString("setToken.sentTo.2");
         } else {
           log.debug("User not Found");
-          htmlOutput = bundle.getString("response.badUser") + "" + Encode.forHtml(userName);
         }
+        // The same reply either way. Saying whether the account exists turns this into a list of
+        // the accounts worth attacking, which is the first step of the takeover it guards.
+        htmlOutput =
+            bundle.getString("setToken.sentTo.1")
+                + " '"
+                + Encode.forHtml(userName)
+                + "' "
+                + bundle.getString("setToken.sentTo.2");
         Database.closeConnection(conn);
         log.debug("Outputting HTML");
         out.write(htmlOutput);
