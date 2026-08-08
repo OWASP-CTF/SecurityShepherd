@@ -81,8 +81,12 @@ public class XssChallengeTwo extends HttpServlet {
           log.debug("User Submitted - " + searchTerm);
           searchTerm = XssFilter.levelTwo(searchTerm);
           log.debug("After Filtering - " + searchTerm);
+          // The win-detector must inspect the value exactly as it will be rendered, not the
+          // filtered-but-unencoded intermediate value, otherwise a filter bypass that is
+          // harmless once encoded still trips the detector.
+          String encodedForDisplay = Encode.forHtml(searchTerm);
           String htmlOutput = new String();
-          if (FindXSS.search(searchTerm)) {
+          if (FindXSS.search(encodedForDisplay)) {
             htmlOutput =
                 "<h2 class='title'>"
                     + bundle.getString("result.wellDone")
@@ -107,7 +111,7 @@ public class XssChallengeTwo extends HttpServlet {
                   + "<p>"
                   + bundle.getString("response.noResults")
                   + " "
-                  + Encode.forHtml(searchTerm)
+                  + encodedForDisplay
                   + "</p>";
           log.debug("Outputting HTML");
           out.write(htmlOutput);
