@@ -148,4 +148,11 @@ class XssFilterTest {
     long count = result.chars().filter(c -> c == '<').count();
     assertEquals(0, count);
   }
+
+  @Test
+  void validatedUrl_isNotExecutableInChallengeLinkContext() {
+    String result = XssFilter.badUrlValidate("http://example.com/\" onmouseover=\"alert(1)\"");
+
+    assertFalse(FindXSS.search("<a href=\"" + result + "\" alt=\"" + result + "\">link</a>"));
+  }
 }
