@@ -72,7 +72,9 @@ public class UpgradePlayer extends HttpServlet {
           log.debug("Servlet root = " + ApplicationRoot);
 
           log.debug("Getting Parameters");
-          String players = request.getParameter("players");
+          String players = (String) request.getParameter("players");
+          ;
+          log.debug("players = " + players.toString());
 
           // Validation
           notNull = (players != null);

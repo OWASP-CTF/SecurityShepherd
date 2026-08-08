@@ -79,12 +79,18 @@ public class SolutionSubmit extends HttpServlet {
         log.debug("Servlet root = " + ApplicationRoot);
 
         log.debug("Getting Parameters");
-        String moduleId = request.getParameter("moduleId");
-        String solutionKey = request.getParameter("solutionKey");
+        String moduleId = (String) request.getParameter("moduleId");
+        ;
+        log.debug("moduleId = " + moduleId.toString());
+        String solutionKey = (String) request.getParameter("solutionKey");
+        ;
+        log.debug("solutionKey = " + solutionKey.toString());
 
         log.debug("Getting session parameters");
         String userId = (String) ses.getAttribute("userStamp");
         String userName = (String) ses.getAttribute("userName");
+        log.debug("userId = " + userId);
+
         // Validation
         notNull = (moduleId != null && solutionKey != null);
         if (notNull) {
@@ -107,13 +113,15 @@ public class SolutionSubmit extends HttpServlet {
           boolean validKey = false;
           // Identify if solution is a user Specific key (Does it need to be decrypted?)
           if (Getter.getModuleKeyType(ApplicationRoot, moduleId)) {
-            validKey = FeedbackSubmit.secretsEqual(storedResult, solutionKey);
+            validKey = storedResult.compareTo(solutionKey) == 0;
           } else {
             // User has submitted a string. Lets see if it matches a freshly computed Key
             storedResult =
                 Hash.generateUserSolutionKeyOnly(
                     Getter.getModuleResult(ApplicationRoot, moduleId), userName);
-            validKey = FeedbackSubmit.secretsEqual(storedResult, solutionKey);
+            validKey = storedResult.compareTo(solutionKey) == 0;
+            log.debug("Submitted Key: " + storedResult);
+            log.debug("Expected Key : " + solutionKey);
           }
           if (validKey) {
             log.debug("Correct key submitted, checking that module not already completed");
@@ -154,7 +162,8 @@ public class SolutionSubmit extends HttpServlet {
                   htmlOutput += "</p>";
                   // Refresh Side Menu
                   htmlOutput +=
-                      FeedbackSubmit.refreshMenuScript(tokenParmeter.toString(), "Refresh Error");
+                      FeedbackSubmit.refreshMenuScript(
+                          Encode.forHtml((String) tokenParmeter), "Refresh Error");
                   log.debug("Resetting user's Bad Submisison count to 0");
                   Setter.resetBadSubmission(ApplicationRoot, userId);
                   out.write(htmlOutput);
@@ -184,7 +193,7 @@ public class SolutionSubmit extends HttpServlet {
 
             log.error("Invoking Bad Submission procedure...");
             Setter.incrementBadSubmission(ApplicationRoot, userId);
-            log.error("A user has been warned and may have lost points");
+            log.error(userName + " has been warned and potentially has lost points");
           }
         } else {
           // Validation Error Responses
@@ -237,11 +246,11 @@ public class SolutionSubmit extends HttpServlet {
    */
   private static String generateFeedbackForm(String moduleId, String csrfToken, String theKey) {
     return feedbackForm
-        + Encode.forJavaScript(moduleId)
+        + Encode.forHtml(moduleId)
         + feedbackForm21
-        + Encode.forJavaScript(theKey)
+        + Encode.forHtml(theKey)
         + feedbackForm22
-        + Encode.forJavaScript(csrfToken)
+        + Encode.forHtml(csrfToken)
         + feedbackForm3;
   }
 

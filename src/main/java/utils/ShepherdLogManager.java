@@ -7,36 +7,30 @@ import org.apache.logging.log4j.ThreadContext;
 public class ShepherdLogManager {
 
   private static final Logger log = LogManager.getLogger(ShepherdLogManager.class);
-  private static final int MAX_LOG_VALUE_LENGTH = 256;
 
   public static void setRequestIp(String theIp) {
-    ThreadContext.put("RemoteAddress", sanitizeLogValue(theIp));
+    ThreadContext.put("RemoteAddress", theIp);
   }
 
   public static void logEvent(String theIp, String theMessage) {
     setRequestIp(theIp);
-    log.debug(sanitizeLogValue(theMessage));
+    log.debug(theMessage);
   }
 
   public static void setRequestIp(String theIp, String theForwardedIp) {
     if (theForwardedIp != null
         && !theForwardedIp.isEmpty()) // If string is not null and not empty set normal message
     {
-      ThreadContext.put(
-          "RemoteAddress",
-          sanitizeLogValue(theIp)
-              + " (untrusted X-Forwarded-For: "
-              + sanitizeLogValue(theForwardedIp)
-              + ")");
+      ThreadContext.put("RemoteAddress", theIp + " from " + theForwardedIp);
     } else // No Forward Header detected so Log that
     {
-      ThreadContext.put("RemoteAddress", sanitizeLogValue(theIp));
+      ThreadContext.put("RemoteAddress", theIp + " from ?.?.?.?");
     }
   }
 
   public static void logEvent(String theIp, String theForwardedIp, String theMessage) {
     setRequestIp(theIp, theForwardedIp);
-    log.debug(sanitizeLogValue(theMessage));
+    log.debug(theMessage);
   }
 
   /**
@@ -51,13 +45,13 @@ public class ShepherdLogManager {
       String theIp, String theForwardedIp, String theMessage, Object theUser) {
     String userName = new String();
     if (theUser != null) {
-      userName = sanitizeLogValue(theUser);
+      userName = theUser.toString();
     }
     if (userName.isEmpty()) {
       userName = new String("UnknownUser");
     }
     setRequestIp(theIp, theForwardedIp, userName);
-    log.debug(sanitizeLogValue(theMessage));
+    log.debug(theMessage);
   }
 
   /**
@@ -71,31 +65,10 @@ public class ShepherdLogManager {
     if (theForwardedIp != null
         && !theForwardedIp.isEmpty()) // If string is not null and not empty set normal message
     {
-      ThreadContext.put(
-          "RemoteAddress",
-          sanitizeLogValue(userName)
-              + " at "
-              + sanitizeLogValue(theIp)
-              + " (untrusted X-Forwarded-For: "
-              + sanitizeLogValue(theForwardedIp)
-              + ")");
+      ThreadContext.put("RemoteAddress", userName + " at " + theIp + " from " + theForwardedIp);
     } else // No Forward Header detected so Log that
     {
-      ThreadContext.put(
-          "RemoteAddress", sanitizeLogValue(userName) + " at " + sanitizeLogValue(theIp));
+      ThreadContext.put("RemoteAddress", userName + " at " + theIp + " from ?.?.?.?");
     }
-  }
-
-  static String sanitizeLogValue(Object value) {
-    if (value == null) {
-      return "unknown";
-    }
-    String text = value.toString();
-    StringBuilder sanitized = new StringBuilder(Math.min(text.length(), MAX_LOG_VALUE_LENGTH));
-    for (int i = 0; i < text.length() && sanitized.length() < MAX_LOG_VALUE_LENGTH; i++) {
-      char character = text.charAt(i);
-      sanitized.append(Character.isISOControl(character) ? '_' : character);
-    }
-    return sanitized.toString();
   }
 }

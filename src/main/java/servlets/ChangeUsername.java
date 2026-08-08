@@ -10,6 +10,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -57,30 +58,32 @@ public class ChangeUsername extends HttpServlet {
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
-      log.debug("Authenticated user requested a username change");
+      log.debug("Current username: " + ses.getAttribute("userName").toString());
       Cookie tokenCookie = Validate.getToken(request.getCookies());
 
       Object tokenParmeter = request.getParameter("csrfToken");
       if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
         log.debug("Getting Parameters");
         String userName = (String) ses.getAttribute("userName");
-        String newUsername = request.getParameter("newUsername");
+        String newUsername = Encode.forHtml((String) request.getParameter("newUsername"));
         String ApplicationRoot = getServletContext().getRealPath("");
+        log.debug("New username: " + newUsername);
 
-        if (Validate.isValidUserName(newUsername)) {
+        boolean validUsername = false;
+        validUsername = newUsername.length() > 3 && newUsername.length() <= 32;
+        if (validUsername) {
 
           log.debug("New username passed validation! Username Change gets the go ahead");
-          if (Setter.updateUsername(ApplicationRoot, userName, newUsername)) {
-            ses.setAttribute("ChangeUsername", "false");
-            ses.setAttribute("userName", newUsername);
-            log.debug("Username changed");
-          }
+          Setter.updateUsername(ApplicationRoot, userName, newUsername);
+          ses.setAttribute("ChangeUsername", "false");
+          ses.setAttribute("userName", newUsername);
+          log.debug("Username changed");
 
           response.sendRedirect("index.jsp");
 
         } else {
 
-          log.error("Invalid username submitted");
+          log.error("Invalid Username Submitted (Too Short/Long)");
           ses.setAttribute("errorMessage", "Invalid Username! Please try again.");
           response.sendRedirect("index.jsp");
         }

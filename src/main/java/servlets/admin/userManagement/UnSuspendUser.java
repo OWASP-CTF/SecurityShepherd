@@ -64,7 +64,8 @@ public class UnSuspendUser extends HttpServlet {
           String ApplicationRoot = getServletContext().getRealPath("");
 
           log.debug("Getting Parameters");
-          String player = request.getParameter("player");
+          String player = (String) request.getParameter("player");
+          log.debug("player = " + player.toString());
 
           // Validation
           notNull = (player != null);

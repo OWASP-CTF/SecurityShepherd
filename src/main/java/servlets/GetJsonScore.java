@@ -11,6 +11,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import servlets.admin.moduleManagement.GetFeedback;
 import utils.ScoreboardStatus;
 import utils.ShepherdLogManager;
 import utils.Validate;
@@ -37,7 +38,7 @@ import utils.Validate;
 public class GetJsonScore extends HttpServlet {
 
   private static final long serialVersionUID = -6168706954346341697L;
-  private static final Logger log = LogManager.getLogger(GetJsonScore.class);
+  private static final Logger log = LogManager.getLogger(GetFeedback.class);
 
   /**
    * Used to return an administrator with the current progress of each player in a class. This will
@@ -51,10 +52,10 @@ public class GetJsonScore extends HttpServlet {
 
     ShepherdLogManager.setRequestIp(request.getRemoteAddr(), request.getHeader("X-Forwarded-For"));
     response.setContentType("application/json; charset=UTF-8");
-    response.setHeader("Cache-Control", "no-store");
     request.setCharacterEncoding("UTF-8");
 
     PrintWriter out = response.getWriter();
+    out.print(getServletInfo());
     HttpSession ses = request.getSession(false);
     boolean loggedIn = Validate.validateSession(ses);
     if (loggedIn || ScoreboardStatus.isPublicScoreboard()) {
@@ -64,7 +65,7 @@ public class GetJsonScore extends HttpServlet {
             request.getRemoteAddr(),
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
-        log.debug("Scoreboard accessed by an authenticated user");
+        log.debug("Scoreboard accessed by " + ses.getAttribute("userName").toString());
       } else {
         log.debug("Scoreboard accessed by someone not logged in.");
       }
@@ -97,16 +98,13 @@ public class GetJsonScore extends HttpServlet {
         out.write(jsonOutput);
       } else {
         if (!canSeeScoreboard) {
-          response.setStatus(HttpServletResponse.SC_FORBIDDEN);
           out.write("ERROR: Scoreboard is not currently available");
         } else {
-          response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
           out.write("ERROR: Please refresh page!");
         }
       }
     } else {
       log.debug("Unauthenticated Scoreboard Request");
-      response.setStatus(HttpServletResponse.SC_FORBIDDEN);
       out.write("ERROR: You are logged out. Please refresh the page");
     }
   }

@@ -7,7 +7,6 @@ import dbProcs.Getter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -141,28 +140,74 @@ public class ACS extends HttpServlet {
             if (inputStream != null) {
               Properties prop = new Properties();
               prop.load(inputStream);
-              log.debug("Saml unpack properties file loaded, unpacking saml data");
+              if (prop != null) {
 
-              ssoName = firstAttribute(attributes, prop.getProperty("sso.saml.ssoName"));
-              userName = firstAttribute(attributes, prop.getProperty("sso.saml.userName"));
-              List<String> affiliations =
-                  attributeValues(attributes, prop.getProperty("sso.saml.affiliation"));
-              List<String> adminAffiliations =
-                  configuredAffiliations(prop.getProperty("sso.saml.adminAffiliation"));
-              List<String> playerAffiliations =
-                  configuredAffiliations(prop.getProperty("sso.saml.playerAffiliation"));
+                log.debug("Saml unpack properties file loaded, unpacking saml data");
 
-              if (ssoName != null && userName != null) {
-                if (!Collections.disjoint(affiliations, adminAffiliations)) {
+                // Get id and name from SAML data
+
+                String ssoNameKey = prop.getProperty("sso.saml.ssoName");
+
+                ssoName = attributes.get(ssoNameKey).get(0);
+
+                log.debug("ssoName = " + ssoName);
+
+                String userNameKey = prop.getProperty("sso.saml.userName");
+
+                userName = attributes.get(userNameKey).get(0);
+
+                log.debug("userName = " + userName);
+
+                String affiliationKey = prop.getProperty("sso.saml.affiliation");
+
+                List<String> affiliations = attributes.get(affiliationKey);
+
+                String adminAffiliation = prop.getProperty("sso.saml.adminAffiliation");
+                String playerAffiliation = prop.getProperty("sso.saml.playerAffiliation");
+
+                List<String> adminAffiliations = Arrays.asList(adminAffiliation.split(",[ ]*"));
+                List<String> playerAffiliations = Arrays.asList(playerAffiliation.split(",[ ]*"));
+
+                boolean foundAdmin = false;
+                boolean foundPlayer = false;
+
+                for (String affiliation : adminAffiliations) {
+                  if (affiliations.contains(affiliation)) {
+                    foundAdmin = true;
+                  }
+                }
+
+                if (!foundAdmin) {
+                  for (String affiliation : playerAffiliations) {
+                    if (affiliations.contains(affiliation)) {
+                      foundPlayer = true;
+                    }
+                  }
+                }
+
+                if (foundAdmin) {
                   userRole = "admin";
                   ssoValid = true;
-                } else if (!Collections.disjoint(affiliations, playerAffiliations)) {
+                } else if (foundPlayer) {
                   userRole = "player";
                   ssoValid = true;
+                } else {
+                  ssoValid = false;
+
+                  errorMessage +=
+                      "Authorization failed. Please ensure that you are a member of one of the"
+                          + " following groups: ";
+
+                  for (String affiliation : adminAffiliations) {
+                    errorMessage += affiliation + ", ";
+                  }
+
+                  for (String affiliation : playerAffiliations) {
+                    errorMessage += affiliation + ", ";
+                  }
                 }
-              }
-              if (!ssoValid) {
-                errorMessage += "SSO authorization failed. ";
+
+                log.debug("userRole = " + userRole);
               }
             } else {
               String errorMsg =
@@ -180,6 +225,13 @@ public class ACS extends HttpServlet {
 
           if (ssoValid) {
 
+            if (ssoName == null || userName == null || userRole == null) {
+              String errorMsg = "Unknown error occurred when unpacking SAML properties";
+
+              log.error(errorMsg);
+              throw new RuntimeException(errorMsg);
+            }
+
             log.debug("Saml userdata loaded, calling authUserSSO");
 
             String user[] = Getter.authUserSSO(ApplicationRoot, null, userName, ssoName, userRole);
@@ -187,13 +239,15 @@ public class ACS extends HttpServlet {
             if (user != null && !user[0].isEmpty()) {
 
               // Kill Session and Create a new one with user logged in
-              log.debug("Creating a new authenticated SSO session");
+              log.debug("Creating new session for " + user[2] + " " + user[1]);
               ses.invalidate();
               ses = request.getSession(true);
               ses.setAttribute("userStamp", user[0]);
               ses.setAttribute("userName", user[1]);
               ses.setAttribute("userRole", user[2]);
               ses.setAttribute("lang", language);
+              log.debug("userClassId = " + user[4]);
+
               ses.setAttribute("userClass", user[4]);
               ses.setAttribute("attributes", attributes);
               ses.setAttribute("nameId", nameId);
@@ -202,7 +256,7 @@ public class ACS extends HttpServlet {
               ses.setAttribute("nameidNameQualifier", nameidNameQualifier);
               ses.setAttribute("nameidSPNameQualifier", nameidSPNameQualifier);
 
-              if ("true".equalsIgnoreCase(user[5])) {
+              if (user[5].equalsIgnoreCase("true")) {
                 log.debug("Temporary Username Detected, user will be prompted to change");
                 ses.setAttribute("ChangeUsername", "true");
               }
@@ -242,28 +296,5 @@ public class ACS extends HttpServlet {
   public void doGet(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
     response.sendRedirect("../index.jsp");
-  }
-
-  static String firstAttribute(Map<String, List<String>> attributes, String key) {
-    List<String> values = attributeValues(attributes, key);
-    if (values.isEmpty() || values.get(0) == null || values.get(0).isEmpty()) {
-      return null;
-    }
-    return values.get(0);
-  }
-
-  private static List<String> attributeValues(Map<String, List<String>> attributes, String key) {
-    if (attributes == null || key == null) {
-      return Collections.emptyList();
-    }
-    List<String> values = attributes.get(key);
-    return values == null ? Collections.emptyList() : values;
-  }
-
-  private static List<String> configuredAffiliations(String value) {
-    if (value == null || value.trim().isEmpty()) {
-      return Collections.emptyList();
-    }
-    return Arrays.asList(value.split(",[ ]*"));
   }
 }

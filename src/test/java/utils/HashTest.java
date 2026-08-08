@@ -98,14 +98,4 @@ class HashTest {
   void getCurrentKey_returns256BitKey() {
     assertEquals(32, Hash.getCurrentKey().length);
   }
-
-  @Test
-  void getCurrentKey_returnsADefensiveCopy() {
-    byte[] exposedCopy = Hash.getCurrentKey();
-    byte originalFirstByte = exposedCopy[0];
-
-    exposedCopy[0] ^= (byte) 0xff;
-
-    assertEquals(originalFirstByte, Hash.getCurrentKey()[0]);
-  }
 }

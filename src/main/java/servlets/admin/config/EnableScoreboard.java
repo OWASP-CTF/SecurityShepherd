@@ -39,15 +39,6 @@ public class EnableScoreboard extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(EnableScoreboard.class);
 
-  enum ScoreboardMode {
-    OPEN,
-    PUBLIC,
-    ADMIN_ONLY,
-    CLASS_SPECIFIC,
-    SELECTED_CLASS,
-    INVALID
-  }
-
   /**
    * @param classId The identifier of the class to add the players to
    * @param csrfToken
@@ -68,28 +59,138 @@ public class EnableScoreboard extends HttpServlet {
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
+      String htmlOutput = new String();
       if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
-        log.debug("An administrator is updating the scoreboard configuration");
+        log.debug("Scoreboard being enabled by: " + ses.getAttribute("userName"));
+        String[] classInfo = new String[2];
         try {
           String applicationRoot = getServletContext().getRealPath("");
-          String classId = request.getParameter("classId");
-          ScoreboardMode mode = requestedMode(classId, request.getParameter("restricted"));
-          String scoreboardMessage = applyMode(mode, applicationRoot, classId);
-          String htmlOutput;
-          if (scoreboardMessage == null) {
-            log.debug("Scoreboard settings unchanged because validation failed");
+
+          log.debug("Getting Parameters");
+          String classId = (String) request.getParameter("classId");
+          log.debug("classId = " + classId);
+          String scoreboardMessage = new String();
+          if (classId
+              .isEmpty()) // Null Submitted - configure scoreboard to list all players regardless of
+          // class
+          {
+            log.debug("Null Class submitted");
+
+            log.debug("Unpacking restricted scoreboard value");
+            String restrictedScoreboard =
+                Validate.validateParameter(request.getParameter("restricted"), 5);
+
+            if (restrictedScoreboard.isEmpty()) {
+
+              ScoreboardStatus.setScoreboardOpen();
+              scoreboardMessage =
+                  "Scoreboard is now enabled and lists all users regardless of their class.";
+            } else {
+              log.debug("Restricted scoreboard value found");
+
+              boolean isAdminOnly = restrictedScoreboard.equals("true");
+
+              if (!isAdminOnly) {
+                // Scoreboard is public
+                ScoreboardStatus.setScoreboardPublic();
+                log.debug("Public Scoreboard Enabled");
+                scoreboardMessage = "Scoreboard is now enabled for public view.";
+
+                htmlOutput =
+                    "<h3 class='title'>Scoreboard Settings Updated</h3>"
+                        + "<p>"
+                        + scoreboardMessage
+                        + " The scoreboard is public</p>";
+              } else {
+                // Scoreboard is admin only
+                ScoreboardStatus.setScoreboardPublic();
+                log.debug("Admin only scoreboard set");
+                scoreboardMessage = "Scoreboard is only enabled for administrators.";
+
+                htmlOutput =
+                    "<h3 class='title'>Scoreboard Settings Updated</h3>"
+                        + "<p>"
+                        + scoreboardMessage
+                        + " The scoreboard is admin only</p>";
+              }
+            }
+
+          } else if (classId.equalsIgnoreCase("classSpecific")) {
+            // Set Class Specific Scoreboards
+
+            ScoreboardStatus.setScoreboardClassSpecific();
+            scoreboardMessage =
+                "Scoreboard has been enabled and only lists users from the viewer's class. Admin"
+                    + " users will still see the scoreboard of the default class.";
+            log.debug(scoreboardMessage);
+
+          } else {
+            // validate class identifier
+            classInfo = Getter.getClassInfo(applicationRoot, classId);
+            if (classInfo != null && !classInfo[0].isEmpty()) // Class Exists
+            {
+              log.debug("Valid Class Submitted, setting scoreboard class to " + classId);
+              ScoreboardStatus.setScoreboardClass(classId);
+              scoreboardMessage =
+                  "Scoreboard has been enabled and only lists users from "
+                      + Encode.forHtml(classInfo[0]);
+            }
+          }
+          if (scoreboardMessage.isEmpty()) {
+            log.debug("Scoreboard settings unchanged");
+
             htmlOutput =
                 "<h3 class='title'>Scoreboard Settings are Unchanged</h3>"
                     + "<p>Invalid data was submitted. Please try again.</p>";
-          } else {
-            htmlOutput =
-                "<h3 class='title'>Scoreboard Settings Updated</h3><p>"
-                    + scoreboardMessage
-                    + "</p>";
+          } else // Function must have completed if this isn't empty
+          {
+            log.debug(scoreboardMessage);
+            String restrictedScoreboard =
+                Validate.validateParameter(request.getParameter("restricted"), 5);
+
+            boolean isAdminOnly = restrictedScoreboard.equals("true");
+
+            if (restrictedScoreboard.equals("false")
+                && classId.equalsIgnoreCase("classSpecific")) // Total
+            // Public
+            // Scoreboard
+            {
+              log.debug("User Accessible Scoreboard Enabled");
+              htmlOutput =
+                  "<h3 class='title'>Scoreboard Settings Updated</h3>"
+                      + "<p>"
+                      + scoreboardMessage
+                      + "</p>";
+            } else {
+              if (!classId.equalsIgnoreCase("classSpecific") && isAdminOnly) {
+                ScoreboardStatus.setScoreboardAdminOnly();
+                log.debug("Admin Only Scoreboard Enabled");
+                htmlOutput =
+                    "<h3 class='title'>Scoreboard Settings Updated</h3>"
+                        + "<p>"
+                        + scoreboardMessage
+                        + " The scoreboard is only accessible by administrators</p>";
+              } else if (!classId.equalsIgnoreCase("classSpecific") && isAdminOnly) {
+                ScoreboardStatus.setScoreboardPublic();
+                log.debug("Public Scoreboard Enabled");
+                htmlOutput =
+                    "<h3 class='title'>Scoreboard Settings Updated</h3>"
+                        + "<p>"
+                        + scoreboardMessage
+                        + " The scoreboard is public</p>";
+              } else // Not an Admin Only Board. Give response
+              {
+                htmlOutput =
+                    "<h3 class='title'>Scoreboard Settings Updated</h3>"
+                        + "<p>"
+                        + scoreboardMessage
+                        + "</p>";
+              }
+            }
           }
           out.write(htmlOutput);
         } catch (Exception e) {
-          log.error("Could not update scoreboard configuration", e);
+          log.error("SetDefaultClass Error: " + e.toString());
           out.print(
               "<h3 class=\"title\">Scoreboard Configuration Failure</h3><br>"
                   + "<p>"
@@ -110,77 +211,5 @@ public class EnableScoreboard extends HttpServlet {
               + " non administrator functions!</font><p>");
     }
     log.debug("*** EnableScoreboard END ***");
-  }
-
-  static ScoreboardMode requestedMode(String classId, String restricted) {
-    if (classId == null
-        || classId.length() > 128
-        || classId.codePoints().anyMatch(Character::isISOControl)) {
-      return ScoreboardMode.INVALID;
-    }
-    if (restricted != null
-        && !restricted.isEmpty()
-        && !"true".equals(restricted)
-        && !"false".equals(restricted)) {
-      return ScoreboardMode.INVALID;
-    }
-    if (classId.isEmpty()) {
-      if (restricted == null || restricted.isEmpty()) {
-        return ScoreboardMode.OPEN;
-      }
-      return "true".equals(restricted) ? ScoreboardMode.ADMIN_ONLY : ScoreboardMode.PUBLIC;
-    }
-    if ("classSpecific".equalsIgnoreCase(classId)) {
-      return restricted == null || restricted.isEmpty() || "false".equals(restricted)
-          ? ScoreboardMode.CLASS_SPECIFIC
-          : ScoreboardMode.INVALID;
-    }
-    return "true".equals(restricted) ? ScoreboardMode.ADMIN_ONLY : ScoreboardMode.SELECTED_CLASS;
-  }
-
-  private static String applyMode(ScoreboardMode mode, String applicationRoot, String classId) {
-    switch (mode) {
-      case OPEN:
-        ScoreboardStatus.setScoreboardOpen();
-        return "Scoreboard is now enabled and lists all users regardless of their class.";
-      case PUBLIC:
-        ScoreboardStatus.setScoreboardPublic();
-        return "Scoreboard is now enabled for public view.";
-      case ADMIN_ONLY:
-        if (!classId.isEmpty()) {
-          String[] adminClassInfo = Getter.getClassInfo(applicationRoot, classId);
-          if (!classExists(adminClassInfo)) {
-            return null;
-          }
-          ScoreboardStatus.setScoreboardAdminOnly(classId);
-          return "Scoreboard is only enabled for administrators and lists users from "
-              + Encode.forHtml(adminClassInfo[0])
-              + ".";
-        }
-        ScoreboardStatus.setScoreboardAdminOnly();
-        return "Scoreboard is only enabled for administrators.";
-      case CLASS_SPECIFIC:
-        ScoreboardStatus.setScoreboardClassSpecific();
-        return "Scoreboard has been enabled and only lists users from the viewer's class. Admin"
-            + " users will still see the scoreboard of the default class.";
-      case SELECTED_CLASS:
-        String[] classInfo = Getter.getClassInfo(applicationRoot, classId);
-        if (!classExists(classInfo)) {
-          return null;
-        }
-        ScoreboardStatus.setScoreboardClass(classId);
-        return "Scoreboard has been enabled and only lists users from "
-            + Encode.forHtml(classInfo[0])
-            + ".";
-      default:
-        return null;
-    }
-  }
-
-  private static boolean classExists(String[] classInfo) {
-    return classInfo != null
-        && classInfo.length > 0
-        && classInfo[0] != null
-        && !classInfo[0].isEmpty();
   }
 }

@@ -432,7 +432,7 @@ public class Setter {
       prepstmt.setString(1, openOrClosed);
       prepstmt.setString(2, moduleCategory);
       prepstmt.execute();
-      log.debug("Updated module category status");
+      log.debug("Set " + moduleCategory + " to " + openOrClosed);
       result = true;
 
     } catch (SQLException e) {
@@ -675,7 +675,7 @@ public class Setter {
 
     boolean result = false;
 
-    log.debug("Preparing username change call");
+    log.debug("Preparing username change call from username " + userName + " to " + newUsername);
     try (Connection conn = Database.getCoreConnection(ApplicationRoot);
         PreparedStatement prestmnt =
             conn.prepareStatement(
@@ -957,7 +957,11 @@ public class Setter {
     boolean result = false;
 
     log.debug("*** Setter.userCreate ***");
+    log.debug("classId = " + classId);
+    log.debug("userName = " + userName);
+    // We don't log passwords
     log.debug("userRole = " + userRole);
+    log.debug("userAddress = " + userAddress);
 
     // Hash before opening a DB connection (Argon2 is CPU-bound, ~100-200ms)
     log.debug("Hashing password");
@@ -1008,6 +1012,10 @@ public class Setter {
     String result = null;
 
     log.debug("*** Setter.userCreateSSO ***");
+    log.debug("classId = " + classId);
+    log.debug("userName = " + userName);
+    log.debug("ssoName = " + ssoName);
+    // We don't log passwords
 
     String newUsername = userName;
 

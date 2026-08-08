@@ -87,6 +87,7 @@ public class Getter {
    */
   public static String[] authUser(String ApplicationRoot, String userName, String password) {
     log.debug("$$$ Getter.authUser $$$");
+    log.debug("userName = " + userName);
 
     if (userName == null || password == null) {
       verifyDummyPassword(password);
@@ -179,7 +180,7 @@ public class Getter {
       return null;
     }
 
-    log.debug("A password user has logged in");
+    log.debug("User '" + userName + "' has logged in");
 
     if (badLoginCount > 0) {
       log.debug("Clearing Bad Login History");
@@ -226,6 +227,9 @@ public class Getter {
       String ApplicationRoot, String classId, String userName, String ssoName, String userRole) {
 
     log.debug("$$$ Getter.authUserSSO $$$");
+
+    log.debug("ssoName = " + ssoName);
+    log.debug("userName = " + userName);
 
     String[] result = new String[6];
 
@@ -319,7 +323,7 @@ public class Getter {
         // Get current system time
         Timestamp currentTime = new Timestamp(System.currentTimeMillis());
 
-        if (suspendedUntil != null && suspendedUntil.after(currentTime)) {
+        if (suspendedUntil.after(currentTime)) {
           // User is suspended
           log.debug("User is suspended");
 
@@ -360,12 +364,12 @@ public class Getter {
         }
       }
 
-      log.debug("An SSO user has logged in with role {}", userRole);
+      log.debug("User '" + userName + "' has logged in via SSO" + " with role " + userRole);
 
       result[0] = userID;
       result[1] = userName; // userName
       result[2] = userRole; // role
-      result[3] = "false"; // SSO logins do not have a temporary local password
+      result[5] = "false"; // sso logins can't change password
       result[4] = classId; // classId
       result[5] = Boolean.toString(isTempUsername);
 

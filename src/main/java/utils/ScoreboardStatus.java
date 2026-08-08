@@ -123,19 +123,12 @@ public class ScoreboardStatus {
 
   /** Sets the scoreboard to be admin only */
   public static void setScoreboardAdminOnly() {
-    setScoreboardAdminOnly("");
-  }
-
-  /** Sets the scoreboard to be admin only, optionally retaining a selected class. */
-  public static void setScoreboardAdminOnly(String theClass) {
     if (!isLoaded) {
       loadScoreboardStatus();
     }
 
     scoreboardEnabled = true;
-    scoreboardClass = theClass == null ? "" : theClass;
     adminOnlyScoreboard = true;
-    classSpecificScoreboard = false;
     publicScoreboard = false;
     saveScoreboardStatus();
   }

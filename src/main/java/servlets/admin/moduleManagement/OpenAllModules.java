@@ -46,6 +46,7 @@ public class OpenAllModules extends HttpServlet {
     } else {
       Cookie tokenCookie = Validate.getToken(request.getCookies());
       Object tokenParmeter = request.getParameter("csrfToken");
+      log.debug("Token Param: " + tokenParmeter.toString());
 
       if (Validate.validateAdminSession(ses, tokenCookie, tokenParmeter)) {
         ShepherdLogManager.setRequestIp(

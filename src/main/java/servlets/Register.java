@@ -82,34 +82,37 @@ public class Register extends HttpServlet {
         if (Validate.validateSessionToken(ses, paramToken)) {
           log.debug("Getting Registration Parameters");
           String userName = (String) request.getParameter("userName");
+          log.debug("userName = " + userName);
           String passWord = (String) request.getParameter("passWord");
           log.debug("passWord retrieved");
           String passWordConfirm = (String) request.getParameter("passWordConfirm");
           log.debug("passWordConfirm retrieved");
           String userAddress = (String) request.getParameter("userAddress");
+          log.debug("userAddress = " + userAddress);
           String userAddressCnf = (String) request.getParameter("userAddressCnf");
+          log.debug("userAddressCnf = " + userAddressCnf);
 
           // Validation
           log.debug("Checking for nulls");
-          notNull =
-              userName != null
-                  && passWord != null
-                  && passWordConfirm != null
-                  && userAddress != null
-                  && userAddressCnf != null;
+          notNull = (userName != null && passWord != null && passWordConfirm != null);
           log.debug("Ensuring strings are not empty");
           notEmpty = notNull && !userName.isEmpty() && !passWord.isEmpty();
           log.debug("Validating passwords");
           validPasswords = notNull && passWord.equals(passWordConfirm);
           log.debug("Validating addresses");
           validAddress =
-              notNull
+              userAddress != null
                   && userAddress.equals(userAddressCnf)
-                  && (userAddress.isEmpty() || Validate.isValidEmailAddress(userAddress));
-          boolean basicValidation = validPasswords && validAddress && notNull && notEmpty;
-          userValidate =
-              validRegistrationFields(
-                  userName, passWord, passWordConfirm, userAddress, userAddressCnf);
+                  && Validate.isValidEmailAddress(userAddress);
+          if (!validAddress) {
+            userAddress = new String();
+          }
+          boolean basicValidation = validPasswords && notNull && notEmpty;
+          if (basicValidation && !validAddress) {
+            userValidate = (Validate.isValidUser(userName, passWord));
+          } else {
+            userValidate = (Validate.isValidUser(userName, passWord, userAddress));
+          }
           if (basicValidation && userValidate) {
             // Data is good, Add user
             // Any Class Set to Add them to?
@@ -168,23 +171,6 @@ public class Register extends HttpServlet {
   public void doGet(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
     response.sendRedirect("index.jsp");
-  }
-
-  static boolean validRegistrationFields(
-      String userName,
-      String password,
-      String passwordConfirmation,
-      String address,
-      String addressConfirmation) {
-    return userName != null
-        && password != null
-        && passwordConfirmation != null
-        && address != null
-        && addressConfirmation != null
-        && password.equals(passwordConfirmation)
-        && address.equals(addressConfirmation)
-        && (address.isEmpty() || Validate.isValidEmailAddress(address))
-        && Validate.isValidUser(userName, password, address);
   }
 
   public static String getDefaultClass() {

@@ -64,32 +64,44 @@ public class GetPlayersByClass extends HttpServlet {
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
       if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
+        boolean notNull = false;
+        boolean notEmpty = false;
+        String[] classInfo = new String[2];
         try {
           log.debug("Getting ApplicationRoot");
           String ApplicationRoot = getServletContext().getRealPath("");
           log.debug("Servlet root = " + ApplicationRoot);
 
           log.debug("Getting Parameters");
-          String classId = request.getParameter("classId");
+          String classId = (String) request.getParameter("classId");
+          log.debug("classId = '" + classId + "'");
 
           // Validation
-          boolean validClassRequest = classId != null;
-          if (validClassRequest && classId.isEmpty()) {
-            classId = null;
-          } else if (validClassRequest) {
-            String[] classInfo = Getter.getClassInfo(ApplicationRoot, classId);
-            validClassRequest =
-                classInfo != null
-                    && classInfo.length > 0
-                    && classInfo[0] != null
-                    && !classInfo[0].isEmpty();
+          log.debug("Ensuring not empty");
+          if (classId != null) {
+            log.debug("classId was not null");
+            notEmpty = (!classId.isEmpty());
           }
-          if (validClassRequest) {
+          if (notEmpty && classId != null) {
+            log.debug("classId was not empty");
+            classInfo = Getter.getClassInfo(ApplicationRoot, classId);
+            if (classInfo == null) {
+              classId = null;
+              log.debug("classInfo was not returned, nulling classId");
+            }
+          } else {
+            log.debug("classId was empty, nulling");
+            classId = null;
+          }
+          if (classId == null || classInfo != null) {
             ResultSet playerList = Getter.getPlayersByClass(ApplicationRoot, classId);
             String players = playersInOptionTags(playerList);
             out.print(players);
           } else {
-            log.error("Invalid class selection");
+            // Validation Error Responses
+            if (!notNull || !notEmpty) {
+              log.error("Null values detected");
+            }
             out.print("fail");
           }
         } catch (Exception e) {
@@ -121,10 +133,12 @@ public class GetPlayersByClass extends HttpServlet {
                 + "\">"
                 + Encode.forHtml(playerList.getString(2))
                 + "</option>";
+        log.debug("Adding " + playerList.getString(2) + " to output");
       }
     } catch (SQLException e1) {
       log.error("Error Occurred when handling playerList ResultSet");
     }
+    log.debug("Returning: " + players);
     return players;
   }
 }

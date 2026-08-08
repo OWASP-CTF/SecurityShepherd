@@ -74,11 +74,11 @@ public class SetDefaultClass extends HttpServlet {
           log.debug("Servlet root = " + ApplicationRoot);
 
           log.debug("Getting Parameters");
-          String classId = request.getParameter("classId");
+          String classId = (String) request.getParameter("classId");
+          log.debug("classId = " + classId);
 
-          if (classId != null
-              && classId
-                  .isEmpty()) // Empty submitted - Change default class to unassigned players group
+          if (classId
+              .isEmpty()) // Null Submitted - Change default class to unassigned players group
           {
             log.debug("Null Class submitted");
             Register.setDefaultClass(
@@ -86,13 +86,10 @@ public class SetDefaultClass extends HttpServlet {
             // Unassigned Group
             htmlOutput = "Default Class Set To Unassigned Players";
             log.debug(htmlOutput);
-          } else if (classId != null) {
+          } else {
             // validate class identifier
             classInfo = Getter.getClassInfo(ApplicationRoot, classId);
-            if (classInfo != null
-                && classInfo.length > 0
-                && classInfo[0] != null
-                && !classInfo[0].isEmpty()) // Class Exists
+            if (classInfo != null && !classInfo[0].isEmpty()) // Class Exists
             {
               log.debug("Valid Class Submitted");
               Register.setDefaultClass(classId);
