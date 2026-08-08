@@ -79,25 +79,36 @@ public class XssChallengeFour extends HttpServlet {
           String userPost = new String();
           String searchTerm = request.getParameter("searchTerm");
           log.debug("User Submitted - " + searchTerm);
-          searchTerm = XssFilter.badUrlValidate(searchTerm);
-          userPost =
-              "<a href=\"" + searchTerm + "\" alt=\"" + searchTerm + "\">" + searchTerm + "</a>";
-          log.debug("After URL validation and attribute encoding - " + searchTerm);
-          if (FindXSS.search(userPost)) {
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("result.wellDone")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("result.youDidIt")
-                    + "<br />"
-                    + bundle.getString("result.resultKey")
-                    + " <a>"
-                    + Hash.generateUserSolution(
-                        Getter.getModuleResultFromHash(
-                            getServletContext().getRealPath(""), levelHash),
-                        (String) ses.getAttribute("userName"))
+          if (!searchTerm.startsWith("http")) {
+            searchTerm = "https://www.owasp.org/index.php/OWASP_Security_Shepherd";
+            userPost =
+                "<a href=\""
+                    + searchTerm
+                    + "\" alt=\"OWASP Security Shepherd\">"
+                    + searchTerm
                     + "</a>";
+          } else {
+
+            searchTerm = XssFilter.encodeForHtml(searchTerm);
+            userPost =
+                "<a href=\"" + searchTerm + "\" alt=\"" + searchTerm + "\">" + searchTerm + "</a>";
+            log.debug("After Encoding - " + searchTerm);
+            if (FindXSS.search(userPost)) {
+              htmlOutput =
+                  "<h2 class='title'>"
+                      + bundle.getString("result.wellDone")
+                      + "</h2>"
+                      + "<p>"
+                      + bundle.getString("result.youDidIt")
+                      + "<br />"
+                      + bundle.getString("result.resultKey")
+                      + " <a>"
+                      + Hash.generateUserSolution(
+                          Getter.getModuleResultFromHash(
+                              getServletContext().getRealPath(""), levelHash),
+                          (String) ses.getAttribute("userName"))
+                      + "</a>";
+            }
           }
           log.debug("Adding searchTerm to Html: " + searchTerm);
           htmlOutput +=
