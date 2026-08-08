@@ -110,6 +110,15 @@ public class XssFilter {
     if (input == null) {
       return SAFE_URL_HELP;
     }
+    if (input.indexOf('<') >= 0
+        || input.indexOf('>') >= 0
+        || input.indexOf('\"') >= 0
+        || input.indexOf('\'') >= 0
+        || input.indexOf('\r') >= 0
+        || input.indexOf('\n') >= 0) {
+      log.debug("Rejected URL containing unsafe attribute characters");
+      return SAFE_URL_HELP;
+    }
 
     try {
       URL url = new URL(input);
