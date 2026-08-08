@@ -113,7 +113,11 @@ public class NoSqlInjection1 extends HttpServlet {
         String gamerId = request.getParameter("theGamerName");
         log.debug("User Submitted: " + gamerId);
 
-        DBObject whereQuery = new BasicDBObject("$where", "this._id == '" + gamerId + "'");
+        // Use a structured query operator instead of building a JavaScript "$where"
+        // expression from untrusted input - $where evaluates arbitrary JS server side
+        // and is the classic NoSQL injection vector. Passing the value as a plain
+        // field comparison means it is always treated as data, never as code.
+        DBObject whereQuery = new BasicDBObject("_id", gamerId);
         cursor = dbCollection.find(whereQuery);
 
         try {

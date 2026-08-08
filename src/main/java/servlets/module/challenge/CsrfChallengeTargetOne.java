@@ -7,6 +7,7 @@ import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -72,7 +73,9 @@ public class CsrfChallengeTargetOne extends HttpServlet {
         String plusId = request.getParameter("userid");
         log.debug("User Submitted - " + plusId);
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId)) {
+        Cookie tokenCookie = Validate.getToken(request.getCookies());
+        Object tokenParmeter = request.getParameter("csrfToken");
+        if (!userId.equals(plusId) && Validate.validateTokens(tokenCookie, tokenParmeter)) {
           String ApplicationRoot = getServletContext().getRealPath("");
           String userName = (String) ses.getAttribute("userName");
           String attackerName = Getter.getUserName(ApplicationRoot, plusId);
@@ -86,6 +89,8 @@ public class CsrfChallengeTargetOne extends HttpServlet {
           } else {
             log.error("UserId '" + plusId + "' could not be found.");
           }
+        } else {
+          log.debug("Missing or invalid CSRF token");
         }
 
         if (result) {

@@ -113,7 +113,20 @@ public class SessionManagement3ChangePassword extends HttpServlet {
         log.debug("subName Decoded = " + subName);
         log.debug("subPass = " + subNewPass);
 
-        if (subNewPass.length() >= 6) {
+        // The "current" cookie is entirely client-controlled and nothing in this application
+        // ever legitimately issues it. It must never be trusted to select which account's
+        // password gets changed - that would let anyone reset an arbitrary user's password
+        // just by supplying that user's (base64'd) name in a cookie. Only allow a password
+        // change to proceed for the account matching the caller's own authenticated identity.
+        String authenticatedUserName =
+            ses.getAttribute("userName") == null ? "" : ses.getAttribute("userName").toString();
+        boolean ownsAccount =
+            !subName.isEmpty() && subName.equals(authenticatedUserName);
+
+        if (!ownsAccount) {
+          log.debug("Change password attempted for an account not owned by the caller");
+          htmlOutput = "<p>" + bundle.getString("reset.failed") + "</p>";
+        } else if (subNewPass.length() >= 6) {
           log.debug("Getting ApplicationRoot");
           String ApplicationRoot = getServletContext().getRealPath("");
 

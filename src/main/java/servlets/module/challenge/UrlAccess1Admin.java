@@ -82,7 +82,7 @@ public class UrlAccess1Admin extends HttpServlet {
           log.debug("User Submitted - " + userData);
         }
 
-        if (!tamperedRequest) {
+        if (!tamperedRequest && Validate.validateAdminSession(ses)) {
           String userKey =
               Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
           htmlOutput =

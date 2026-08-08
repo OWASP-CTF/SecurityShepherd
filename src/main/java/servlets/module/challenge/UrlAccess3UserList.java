@@ -69,44 +69,49 @@ public class UrlAccess3UserList extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
 
-      try {
-        Cookie userCookies[] = request.getCookies();
-        int i = 0;
-        Cookie theCookie = null;
-        for (i = 0; i < userCookies.length; i++) {
-          if (userCookies[i].getName().compareTo("currentPerson") == 0) {
-            theCookie = userCookies[i];
-            break; // End Loop, because we found the token
+      if (Validate.validateAdminSession(ses)) {
+        try {
+          Cookie userCookies[] = request.getCookies();
+          int i = 0;
+          Cookie theCookie = null;
+          for (i = 0; i < userCookies.length; i++) {
+            if (userCookies[i].getName().compareTo("currentPerson") == 0) {
+              theCookie = userCookies[i];
+              break; // End Loop, because we found the token
+            }
           }
-        }
-        String currentUser = new String("aGuest");
-        if (theCookie != null) {
-          log.debug("Cookie value: " + theCookie.getValue());
-          byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
-          String decodedCookie = new String(decodedCookieBytes, "UTF-8");
-          log.debug("Decoded Cookie: " + decodedCookie);
-          currentUser = decodedCookie;
-        }
-        String ApplicationRoot = getServletContext().getRealPath("");
-        Connection conn = Database.getChallengeConnection(ApplicationRoot, "UrlAccessThree");
-        PreparedStatement callstmt;
-        callstmt =
-            conn.prepareStatement(
-                "SELECT userName FROM users WHERE userRole = \"admin\" OR userName = \""
-                    + currentUser
-                    + "\";");
-        log.debug("Getting User List");
-        htmlOutput = new String();
-        ResultSet rs = callstmt.executeQuery();
-        while (rs.next()) {
-          htmlOutput += Encode.forHtml(rs.getString(1)) + "<br>";
-          if (rs.getString(1).equalsIgnoreCase("MrJohnReillyTheSecond")) {
-            log.debug("Super Admin contained in response");
+          String currentUser = new String("aGuest");
+          if (theCookie != null) {
+            log.debug("Cookie value: " + theCookie.getValue());
+            byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
+            String decodedCookie = new String(decodedCookieBytes, "UTF-8");
+            log.debug("Decoded Cookie: " + decodedCookie);
+            currentUser = decodedCookie;
           }
+          String ApplicationRoot = getServletContext().getRealPath("");
+          Connection conn = Database.getChallengeConnection(ApplicationRoot, "UrlAccessThree");
+          PreparedStatement callstmt;
+          callstmt =
+              conn.prepareStatement(
+                  "SELECT userName FROM users WHERE userRole = \"admin\" OR userName = \""
+                      + currentUser
+                      + "\";");
+          log.debug("Getting User List");
+          htmlOutput = new String();
+          ResultSet rs = callstmt.executeQuery();
+          while (rs.next()) {
+            htmlOutput += Encode.forHtml(rs.getString(1)) + "<br>";
+            if (rs.getString(1).equalsIgnoreCase("MrJohnReillyTheSecond")) {
+              log.debug("Super Admin contained in response");
+            }
+          }
+        } catch (Exception e) {
+          htmlOutput = new String(errors.getString("error.funky"));
+          log.fatal(levelName + " - " + e.toString());
         }
-      } catch (Exception e) {
-        htmlOutput = new String(errors.getString("error.funky"));
-        log.fatal(levelName + " - " + e.toString());
+      } else {
+        log.error(levelName + " admin-only user list requested by non-admin session");
+        htmlOutput = errors.getString("error.funky");
       }
       log.debug("Outputting HTML");
       out.write(htmlOutput);

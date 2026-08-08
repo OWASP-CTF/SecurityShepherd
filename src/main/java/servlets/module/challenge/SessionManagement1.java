@@ -2,8 +2,14 @@ package servlets.module.challenge;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
+import java.security.InvalidKeyException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
@@ -43,6 +49,28 @@ public class SessionManagement1 extends HttpServlet {
   public static String levelHash =
       "dfd6bfba1033fa380e378299b6a998c759646bd8aea02511482b8ce5d707f93a";
   private static String levelResult = "db7b1da5d7a43c7100a6f01bb0c";
+
+  // Server-side secret used to sign the "checksum" cookie. Since this cookie is never
+  // legitimately issued to a client with a valid signature, no client can forge a
+  // privileged "administrator" cookie without knowing this key.
+  private static final byte[] cookieSigningKey = Hash.randomKeyBytes();
+  private static final String HMAC_ALGO = "HmacSHA256";
+
+  /**
+   * Computes an HMAC-SHA256 signature over the supplied payload using the server-side secret
+   * key. Used to verify the integrity of the "checksum" cookie so that its value cannot be
+   * forged by a client.
+   */
+  private static byte[] signPayload(String payload) {
+    try {
+      Mac mac = Mac.getInstance(HMAC_ALGO);
+      mac.init(new SecretKeySpec(cookieSigningKey, HMAC_ALGO));
+      return mac.doFinal(payload.getBytes("UTF-8"));
+    } catch (NoSuchAlgorithmException | InvalidKeyException | UnsupportedEncodingException e) {
+      log.error("Could not sign checksum payload: " + e.toString());
+      return null;
+    }
+  }
 
   /**
    * Users must take advance of the broken session management in this application by modifying the
@@ -89,11 +117,28 @@ public class SessionManagement1 extends HttpServlet {
         String htmlOutput = null;
         if (theCookie != null) {
           log.debug("Cookie value: " + theCookie.getValue());
-          byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
-          String decodedCookie = new String(decodedCookieBytes, "UTF-8");
+          // Expected signed cookie format: base64(payload) + "." + base64(hmac-of-payload)
+          // Anything not carrying a valid HMAC produced with the server-side secret is rejected,
+          // so a client can no longer forge admin status by simply base64'ing a string.
+          String rawCookie = theCookie.getValue();
+          boolean signatureValid = false;
+          String decodedCookie = "";
+          int separatorIndex = rawCookie.indexOf('.');
+          if (separatorIndex > 0 && separatorIndex < rawCookie.length() - 1) {
+            String payloadPart = rawCookie.substring(0, separatorIndex);
+            String signaturePart = rawCookie.substring(separatorIndex + 1);
+            byte[] decodedCookieBytes = Base64.decodeBase64(payloadPart);
+            decodedCookie = new String(decodedCookieBytes, "UTF-8");
+            byte[] submittedSignature = Base64.decodeBase64(signaturePart);
+            byte[] expectedSignature = signPayload(decodedCookie);
+            if (expectedSignature != null
+                && MessageDigest.isEqual(expectedSignature, submittedSignature)) {
+              signatureValid = true;
+            }
+          }
           log.debug("Decoded Cookie: " + decodedCookie);
 
-          if (decodedCookie.equals("userRole=administrator")) {
+          if (signatureValid && decodedCookie.equals("userRole=administrator")) {
             log.debug("Challenge Complete");
             // Get key and add it to the output
             String userKey =
