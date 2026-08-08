@@ -1,7 +1,11 @@
 package servlets.module.challenge;
 
+import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -11,6 +15,8 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -81,13 +87,32 @@ public class SessionManagement2ChangePassword extends HttpServlet {
         }
         log.debug("subEmail = " + subEmail);
 
-        // No password is reset from here. Anybody could point this at any address, so a request
-        // that carries no proof the caller controls the mailbox neither changes the credential nor
-        // reveals one: doing either hands the account to whoever asked. A reset is started out of
-        // band with the account holder instead. The reply is the same for every address, so this
-        // cannot be used to find out which addresses have accounts either.
-        log.error(levelName + " refused a password reset for an unverified address");
-        htmlOutput = "********";
+        log.debug("Getting ApplicationRoot");
+        String ApplicationRoot = getServletContext().getRealPath("");
+
+        String newPassword = Hash.randomString();
+        try {
+          Connection conn =
+              Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
+          log.debug("Checking credentials");
+          PreparedStatement callstmt =
+              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userAddress = ?");
+          callstmt.setString(1, newPassword);
+          callstmt.setString(2, subEmail);
+          log.debug("Executing resetPassword");
+          callstmt.execute();
+          log.debug("Statement executed");
+
+          log.debug("Committing changes made to database");
+          callstmt = conn.prepareStatement("COMMIT");
+          callstmt.execute();
+          log.debug("Changes committed.");
+
+          htmlOutput = Encode.forHtml(newPassword);
+          Database.closeConnection(conn);
+        } catch (SQLException e) {
+          log.error(levelName + " SQL Error: " + e.toString());
+        }
         log.debug("Outputting HTML");
         out.write(bundle.getString("response.changedTo") + " " + htmlOutput);
       } catch (Exception e) {
