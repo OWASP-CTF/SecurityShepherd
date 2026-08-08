@@ -13,11 +13,13 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.security.MessageDigest;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -160,7 +162,7 @@ public class Setup extends HttpServlet {
 
       log.debug("Starting database setup...");
 
-      String auth = "";
+      String auth = null;
 
       String enableMongoChallenge = request.getParameter("enableMongoChallenge");
 
@@ -184,25 +186,32 @@ public class Setup extends HttpServlet {
       try {
         auth = new String(Files.readAllBytes(Paths.get(Constants.SETUP_AUTH)));
       } catch (NoSuchFileException e) {
-        // Auth file could not be found.
-        htmlOutput += "Auth file could not be found";
+        // Auth file could not be found. Leave auth null so the checks below reject the
+        // request; never fall through to comparing against an empty token.
         log.error("Auth file could not be found: " + e.toString());
       }
 
-      if (auth == "") {
-        // No auth loaded, could be because user never reloaded setup page after an
-        // error. Generate it again
+      if (auth == null || auth.trim().isEmpty()) {
+        // No usable token on disk, which is the expected state after a completed install
+        // because removeAuthFile() deletes it. Generate a fresh one so an operator can
+        // legitimately re-run setup, and reject this request: an absent token must never
+        // authorise setup.
         log.debug("Generating auth file");
 
         generateAuth();
-      }
 
-      if (!auth.equals(dbAuth)) {
+        htmlOutput += bundle.getString("generic.text.setup.authentication.failed");
+        log.error("Setup attempted with no auth token on disk. Request rejected.");
+
+      } else if (dbAuth == null
+          || !MessageDigest.isEqual(
+              auth.trim().getBytes(StandardCharsets.UTF_8),
+              dbAuth.trim().getBytes(StandardCharsets.UTF_8))) {
         log.debug("Invalid auth supplied");
 
         // The supplied auth data was incorrect
         htmlOutput += bundle.getString("generic.text.setup.authentication.failed");
-        log.error("Authorization mismatch: " + auth + " does not equal " + dbAuth);
+        log.error("Setup authorization mismatch. Request rejected.");
 
       } else {
         // Test the user's entered database properties. Use DriverManager directly instead of
