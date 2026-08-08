@@ -80,20 +80,13 @@ public class CsrfChallengeTargetTwo extends HttpServlet {
         log.debug("User Submitted - " + plusId);
         String userId = (String) ses.getAttribute("userStamp");
         if (!userId.equals(plusId)) {
-          String ApplicationRoot = getServletContext().getRealPath("");
-          String userName = (String) ses.getAttribute("userName");
-          String attackerName = Getter.getUserName(ApplicationRoot, plusId);
-          if (attackerName != null) {
-            log.debug(userName + " is been CSRF'd by " + attackerName);
-
-            log.debug("Attempting to Increment ");
-            String moduleHash = CsrfChallengeTwo.getLevelHash();
-            String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
-            result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
-          } else {
-            log.error("UserId '" + plusId + "' could not be found.");
-          }
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
         }
+        String applicationRoot = getServletContext().getRealPath("");
+        String moduleHash = CsrfChallengeTwo.getLevelHash();
+        String moduleId = Getter.getModuleIdFromHash(applicationRoot, moduleHash);
+        result = Setter.updateCsrfCounter(applicationRoot, moduleId, userId);
 
         if (result) {
           out.write(csrfGenerics.getString("target.incrementSuccess"));
