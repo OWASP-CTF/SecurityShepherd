@@ -44,10 +44,7 @@ public class PoorValidation2 extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(PoorValidation2.class);
 
-  /**
-   * Shopping cart addition algorithm is vulnerable to integer overflow. If the cost is high enough,
-   * the final value will go negative.
-   */
+  /** Processes shopping cart quantities and calculates the order total. */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
     // Setting IpAddress To Log and taking header for original IP if forwarded from
@@ -80,15 +77,15 @@ public class PoorValidation2 extends HttpServlet {
         log.debug("bananaAmount - " + bananaAmount);
 
         // Working out costs
-        int pineappleCost = pineappleAmount * 30;
-        int orangeCost = orangeAmount * 3000;
-        int appleCost = appleAmount * 45;
-        int bananaCost = bananaAmount * 15;
+        long pineappleCost = pineappleAmount * 30L;
+        long orangeCost = orangeAmount * 3000L;
+        long appleCost = appleAmount * 45L;
+        long bananaCost = bananaAmount * 15L;
 
         htmlOutput = new String();
 
         // Work Out Final Cost
-        int finalCost = pineappleCost + orangeCost + bananaCost + appleCost;
+        long finalCost = pineappleCost + orangeCost + bananaCost + appleCost;
 
         // Output Order
         htmlOutput =
