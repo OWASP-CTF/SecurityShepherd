@@ -624,6 +624,8 @@ CREATE  TABLE IF NOT EXISTS `BrokenAuthAndSessMangChalFive`.`users` (
   `userPassword` VARCHAR(128) NOT NULL ,
   `userAddress` VARCHAR(128) NOT NULL ,
   `userRole` VARCHAR(8) NOT NULL DEFAULT 'guest' ,
+  `resetToken` CHAR(64) NULL ,
+  `resetTokenExpires` BIGINT NULL ,
   PRIMARY KEY (`userId`) )
 ENGINE = InnoDB;
 
