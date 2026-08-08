@@ -54,7 +54,12 @@
 		//The org.owasp.encoder.Encode class should be used to encode any softcoded data. This should be performed everywhere for safety
 		
 		String ApplicationRoot = getServletContext().getRealPath("");
-		String csrfToken = Encode.forHtml(tokenCookie.getValue());
+		String csrfTokenName = "csrfChallengeThreeNonce";
+		if (ses.getAttribute(csrfTokenName) == null)
+		{
+			ses.setAttribute(csrfTokenName, Hash.randomString());
+		}
+		String csrfToken = Encode.forHtml(ses.getAttribute(csrfTokenName).toString());
 		String userClass = null;
 		if(ses.getAttribute("userClass") != null)
 		{
