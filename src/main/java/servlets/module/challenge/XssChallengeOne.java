@@ -79,6 +79,7 @@ public class XssChallengeOne extends HttpServlet {
           String searchTerm = request.getParameter("searchTerm");
           log.debug("User Submitted - " + searchTerm);
           searchTerm = XssFilter.levelOne(searchTerm);
+          searchTerm = Encode.forHtml(searchTerm);
           log.debug("After Filtering - " + searchTerm);
           String htmlOutput = new String();
           if (FindXSS.search(searchTerm)) {
@@ -105,7 +106,7 @@ public class XssChallengeOne extends HttpServlet {
                   + "<p>"
                   + bundle.getString("response.noResults")
                   + " "
-                  + Encode.forHtml(searchTerm)
+                  + searchTerm
                   + "</p>";
           log.debug("Outputting HTML");
           out.write(htmlOutput);
