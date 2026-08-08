@@ -105,7 +105,7 @@ public class SqlInjection3 extends HttpServlet {
         }
         htmlOutput += "</table>";
         if (i == 0) {
-          htmlOutput = "<p>" + bundle.getString("response.table.noResults") + "</p>";
+          htmlOutput = "<p>" + bundle.getString("response.noResults") + "</p>";
         }
       } catch (SQLException e) {
         log.debug("SQL Error caught - " + e.toString());

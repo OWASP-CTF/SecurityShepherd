@@ -126,7 +126,10 @@ public class SecurityMisconfigStealTokens extends HttpServlet {
                       + "<p>");
         }
       } catch (Exception e) {
-        out.write(errors.getString("securityMisconfig.servlet.stealTokens.notComplete.yourToken"));
+        // This key lives in the challenge bundle, not the error bundle. Looking it up in the
+        // error bundle threw out of the handler, so any request that reached here (one without
+        // the challenge cookie, for instance) failed with a server error instead of a message.
+        out.write(bundle.getString("securityMisconfig.servlet.stealTokens.notComplete.yourToken"));
         log.fatal(levelName + " - " + e.toString());
       }
       log.debug("Outputting HTML");

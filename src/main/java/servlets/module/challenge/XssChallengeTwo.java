@@ -94,7 +94,7 @@ public class XssChallengeTwo extends HttpServlet {
         out.write(errors.getString("error.noSession"));
       }
     } catch (Exception e) {
-      out.write(errors.getString("errors.funky"));
+      out.write(errors.getString("error.funky"));
       log.fatal(levelName + " - " + e.toString());
     }
   }
