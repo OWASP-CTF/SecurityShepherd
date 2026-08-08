@@ -131,14 +131,11 @@ public class SqlInjection1 extends HttpServlet {
           htmlOutput = "<p>" + bundle.getString("response.noResults") + "</p>";
         }
       } catch (SQLException e) {
-        log.debug("SQL Error caught - " + e.toString());
-        htmlOutput +=
-            "<p>"
-                + errors.getString("error.detected")
-                + "</p>"
-                + "<p>"
-                + Encode.forHtml(e.toString())
-                + "</p>";
+        // The database's own complaint is not for the caller. It names tables, columns and the
+        // statement that failed, which is how a query gets rebuilt until it does something it
+        // should not, and it turns a failure into an answer about the data behind it.
+        log.error("SQL Error caught - " + e.toString());
+        htmlOutput += "<p>" + errors.getString("error.detected") + "</p>";
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
