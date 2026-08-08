@@ -7,6 +7,7 @@ import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -71,8 +72,10 @@ public class CsrfChallengeTargetTwo extends HttpServlet {
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
         String plusId = request.getParameter("userId");
         log.debug("User Submitted - " + plusId);
+        Cookie tokenCookie = Validate.getToken(request.getCookies());
+        Object tokenParmeter = request.getParameter("csrfToken");
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId)) {
+        if (!userId.equals(plusId) && Validate.validateTokens(tokenCookie, tokenParmeter)) {
           String ApplicationRoot = getServletContext().getRealPath("");
           String userName = (String) ses.getAttribute("userName");
           String attackerName = Getter.getUserName(ApplicationRoot, plusId);

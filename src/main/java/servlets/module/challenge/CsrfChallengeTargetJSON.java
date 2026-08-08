@@ -8,6 +8,7 @@ import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.Scanner;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -80,8 +81,11 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
         log.debug("Getting userId");
         String plusId = (String) json.get("userId");
         log.debug("User Submitted - " + plusId);
+        Cookie tokenCookie = Validate.getToken(request.getCookies());
+        Object tokenParmeter =
+            json.optString("csrfToken", request.getParameter("csrfToken"));
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId)) {
+        if (!userId.equals(plusId) && Validate.validateTokens(tokenCookie, tokenParmeter)) {
           String ApplicationRoot = getServletContext().getRealPath("");
           String userName = (String) ses.getAttribute("userName");
           String attackerName = Getter.getUserName(ApplicationRoot, plusId);
