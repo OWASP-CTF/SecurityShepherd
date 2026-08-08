@@ -3,6 +3,7 @@ package servlets.module.challenge;
 import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -13,6 +14,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
@@ -22,10 +24,8 @@ import utils.Validate;
 /**
  * Session Management Challenge Five SessionManagement5SetToken (Does not Return Result Key)
  *
- * <p>This function is a shell to give the appearance that a token has been set for a user. A DB
- * call is made to check if a user exists. If the user does exist the server returns an ok message
- * claiming that the user has been emailed a URL with a token embedded for resetting their password.
- * This in fact does not happen. User must find another way to sign in as an admin.
+ * <p>A DB call is made to check if a user exists. If the user does exist, a password reset token is
+ * created and the server returns the existing acknowledgement that a reset URL was emailed.
  *
  * <p><br>
  * <br>
@@ -50,9 +50,10 @@ public class SessionManagement5SetToken extends HttpServlet {
   private static final Logger log = LogManager.getLogger(SessionManagement5SetToken.class);
   private static String levelName = "SessionManagement5SetToken";
   public static String levelHash = SessionManagement5.levelHash;
+  private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
   /**
-   * Used to apparently send a message to a user with a token to reset their password.
+   * Used to issue a token for a user's password reset request.
    *
    * @param userName Sub schema user name
    */
@@ -110,6 +111,19 @@ public class SessionManagement5SetToken extends HttpServlet {
         // Is the username valid?
         if (resultSet.next()) {
           log.debug("User found");
+          byte[] tokenBytes = new byte[32];
+          SECURE_RANDOM.nextBytes(tokenBytes);
+          String resetToken = Base64.encodeBase64URLSafeString(tokenBytes);
+          callstmt =
+              conn.prepareStatement(
+                  "UPDATE users SET resetToken = SHA2(?, 256), resetTokenExpires = ? WHERE"
+                      + " userName = ?");
+          callstmt.setString(1, resetToken);
+          callstmt.setLong(2, System.currentTimeMillis() + 600000L);
+          callstmt.setString(3, userName);
+          callstmt.executeUpdate();
+          callstmt = conn.prepareStatement("COMMIT");
+          callstmt.execute();
           htmlOutput =
               bundle.getString("setToken.sentTo.1")
                   + " '"
