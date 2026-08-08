@@ -48,9 +48,10 @@ String i18nLevelName = bundle.getString("challenge.challengeName");
  	}
  	// validateSession ensures a valid session, and valid role credentials
  	// If tokenCookie == null, then the page is not going to continue loading
- 	if (Validate.validateSession(ses) && tokenCookie != null)
- 	{
- 		ShepherdLogManager.logEvent(request.getRemoteAddr(), request.getHeader("X-Forwarded-For"), levelName + " has been accessed by " + ses.getAttribute("userName").toString(), ses.getAttribute("userName"));
+	if (Validate.validateSession(ses) && tokenCookie != null)
+	{
+		ses.setAttribute("sessionManagement3User", "guest12");
+		ShepherdLogManager.logEvent(request.getRemoteAddr(), request.getHeader("X-Forwarded-For"), levelName + " has been accessed by " + ses.getAttribute("userName").toString(), ses.getAttribute("userName"));
 %>
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -157,9 +158,8 @@ String i18nLevelName = bundle.getString("challenge.challengeName");
 					});
 				});
 			});
-			
+
 			$("#leForm2").submit(function(){
-				document.cookie="current=WjNWbGMzUXhNZz09";
 				var theNewPassword = $("#passOne").val();
 				var theNewPasswordAgain = $("#passTwo").val();
 				if(theNewPassword == theNewPasswordAgain && theNewPassword.length > 6)
