@@ -170,6 +170,36 @@ class ValidateTest {
     assertEquals("http://example.com", Validate.makeValidUrl("HTTP://EXAMPLE.COM"));
   }
 
+  // isSafeHttpUrl
+
+  @Test
+  void isSafeHttpUrl_acceptsAbsoluteHttpAndHttpsUrls() {
+    assertTrue(Validate.isSafeHttpUrl("http://example.com/path"));
+    assertTrue(Validate.isSafeHttpUrl("https://sub.example.com/path?q=value#section"));
+  }
+
+  @Test
+  void isSafeHttpUrl_rejectsActiveAndCustomSchemes() {
+    assertFalse(Validate.isSafeHttpUrl("javascript:alert(1)"));
+    assertFalse(Validate.isSafeHttpUrl("data:text/html,<script>alert(1)</script>"));
+    assertFalse(Validate.isSafeHttpUrl("httpjavascript:alert(1)"));
+  }
+
+  @Test
+  void isSafeHttpUrl_rejectsOpaqueHostlessAndCredentialBearingUrls() {
+    assertFalse(Validate.isSafeHttpUrl("http:javascript:alert(1)"));
+    assertFalse(Validate.isSafeHttpUrl("https:relative/path"));
+    assertFalse(Validate.isSafeHttpUrl("//example.com/path"));
+    assertFalse(Validate.isSafeHttpUrl("https://trusted.example@evil.example/path"));
+  }
+
+  @Test
+  void isSafeHttpUrl_rejectsMissingOrMalformedInput() {
+    assertFalse(Validate.isSafeHttpUrl(null));
+    assertFalse(Validate.isSafeHttpUrl(""));
+    assertFalse(Validate.isSafeHttpUrl("https://example.com/has a space"));
+  }
+
   // validHostUrl
 
   @Test

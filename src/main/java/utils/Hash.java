@@ -81,7 +81,7 @@ public class Hash {
         sb.append(String.format("%02X", b));
       }
       String userSpecificSolution = sb.toString();
-      log.debug("Returning: " + userSpecificSolution);
+      log.debug("Generated user-specific solution");
       toReturn = userSpecificSolution;
     } catch (Exception e) {
       log.error("Encrypt Failure: " + e.toString());
@@ -132,7 +132,7 @@ public class Hash {
     psn1.nextBytes(byteArray);
     BigInteger bigInt = new BigInteger(byteArray);
     result = bigInt.toString();
-    log.debug("Generated String = " + result);
+    log.debug("Generated random security value");
 
     return result;
   }

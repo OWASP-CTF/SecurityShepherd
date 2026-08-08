@@ -1,6 +1,7 @@
 package utils;
 
 import java.math.BigInteger;
+import java.net.URI;
 import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
 import javax.servlet.http.Cookie;
@@ -203,6 +204,34 @@ public class Validate {
   }
 
   /**
+   * Checks that a link is an absolute, hierarchical HTTP(S) URL.
+   *
+   * <p>Checking only a string prefix or URL protocol still permits opaque and hostless forms. User
+   * information is also rejected so rendered links cannot disguise their destination as a trusted
+   * host.
+   *
+   * @param candidate URL supplied by a user
+   * @return true only for an absolute HTTP(S) URL with a host and no user information
+   */
+  public static boolean isSafeHttpUrl(String candidate) {
+    if (candidate == null || candidate.isEmpty()) {
+      return false;
+    }
+
+    try {
+      URI uri = URI.create(candidate);
+      String scheme = uri.getScheme();
+      return uri.isAbsolute()
+          && ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))
+          && uri.getHost() != null
+          && !uri.getHost().isEmpty()
+          && uri.getRawUserInfo() == null;
+    } catch (IllegalArgumentException e) {
+      return false;
+    }
+  }
+
+  /**
    * Session is checked for credentials and ensures that they have not been modified and that they
    * are valid for an administrator
    *
@@ -370,7 +399,6 @@ public class Validate {
       result = (String) input;
       if (result.length() > maxLength) {
         log.debug("Parameter Too Long: " + result.length() + " characters");
-        log.debug("Parameter Was: " + result);
         result = new String();
       }
     }

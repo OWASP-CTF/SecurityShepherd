@@ -101,7 +101,7 @@ public class CsrfChallengeTargetSix extends HttpServlet {
         log.debug("User Submitted - " + plusId);
         String csrfToken = request.getParameter("csrfToken").trim();
         ;
-        log.debug("csrfToken Submitted - " + csrfToken);
+        log.debug("CSRF token submitted; validating it");
 
         if (!userId.equals(plusId)) {
           if (csrfToken.equalsIgnoreCase(storedToken)) {

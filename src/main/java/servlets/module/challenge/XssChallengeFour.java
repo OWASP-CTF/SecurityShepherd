@@ -79,7 +79,7 @@ public class XssChallengeFour extends HttpServlet {
           String userPost = new String();
           String searchTerm = request.getParameter("searchTerm");
           log.debug("User Submitted - " + searchTerm);
-          if (!searchTerm.startsWith("http")) {
+          if (!Validate.isSafeHttpUrl(searchTerm)) {
             searchTerm = "https://www.owasp.org/index.php/OWASP_Security_Shepherd";
             userPost =
                 "<a href=\""
@@ -88,7 +88,6 @@ public class XssChallengeFour extends HttpServlet {
                     + searchTerm
                     + "</a>";
           } else {
-
             String encodedAttribute = Encode.forHtmlAttribute(searchTerm);
             userPost =
                 "<a href=\""

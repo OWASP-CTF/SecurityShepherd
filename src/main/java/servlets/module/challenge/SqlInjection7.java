@@ -72,7 +72,7 @@ public class SqlInjection7 extends HttpServlet {
         String subEmail = Validate.validateParameter(request.getParameter("subEmail"), 60);
         log.debug("subEmail - " + subEmail.replaceAll("\n", " \\\\n ")); // Escape \n's
         String subPassword = Validate.validateParameter(request.getParameter("subPassword"), 40);
-        log.debug("subPassword - " + subPassword);
+        log.debug("Password submitted");
         boolean validEmail =
             Validate.isValidEmailAddress(subEmail.replaceAll("\n", "")); // Ignore \n 's
         if (!subPassword.isEmpty() && !subPassword.isEmpty() && validEmail) {

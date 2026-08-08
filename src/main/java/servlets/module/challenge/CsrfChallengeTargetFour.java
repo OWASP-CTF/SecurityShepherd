@@ -94,8 +94,7 @@ public class CsrfChallengeTargetFour extends HttpServlet {
         String plusId = request.getParameter("userId").trim();
         log.debug("User Submitted - " + plusId);
         String csrfToken = request.getParameter("csrfToken").trim();
-        log.debug("csrfToken Submitted - '" + csrfToken + "'");
-        log.debug("storedCsrf Token is - '" + storedToken + "'");
+        log.debug("CSRF token submitted; validating against stored token");
 
         if (!userId.equals(plusId)) {
           if (csrfToken.equalsIgnoreCase(storedToken)) {

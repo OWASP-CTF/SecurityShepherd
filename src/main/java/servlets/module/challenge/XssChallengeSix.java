@@ -3,8 +3,6 @@ package servlets.module.challenge;
 import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -82,16 +80,10 @@ public class XssChallengeSix extends HttpServlet {
           String searchTerm = request.getParameter("searchTerm");
           log.debug("User Submitted - " + searchTerm);
           String validatedUrl = "https://www.google.com/search?q=What+does+a+HTTP+link+look+like";
-          try {
-            URL theUrl = new URL(searchTerm);
-            if ("http".equalsIgnoreCase(theUrl.getProtocol())
-                || "https".equalsIgnoreCase(theUrl.getProtocol())) {
-              validatedUrl = searchTerm;
-            } else {
-              log.debug("Was not a HTTP URL");
-            }
-          } catch (MalformedURLException e) {
-            log.debug("Could not Cast URL from input: " + e.toString());
+          if (Validate.isSafeHttpUrl(searchTerm)) {
+            validatedUrl = searchTerm;
+          } else {
+            log.debug("Rejected unsafe or malformed HTTP URL");
           }
           searchTerm = Encode.forHtmlAttribute(validatedUrl);
           userPost = "<a href=\"" + searchTerm + "\">Your HTTP Link!</a>";
