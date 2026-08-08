@@ -16,16 +16,17 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
 /**
  * Session Management Challenge Five SessionManagement5SetToken (Does not Return Result Key)
  *
- * <p>This function is a shell to give the appearance that a token has been set for a user. A DB
- * call is made to check if a user exists. If the user does exist the server returns an ok message
- * claiming that the user has been emailed a URL with a token embedded for resetting their password.
- * This in fact does not happen. User must find another way to sign in as an admin.
+ * <p>A DB call is made to check if a user exists. If the user does exist, a random single use reset
+ * token is minted and stored server side against that user name, and the server returns an ok
+ * message claiming the user has been emailed a URL with the token embedded. The token value itself
+ * is never returned in the response - it is delivered out of band.
  *
  * <p><br>
  * <br>
@@ -110,6 +111,12 @@ public class SessionManagement5SetToken extends HttpServlet {
         // Is the username valid?
         if (resultSet.next()) {
           log.debug("User found");
+          // Mint an unguessable, server-side reset token bound to this account. The token value is
+          // never returned to the requester - it is "emailed" out of band.
+          String resetToken = Hash.randomString();
+          ses.setAttribute("sessionManagement5Token_" + userName, resetToken);
+          ses.setAttribute(
+              "sessionManagement5TokenTime_" + userName, Long.valueOf(System.currentTimeMillis()));
           htmlOutput =
               bundle.getString("setToken.sentTo.1")
                   + " '"
