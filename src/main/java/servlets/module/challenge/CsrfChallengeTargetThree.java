@@ -71,16 +71,13 @@ public class CsrfChallengeTargetThree extends HttpServlet {
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
         String plusId = request.getParameter("userid");
         log.debug("User Submitted - " + plusId);
-        String csrfParam = null;
-        if (request.getParameter("csrfToken") != null) {
-          csrfParam = (String) request.getParameter("csrfToken");
-          if (csrfParam.isEmpty()) {
-            csrfParam = null;
-          }
-        }
+        String csrfParam = request.getParameter("csrfToken");
+        Object storedToken = ses.getAttribute("csrfChallengeThreeNonce");
 
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId) && csrfParam != null) {
+        if (!userId.equals(plusId)
+            && storedToken != null
+            && storedToken.toString().equals(csrfParam)) {
           String ApplicationRoot = getServletContext().getRealPath("");
           String userName = (String) ses.getAttribute("userName");
           String attackerName = Getter.getUserName(ApplicationRoot, plusId);
