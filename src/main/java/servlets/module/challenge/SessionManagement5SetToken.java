@@ -110,6 +110,11 @@ public class SessionManagement5SetToken extends HttpServlet {
         // Is the username valid?
         if (resultSet.next()) {
           log.debug("User found");
+          // FIX: store a server-side reset token in the session so ChangePassword can
+          // verify it was legitimately issued, preventing forged base64-timestamp attacks.
+          String issuedTokenTime = new java.util.Date().toString();
+          ses.setAttribute("sm5ResetTokenTime", issuedTokenTime);
+          ses.setAttribute("sm5ResetTargetUser", userName);
           htmlOutput =
               bundle.getString("setToken.sentTo.1")
                   + " '"

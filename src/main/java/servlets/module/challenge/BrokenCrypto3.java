@@ -71,6 +71,24 @@ public class BrokenCrypto3 extends HttpServlet {
         String userData = request.getParameter("userData");
         log.debug("User Submitted - " + userData);
 
+        // Reject submissions that are not valid Base64 of exactly the expected ciphertext length
+        // to prevent chosen-plaintext key-recovery attacks against the XOR oracle.
+        byte[] decoded;
+        try {
+          decoded = org.apache.commons.codec.binary.Base64.decodeBase64(userData.getBytes());
+        } catch (Exception ex) {
+          htmlOutput = errors.getString("error.funky");
+          out.write(htmlOutput);
+          return;
+        }
+        // The key is 40 bytes; only accept ciphertext of that exact length so an attacker
+        // cannot submit arbitrary chosen plaintext to recover individual key bytes.
+        if (decoded.length != levelResult.getBytes().length) {
+          htmlOutput = errors.getString("error.funky");
+          out.write(htmlOutput);
+          return;
+        }
+
         log.debug("Decrypting user input");
         // Using level key as encryption key
         String decryptedUserData = decrypt(userData, levelResult);

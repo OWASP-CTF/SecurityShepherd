@@ -13,11 +13,11 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
 import utils.FindXSS;
 import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
-import utils.XssFilter;
 
 /**
  * Cross Site Scripting Challenge One <br>
@@ -77,10 +77,10 @@ public class XssChallengeOne extends HttpServlet {
         if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
           String searchTerm = request.getParameter("searchTerm");
           log.debug("User Submitted - " + searchTerm);
-          searchTerm = XssFilter.levelOne(searchTerm);
-          log.debug("After Filtering - " + searchTerm);
+          String encodedTerm = Encode.forHtml(searchTerm);
+          log.debug("After Encoding - " + encodedTerm);
           String htmlOutput = new String();
-          if (FindXSS.search(searchTerm)) {
+          if (FindXSS.search(encodedTerm)) {
             htmlOutput =
                 "<h2 class='title'>"
                     + bundle.getString("result.wellDone")
@@ -96,7 +96,7 @@ public class XssChallengeOne extends HttpServlet {
                         (String) ses.getAttribute("userName"))
                     + "</a>";
           }
-          log.debug("Adding searchTerm to Html: " + searchTerm);
+          log.debug("Adding searchTerm to Html: " + encodedTerm);
           htmlOutput +=
               "<h2 class='title'>"
                   + bundle.getString("response.searchResults")
@@ -104,7 +104,7 @@ public class XssChallengeOne extends HttpServlet {
                   + "<p>"
                   + bundle.getString("response.noResults")
                   + " "
-                  + searchTerm
+                  + encodedTerm
                   + "</p>";
           log.debug("Outputting HTML");
           out.write(htmlOutput);

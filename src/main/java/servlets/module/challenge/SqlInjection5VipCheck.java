@@ -78,10 +78,8 @@ public class SqlInjection5VipCheck extends HttpServlet {
         log.debug("Looking for VipCoupons Insecurely");
         PreparedStatement prepstmt =
             conn.prepareStatement(
-                "SELECT itemId, perCentOff, itemName FROM vipCoupons JOIN items USING (itemId)"
-                    + " WHERE couponCode = '"
-                    + couponCode
-                    + "';");
+                "SELECT itemId, perCentOff, itemName FROM vipCoupons JOIN items USING (itemId) WHERE couponCode = ?");
+        prepstmt.setString(1, couponCode);
         ResultSet coupons = prepstmt.executeQuery();
         try {
           if (coupons.next()) {

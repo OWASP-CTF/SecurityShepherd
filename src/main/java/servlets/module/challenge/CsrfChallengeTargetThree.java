@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import utils.CsrfNonce;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -69,18 +70,18 @@ public class CsrfChallengeTargetThree extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
-        String plusId = request.getParameter("userid");
-        log.debug("User Submitted - " + plusId);
-        String csrfParam = null;
-        if (request.getParameter("csrfToken") != null) {
-          csrfParam = (String) request.getParameter("csrfToken");
-          if (csrfParam.isEmpty()) {
-            csrfParam = null;
-          }
+
+        String submittedToken = request.getParameter("csrfToken");
+        if (!CsrfNonce.isValid(ses, submittedToken)) {
+          log.debug("Invalid or missing CSRF nonce — request blocked");
+          out.write(csrfGenerics.getString("target.incrementFailed"));
+          return;
         }
 
+        String plusId = request.getParameter("userid");
+        log.debug("User Submitted - " + plusId);
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId) && csrfParam != null) {
+        if (!userId.equals(plusId)) {
           String ApplicationRoot = getServletContext().getRealPath("");
           String userName = (String) ses.getAttribute("userName");
           String attackerName = Getter.getUserName(ApplicationRoot, plusId);

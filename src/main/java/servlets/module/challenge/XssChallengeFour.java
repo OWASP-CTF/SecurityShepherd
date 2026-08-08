@@ -13,11 +13,11 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
 import utils.FindXSS;
 import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
-import utils.XssFilter;
 
 /**
  * Cross Site Scripting Challenge Four control class. <br>
@@ -89,10 +89,17 @@ public class XssChallengeFour extends HttpServlet {
                     + "</a>";
           } else {
 
-            searchTerm = XssFilter.encodeForHtml(searchTerm);
+            String encodedAttr = Encode.forHtmlAttribute(searchTerm);
+            String encodedContent = Encode.forHtml(searchTerm);
             userPost =
-                "<a href=\"" + searchTerm + "\" alt=\"" + searchTerm + "\">" + searchTerm + "</a>";
-            log.debug("After Encoding - " + searchTerm);
+                "<a href=\""
+                    + encodedAttr
+                    + "\" alt=\""
+                    + encodedAttr
+                    + "\">"
+                    + encodedContent
+                    + "</a>";
+            log.debug("After Encoding - " + encodedAttr);
             if (FindXSS.search(userPost)) {
               htmlOutput =
                   "<h2 class='title'>"

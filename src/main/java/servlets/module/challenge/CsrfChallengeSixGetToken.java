@@ -16,6 +16,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
+import utils.CsrfNonce;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -68,6 +69,7 @@ public class CsrfChallengeSixGetToken extends HttpServlet {
       HttpSession ses = request.getSession(true);
       if (Validate.validateSession(ses)) {
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+        CsrfNonce.getOrCreate(ses);
         String htmlOutput = new String("Your csrf Token for this Challenge is: ");
         String userId = request.getParameter("userId").toString();
 

@@ -64,6 +64,13 @@ public class UrlAccess2Admin extends HttpServlet {
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
       log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+      // Role check: only Shepherd admins may access this privileged endpoint
+      String sessionRole = (String) ses.getAttribute("userRole");
+      if (!"admin".equals(sessionRole)) {
+        log.warn(levelName + " - non-admin access attempt by: " + ses.getAttribute("userName"));
+        response.sendError(HttpServletResponse.SC_FORBIDDEN);
+        return;
+      }
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
       String htmlOutput = new String();

@@ -69,6 +69,18 @@ public class DirectObjectBankCurrentBalance extends HttpServlet {
       try {
         String accountNumber = request.getParameter("accountNumber");
         log.debug("Account Number - " + accountNumber);
+        // Ownership check: verify the requested account belongs to the bank session user
+        String sessionAccount = (String) ses.getAttribute("directObjectBankAccount");
+        if (sessionAccount == null || !sessionAccount.equals(accountNumber)) {
+          log.warn(
+              levelName
+                  + " - IDOR attempt: session user "
+                  + ses.getAttribute("userName")
+                  + " tried to access accountNumber "
+                  + accountNumber);
+          out.write(errors.getString("error.funky"));
+          return;
+        }
         String applicationRoot = getServletContext().getRealPath("");
         String htmlOutput = new String();
         long currentBalance =

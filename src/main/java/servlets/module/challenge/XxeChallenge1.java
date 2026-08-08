@@ -87,15 +87,17 @@ public class XxeChallenge1 extends HttpServlet {
           if (Validate.validateTokens(tokenCookie, tokenHeader)) {
             InputStream json = request.getInputStream();
             String emailAddr = readJson(json, errors);
+            // Guard against null before HTML-encoding to avoid NullPointerException
+            if (emailAddr == null) {
+              out.write("<p>" + bundle.getString("response.blank.email") + "</p>");
+              return;
+            }
             emailAddr = Encode.forHtml(emailAddr);
             log.debug("Email Addr: " + emailAddr);
 
             String htmlOutput = new String();
 
-            if (emailAddr == null) {
-              htmlOutput += "<p>" + bundle.getString("response.blank.email") + "</p>";
-              out.write(htmlOutput + emailAddr);
-            } else if (Validate.isValidEmailAddress(emailAddr)) {
+            if (Validate.isValidEmailAddress(emailAddr)) {
               log.debug("User Submitted - " + emailAddr);
 
               htmlOutput +=

@@ -13,14 +13,14 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.Hash;
+import utils.CsrfNonce;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
 /**
  * Cross Site Request Forgery Challenge Target Seven - Does not return Result key <br>
  * <br>
- * Weak Nonce Variety can be broken <br>
+ * Strong nonce via CsrfNonce utility (replaces enumerable DB-stored token). <br>
  * <br>
  * This file is part of the Security Shepherd Project.
  *
@@ -46,8 +46,7 @@ public class CsrfChallengeTargetSeven extends HttpServlet {
   private static String levelName = "CSRF Seven Target";
 
   /**
-   * CSRF vulnerable function that can be used by users to force other users to mark their CSRF
-   * challenge Two as complete.
+   * CSRF-protected function. Requires a valid session nonce via {@code csrfToken} POST parameter.
    *
    * @param userId User identifier to be incremented
    */
@@ -65,10 +64,8 @@ public class CsrfChallengeTargetSeven extends HttpServlet {
 
     PrintWriter out = response.getWriter();
     out.print(getServletInfo());
-    String storedToken = new String();
     try {
       String ApplicationRoot = getServletContext().getRealPath("");
-      String csrfTokenName = "csrfChallengeSevenNonce";
       boolean result = false;
       HttpSession ses = request.getSession(true);
       String userId = (String) ses.getAttribute("userStamp");
@@ -78,41 +75,30 @@ public class CsrfChallengeTargetSeven extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
-        // Get CSRF Token From session
-        if (ses.getAttribute(csrfTokenName) == null
-            || ses.getAttribute(csrfTokenName).toString().isEmpty()) {
-          log.debug("No CSRF Token associated with user");
-          storedToken = Hash.randomString();
-          out.write(
-              csrfGenerics.getString("target.noTokenNewToken") + " " + storedToken + "<br><br>");
-          ses.setAttribute(csrfTokenName, storedToken);
-          Setter.setCsrfChallengeSevenCsrfToken(userId, storedToken, ApplicationRoot);
-        } else {
-          storedToken = "" + ses.getAttribute(csrfTokenName);
+
+        String csrfToken = request.getParameter("csrfToken");
+        if (!CsrfNonce.isValid(ses, csrfToken)) {
+          log.debug("Invalid or missing CSRF nonce — request blocked");
+          out.write(csrfGenerics.getString("target.incrementFailed"));
+          return;
         }
+
         log.debug("Victom is - " + userId);
         String plusId = request.getParameter("userId").trim();
         log.debug("User Submitted - " + plusId);
-        String csrfToken = request.getParameter("csrfToken").trim();
-        log.debug("csrfToken Submitted - '" + csrfToken + "'");
-        log.debug("storedCsrf Token is - '" + storedToken + "'");
 
         if (!userId.equals(plusId)) {
-          if (csrfToken.equalsIgnoreCase(storedToken)) {
-            log.debug("Valid Nonce Value Submitted");
-            String userName = (String) ses.getAttribute("userName");
-            String attackerName = Getter.getUserName(ApplicationRoot, plusId);
-            if (attackerName != null) {
-              log.debug(userName + " is been CSRF'd by " + attackerName);
+          log.debug("Valid Nonce Value Submitted");
+          String userName = (String) ses.getAttribute("userName");
+          String attackerName = Getter.getUserName(ApplicationRoot, plusId);
+          if (attackerName != null) {
+            log.debug(userName + " is been CSRF'd by " + attackerName);
 
-              log.debug("Attempting to Increment ");
-              String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
-              result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
-            } else {
-              log.error("UserId '" + plusId + "' could not be found.");
-            }
+            log.debug("Attempting to Increment ");
+            String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
+            result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
           } else {
-            log.debug("User " + plusId + " CSRF attack failed due to invalid nonce");
+            log.error("UserId '" + plusId + "' could not be found.");
           }
         } else {
           log.debug("User " + userId + " is attacking themselves");

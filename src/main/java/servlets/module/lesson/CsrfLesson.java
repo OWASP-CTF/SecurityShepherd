@@ -14,6 +14,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
+import utils.CsrfNonce;
 import utils.FindXSS;
 import utils.Hash;
 import utils.ShepherdLogManager;
@@ -75,6 +76,7 @@ public class CsrfLesson extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug("Current User: " + ses.getAttribute("userName").toString());
+        CsrfNonce.getOrCreate(ses);
         Cookie tokenCookie = Validate.getToken(request.getCookies());
         Object tokenParmeter = request.getParameter("csrfToken");
         if (Validate.validateTokens(tokenCookie, tokenParmeter)) {

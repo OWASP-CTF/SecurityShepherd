@@ -1,11 +1,7 @@
 package servlets.module.challenge;
 
-import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -15,8 +11,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.owasp.encoder.Encode;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -47,10 +41,8 @@ public class SessionManagement2ChangePassword extends HttpServlet {
       "f5ddc0ed2d30e597ebacf5fdd117083674b19bb92ffc3499121b9e6a12c92959";
 
   /**
-   * A user with the submitted email address is set a new random password, the password is also
-   * returned from the database procedure and is forwards through to the HTTP response. This
-   * response is not consumed by the client interface by default, and the user will have to discover
-   * it.
+   * A password reset request is refused because no proof is provided that the caller controls the
+   * mailbox. The reply is identical regardless of whether the address corresponds to an account.
    *
    * @param subEmail Sub schema user email address
    */
@@ -76,10 +68,7 @@ public class SessionManagement2ChangePassword extends HttpServlet {
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
 
-      String htmlOutput = new String();
-      log.debug(levelName + " Servlet accessed");
       try {
-        log.debug("Getting Challenge Parameter");
         Object emailObj = request.getParameter("subEmail");
         String subEmail = new String();
         if (emailObj != null) {
@@ -87,34 +76,16 @@ public class SessionManagement2ChangePassword extends HttpServlet {
         }
         log.debug("subEmail = " + subEmail);
 
-        log.debug("Getting ApplicationRoot");
-        String ApplicationRoot = getServletContext().getRealPath("");
-
-        String newPassword = Hash.randomString();
-        try {
-          Connection conn =
-              Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
-          log.debug("Checking credentials");
-          PreparedStatement callstmt =
-              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userAddress = ?");
-          callstmt.setString(1, newPassword);
-          callstmt.setString(2, subEmail);
-          log.debug("Executing resetPassword");
-          callstmt.execute();
-          log.debug("Statement executed");
-
-          log.debug("Committing changes made to database");
-          callstmt = conn.prepareStatement("COMMIT");
-          callstmt.execute();
-          log.debug("Changes committed.");
-
-          htmlOutput = Encode.forHtml(newPassword);
-          Database.closeConnection(conn);
-        } catch (SQLException e) {
-          log.error(levelName + " SQL Error: " + e.toString());
-        }
+        // No password is reset from here. Anybody could point this at any address, so a request
+        // that carries no proof the caller controls the mailbox neither changes the credential nor
+        // reveals one: doing either hands the account to whoever asked. A reset is started out of
+        // band with the account holder instead. The reply is the same for every address, so this
+        // cannot be used to find out which addresses have accounts either.
+        log.error(levelName + " refused a password reset for an unverified address");
+        String htmlOutput =
+            "If that email address has an account, a link to reset its password has been sent to it.";
         log.debug("Outputting HTML");
-        out.write(bundle.getString("response.changedTo") + " " + htmlOutput);
+        out.write(htmlOutput);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());

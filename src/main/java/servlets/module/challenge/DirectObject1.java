@@ -75,6 +75,18 @@ public class DirectObject1 extends HttpServlet {
       try {
         String userId = request.getParameter("userId[]");
         log.debug("User Submitted - " + userId);
+        // Ownership check: only allow a user to view their own profile
+        String sessionUserId = (String) ses.getAttribute("userStamp");
+        if (sessionUserId != null && !sessionUserId.equals(userId)) {
+          log.warn(
+              levelName
+                  + " - IDOR attempt: session user "
+                  + ses.getAttribute("userName")
+                  + " tried to access userId "
+                  + userId);
+          out.write(errors.getString("error.funky"));
+          return;
+        }
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
         String htmlOutput = new String();

@@ -102,6 +102,10 @@ public class SessionManagement5ChangePassword extends HttpServlet {
         log.debug("userName = " + userName);
         log.debug("newPass = " + newPass);
         log.debug("token = " + token);
+        // FIX: Validate the reset token against the server-side session value rather than
+        // trusting a client-supplied base64 timestamp, which is trivially forgeable.
+        // The token is still decoded for display parity, but acceptance requires the
+        // session-stored token (set by SessionManagement5SetToken) to match.
         String tokenTime = new String();
         try {
           byte[] decodedToken = Base64.decodeBase64(token);
@@ -110,27 +114,47 @@ public class SessionManagement5ChangePassword extends HttpServlet {
           log.debug("Could not decode password token");
           errorMessage += "<p>" + bundle.getString("changePass.noDecode") + "</p>";
         }
+
+        // Retrieve server-side issued token data
+        Object sessionTokenTimeObj = ses.getAttribute("sm5ResetTokenTime");
+        Object sessionTargetUserObj = ses.getAttribute("sm5ResetTargetUser");
+        String sessionTokenTime = sessionTokenTimeObj != null ? sessionTokenTimeObj.toString() : "";
+        String sessionTargetUser =
+            sessionTargetUserObj != null ? sessionTargetUserObj.toString() : "";
+
+        boolean serverTokenValid = false;
+        if (!sessionTokenTime.isEmpty() && !sessionTargetUser.isEmpty()) {
+          // Check that the supplied userName matches the one the token was issued for
+          if (sessionTargetUser.equals(userName)) {
+            // Compute age of server-issued token
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("EEE MMM d HH:mm:ss Z yyyy");
+            try {
+              Date tokenDateTime = simpleDateFormat.parse(sessionTokenTime);
+              Date currentDateTime = new Date();
+              tokenLife =
+                  (int) ((currentDateTime.getTime() / 60000) - (tokenDateTime.getTime() / 60000));
+              log.debug("Server token life = " + tokenLife);
+              if (tokenLife < 10 && tokenLife >= 0) {
+                serverTokenValid = true;
+              }
+            } catch (ParseException e) {
+              log.error("Date Parsing Error on server token: " + e.toString());
+            }
+          } else {
+            log.debug(
+                "Token target user mismatch: session=" + sessionTargetUser + " param=" + userName);
+          }
+        } else {
+          log.debug("No server-side reset token found in session");
+        }
+
         if (tokenTime.isEmpty()) {
           log.debug("Could not decode token. Ending Servlet.");
           out.write(errorMessage);
         } else {
           log.debug("Decoded Token = " + tokenTime);
 
-          // Get Time from Token and see if it is inside the last 10 minutes
-          SimpleDateFormat simpleDateFormat = new SimpleDateFormat("EEE MMM d HH:mm:ss Z yyyy");
-          try {
-            Date tokenDateTime = simpleDateFormat.parse(tokenTime);
-            Date currentDateTime = new Date();
-            // Get difference in minutes
-            tokenLife =
-                (int) ((currentDateTime.getTime() / 60000) - (tokenDateTime.getTime() / 60000));
-            log.debug("Token life = " + tokenLife);
-          } catch (ParseException e) {
-            log.error("Date Parsing Error: " + e.toString());
-            errorMessage += bundle.getString("changePass.badTokenData") + ": " + e.toString();
-          }
-
-          if (tokenLife < 10 && tokenLife >= 0) {
+          if (serverTokenValid) {
             if (newPass.length() >= 12) {
               log.debug("Getting ApplicationRoot");
               String ApplicationRoot = getServletContext().getRealPath("");
@@ -157,6 +181,10 @@ public class SessionManagement5ChangePassword extends HttpServlet {
               callstmt.execute();
               log.debug("Changes committed.");
 
+              // Invalidate the server-side token after successful use
+              ses.removeAttribute("sm5ResetTokenTime");
+              ses.removeAttribute("sm5ResetTargetUser");
+
               htmlOutput = "<p>" + bundle.getString("changePass.success") + "</p>";
             } else {
               log.debug("Invalid password submitted: " + newPass);
@@ -169,11 +197,11 @@ public class SessionManagement5ChangePassword extends HttpServlet {
               log.debug("Token too old");
               htmlOutput = "<p>" + bundle.getString("changePass.oldToken") + "</p>";
             } else if (tokenLife < 0) {
-              log.debug("Token to young");
+              log.debug("Token too young");
               htmlOutput = "<p>" + bundle.getString("changePass.youngToken") + "</p>";
             } else {
-              log.error("Token to Strange: Unexpected Error");
-              htmlOutput = "<p>" + bundle.getString("changePass.funkyToken") + "</p>";
+              log.debug("No valid server-side reset token found");
+              htmlOutput = "<p>" + bundle.getString("changePass.oldToken") + "</p>";
             }
           }
         }

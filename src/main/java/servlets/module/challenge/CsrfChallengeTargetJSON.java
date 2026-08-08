@@ -15,11 +15,14 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONObject;
+import utils.CsrfNonce;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
 /**
- * Cross Site Request Forgery Challenge Target SON - Does not return Result key <br>
+ * Cross Site Request Forgery Challenge Target JSON - Does not return Result key <br>
+ * <br>
+ * Requires Content-Type: application/json AND a valid csrfToken field inside the JSON body. <br>
  * <br>
  * This file is part of the Security Shepherd Project.
  *
@@ -43,10 +46,10 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
   private static String levelName = "CSRF JSON Target";
 
   /**
-   * CSRF vulnerable function that can be used by users to force other users to mark their CSRF
-   * challenge as complete. Function expecting JSON formed data
+   * CSRF-protected function expecting JSON body with a {@code csrfToken} field. Also enforces that
+   * the request Content-Type is {@code application/json}.
    *
-   * @param userId User identifier to be incremented
+   * @param userId User identifier to be incremented (inside JSON body)
    */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -73,10 +76,27 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
 
+        // Enforce application/json Content-Type — cross-origin forms cannot set this header
+        String contentType = request.getContentType();
+        if (contentType == null || !contentType.toLowerCase().contains("application/json")) {
+          log.debug("Request rejected: Content-Type is not application/json");
+          out.write(csrfGenerics.getString("target.incrementFailed"));
+          return;
+        }
+
         log.debug("Getting JSON String");
         String jsonData = extractPostRequestBody(request);
         log.debug("POST body: " + jsonData);
         JSONObject json = new JSONObject(jsonData);
+
+        // Validate CSRF nonce from JSON body
+        String submittedToken = json.optString("csrfToken", null);
+        if (!CsrfNonce.isValid(ses, submittedToken)) {
+          log.debug("Invalid or missing CSRF nonce in JSON body — request blocked");
+          out.write(csrfGenerics.getString("target.incrementFailed"));
+          return;
+        }
+
         log.debug("Getting userId");
         String plusId = (String) json.get("userId");
         log.debug("User Submitted - " + plusId);

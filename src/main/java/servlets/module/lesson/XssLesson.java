@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
 import utils.FindXSS;
 import utils.Hash;
 import utils.ShepherdLogManager;
@@ -76,8 +77,9 @@ public class XssLesson extends HttpServlet {
         if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
           String searchTerm = request.getParameter("searchTerm");
           log.debug("User Submitted - " + searchTerm);
+          String encodedTerm = Encode.forHtml(searchTerm);
           String htmlOutput = new String();
-          if (FindXSS.search(searchTerm)) {
+          if (FindXSS.search(encodedTerm)) {
             log.debug("XSS Lesson Completed!");
             htmlOutput =
                 "<h2 class='title'>"
@@ -93,7 +95,7 @@ public class XssLesson extends HttpServlet {
                             getServletContext().getRealPath(""), levelHash),
                         (String) ses.getAttribute("userName"));
           }
-          log.debug("Adding searchTerm to Html: " + searchTerm);
+          log.debug("Adding searchTerm to Html: " + encodedTerm);
           htmlOutput +=
               "<h2 class='title'>"
                   + bundle.getString("response.searchResults")
@@ -101,7 +103,7 @@ public class XssLesson extends HttpServlet {
                   + "<p>"
                   + bundle.getString("response.noResults")
                   + " '"
-                  + searchTerm
+                  + encodedTerm
                   + "'</p>";
           log.debug("Outputting HTML");
           out.write(htmlOutput);

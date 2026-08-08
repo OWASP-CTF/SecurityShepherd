@@ -79,16 +79,37 @@ public class PoorValidation2 extends HttpServlet {
         int bananaAmount = validateAmount(Integer.parseInt(request.getParameter("bananaAmount")));
         log.debug("bananaAmount - " + bananaAmount);
 
-        // Working out costs
-        int pineappleCost = pineappleAmount * 30;
-        int orangeCost = orangeAmount * 3000;
-        int appleCost = appleAmount * 45;
-        int bananaCost = bananaAmount * 15;
+        // Working out costs — use exact arithmetic to prevent integer overflow exploitation
+        int pineappleCost;
+        int orangeCost;
+        int appleCost;
+        int bananaCost;
+        try {
+          pineappleCost = Math.multiplyExact(pineappleAmount, 30);
+          orangeCost = Math.multiplyExact(orangeAmount, 3000);
+          appleCost = Math.multiplyExact(appleAmount, 45);
+          bananaCost = Math.multiplyExact(bananaAmount, 15);
+        } catch (ArithmeticException ex) {
+          log.debug("Overflow in cost calculation");
+          htmlOutput += "<p>" + bundle.getString("poorValidation.badOrder") + "</p>";
+          out.write(htmlOutput);
+          return;
+        }
 
         htmlOutput = new String();
 
-        // Work Out Final Cost
-        int finalCost = pineappleCost + orangeCost + bananaCost + appleCost;
+        // Work Out Final Cost — also guard summation overflow
+        int finalCost;
+        try {
+          finalCost =
+              Math.addExact(
+                  Math.addExact(Math.addExact(pineappleCost, orangeCost), bananaCost), appleCost);
+        } catch (ArithmeticException ex) {
+          log.debug("Overflow in final cost summation");
+          htmlOutput += "<p>" + bundle.getString("poorValidation.badOrder") + "</p>";
+          out.write(htmlOutput);
+          return;
+        }
 
         // Output Order
         htmlOutput =
