@@ -77,13 +77,15 @@ public class XssChallengeSix extends HttpServlet {
         Object tokenParmeter = request.getParameter("csrfToken");
         if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
           String htmlOutput = new String();
+          String userPost = new String();
           String searchTerm = request.getParameter("searchTerm");
           log.debug("User Submitted - " + searchTerm);
           searchTerm = XssFilter.anotherBadUrlValidate(searchTerm);
-          String submittedPost = "<a href=\"" + searchTerm + "\">Your HTTP Link!</a>";
+          searchTerm = Encode.forHtmlAttribute(searchTerm);
+          userPost = "<a href=\"" + searchTerm + "\">Your HTTP Link!</a>";
           log.debug("After Sanitising - " + searchTerm);
 
-          boolean xssDetected = FindXSS.search(submittedPost);
+          boolean xssDetected = FindXSS.search(userPost);
           if (xssDetected) {
             htmlOutput =
                 "<h2 class='title'>"
@@ -100,8 +102,6 @@ public class XssChallengeSix extends HttpServlet {
                         (String) ses.getAttribute("userName"))
                     + "</a>";
           }
-          String userPost =
-              "<a href=\"" + Encode.forHtmlAttribute(searchTerm) + "\">Your HTTP Link!</a>";
           log.debug("Adding searchTerm to Html: " + searchTerm);
           htmlOutput +=
               "<h2 class='title'>"
