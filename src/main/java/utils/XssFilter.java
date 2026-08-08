@@ -1,6 +1,8 @@
 package utils;
 
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -27,6 +29,40 @@ import org.owasp.encoder.Encode;
 public class XssFilter {
 
   private static final Logger log = LogManager.getLogger(XssFilter.class);
+
+  /**
+   * Confines a user supplied link to an absolute http(s) URL.
+   *
+   * <p>Only the http and https schemes are allowed through, so values that would turn an href into
+   * a script sink (javascript:, data:, vbscript:, protocol relative links) are rejected outright
+   * rather than filtered. Anything that is not a well formed absolute http(s) URL is replaced with
+   * a harmless placeholder link. Callers must still encode the result for the context it is
+   * written into.
+   *
+   * @param input URL to validate
+   * @return The submitted URL when it is an absolute http(s) URL, otherwise a placeholder link
+   */
+  public static String safeHttpUrl(String input) {
+    final String howToMakeAUrlUrl =
+        "https://www.google.com/search?q=What+does+a+HTTP+link+look+like";
+    if (input == null) {
+      return howToMakeAUrlUrl;
+    }
+    try {
+      URI theUri = new URI(input.trim());
+      String scheme = theUri.getScheme();
+      if (theUri.isAbsolute()
+          && scheme != null
+          && (scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))
+          && theUri.getHost() != null) {
+        return theUri.toASCIIString();
+      }
+      log.debug("Rejected link that was not an absolute http(s) URL");
+    } catch (URISyntaxException e) {
+      log.debug("Could not parse URL from input: " + e.toString());
+    }
+    return howToMakeAUrlUrl;
+  }
 
   /**
    * A method to badly validate a URL
