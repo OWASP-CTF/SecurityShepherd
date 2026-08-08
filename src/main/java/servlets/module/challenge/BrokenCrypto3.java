@@ -102,13 +102,29 @@ public class BrokenCrypto3 extends HttpServlet {
    * @return The plain text revealed from the decryption
    * @throws Exception Throws illegal state Exception
    */
+  private static final byte[] AES_KEY = newAesKey();
+
+  private static byte[] newAesKey() {
+    byte[] generated = new byte[32];
+    new java.security.SecureRandom().nextBytes(generated);
+    return generated;
+  }
+
   public static String decrypt(String hash, String key) throws Exception {
-    try {
-      return new String(
-          xor(org.apache.commons.codec.binary.Base64.decodeBase64(hash.getBytes()), key), "UTF-8");
-    } catch (java.io.UnsupportedEncodingException ex) {
-      throw new IllegalStateException(ex);
+    byte[] raw =
+        org.apache.commons.codec.binary.Base64.decodeBase64(
+            hash.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    if (raw.length <= 12) {
+      throw new IllegalStateException("Malformed ciphertext");
     }
+    byte[] iv = java.util.Arrays.copyOfRange(raw, 0, 12);
+    byte[] cipherText = java.util.Arrays.copyOfRange(raw, 12, raw.length);
+    javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding");
+    cipher.init(
+        javax.crypto.Cipher.DECRYPT_MODE,
+        new javax.crypto.spec.SecretKeySpec(AES_KEY, "AES"),
+        new javax.crypto.spec.GCMParameterSpec(128, iv));
+    return new String(cipher.doFinal(cipherText), java.nio.charset.StandardCharsets.UTF_8);
   }
 
   /**

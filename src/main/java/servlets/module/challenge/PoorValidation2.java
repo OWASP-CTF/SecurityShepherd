@@ -80,15 +80,15 @@ public class PoorValidation2 extends HttpServlet {
         log.debug("bananaAmount - " + bananaAmount);
 
         // Working out costs
-        int pineappleCost = pineappleAmount * 30;
-        int orangeCost = orangeAmount * 3000;
-        int appleCost = appleAmount * 45;
-        int bananaCost = bananaAmount * 15;
+        long pineappleCost = pineappleAmount * 30L;
+        long orangeCost = orangeAmount * 3000L;
+        long appleCost = appleAmount * 45L;
+        long bananaCost = bananaAmount * 15L;
 
         htmlOutput = new String();
 
         // Work Out Final Cost
-        int finalCost = pineappleCost + orangeCost + bananaCost + appleCost;
+        long finalCost = pineappleCost + orangeCost + bananaCost + appleCost;
 
         // Output Order
         htmlOutput =

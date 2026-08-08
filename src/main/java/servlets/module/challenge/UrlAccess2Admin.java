@@ -58,7 +58,7 @@ public class UrlAccess2Admin extends HttpServlet {
     ResourceBundle bundle =
         ResourceBundle.getBundle("i18n.servlets.challenges.urlAccess.urlAccess2", locale);
 
-    if (Validate.validateSession(ses)) {
+    if (Validate.validateAdminSession(ses)) {
       ShepherdLogManager.setRequestIp(
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),

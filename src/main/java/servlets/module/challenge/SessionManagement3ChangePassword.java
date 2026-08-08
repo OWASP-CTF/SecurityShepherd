@@ -111,6 +111,11 @@ public class SessionManagement3ChangePassword extends HttpServlet {
           subName = new String();
         }
         log.debug("subName Decoded = " + subName);
+        Object authenticatedUser = ses.getAttribute("sessionManagement3User");
+        if (authenticatedUser == null || !authenticatedUser.equals(subName)) {
+          log.error("Password change requested for a user that is not authenticated. Rejecting.");
+          subName = new String();
+        }
         log.debug("subPass = " + subNewPass);
 
         if (subNewPass.length() >= 6) {

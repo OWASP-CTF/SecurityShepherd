@@ -91,6 +91,7 @@ public class MobileLogin extends HttpServlet {
         log.debug("Setting CSRF cookie");
         csrfToken = Hash.randomString();
         Cookie token = new Cookie("token", csrfToken);
+        token.setHttpOnly(true);
         if (request.getRequestURL().toString().startsWith("https")) // If Requested over HTTPs
         {
           token.setSecure(true);

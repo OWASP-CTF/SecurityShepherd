@@ -8,6 +8,7 @@ import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.Scanner;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -78,6 +79,16 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
         log.debug("POST body: " + jsonData);
         JSONObject json = new JSONObject(jsonData);
         log.debug("Getting userId");
+        Cookie tokenCookie = Validate.getToken(request.getCookies());
+        Object tokenParmeter = request.getHeader("csrfToken");
+        if (tokenParmeter == null && json.has("csrfToken")) {
+          tokenParmeter = json.get("csrfToken");
+        }
+        if (!Validate.validateTokens(tokenCookie, tokenParmeter)) {
+          log.error("Request rejected: missing or invalid CSRF token");
+          out.write(csrfGenerics.getString("target.incrementFailed"));
+          return;
+        }
         String plusId = (String) json.get("userId");
         log.debug("User Submitted - " + plusId);
         String userId = (String) ses.getAttribute("userStamp");

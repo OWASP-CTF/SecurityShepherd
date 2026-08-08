@@ -5,6 +5,8 @@ import dbProcs.Getter;
 import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -103,8 +105,7 @@ public class CsrfChallengeTargetFour extends HttpServlet {
         log.debug("storedCsrf Token is - '" + storedToken + "'");
 
         if (!userId.equals(plusId)) {
-          if (validCsrfToken(ApplicationRoot, csrfToken)) // Poor CSRF Validation Method
-          {
+          if (isSessionCsrfToken(storedToken, csrfToken)) {
             log.debug("'Valid' Nonce Value Submitted");
             String userName = (String) ses.getAttribute("userName");
             String attackerName = Getter.getUserName(ApplicationRoot, plusId);
@@ -147,6 +148,15 @@ public class CsrfChallengeTargetFour extends HttpServlet {
    * @param csrfToken CSRF Token value to search DB for
    * @return Returns true if the CSRF Token is Deemed valid
    */
+  private static boolean isSessionCsrfToken(String storedToken, String submittedToken) {
+    if (storedToken == null || submittedToken == null || storedToken.isEmpty()) {
+      return false;
+    }
+    return MessageDigest.isEqual(
+        storedToken.getBytes(StandardCharsets.UTF_8),
+        submittedToken.getBytes(StandardCharsets.UTF_8));
+  }
+
   private static boolean validCsrfToken(String ApplicationRoot, String csrfToken) {
     log.debug("*** CSRF4.validCsrfToken ***");
     boolean result = false;

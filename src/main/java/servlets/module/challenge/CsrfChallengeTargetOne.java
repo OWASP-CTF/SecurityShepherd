@@ -7,6 +7,7 @@ import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -69,6 +70,13 @@ public class CsrfChallengeTargetOne extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+        Cookie tokenCookie = Validate.getToken(request.getCookies());
+        Object tokenParmeter = request.getParameter("csrfToken");
+        if (!Validate.validateTokens(tokenCookie, tokenParmeter)) {
+          log.error("Invalid CSRF token submitted to " + levelName);
+          out.write(csrfGenerics.getString("target.incrementFailed"));
+          return;
+        }
         String plusId = request.getParameter("userid");
         log.debug("User Submitted - " + plusId);
         String userId = (String) ses.getAttribute("userStamp");

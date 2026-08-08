@@ -85,16 +85,13 @@ public class UrlAccess3UserList extends HttpServlet {
           byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
           String decodedCookie = new String(decodedCookieBytes, "UTF-8");
           log.debug("Decoded Cookie: " + decodedCookie);
-          currentUser = decodedCookie;
+          log.debug("Ignoring client supplied role cookie: " + decodedCookie);
         }
         String ApplicationRoot = getServletContext().getRealPath("");
         Connection conn = Database.getChallengeConnection(ApplicationRoot, "UrlAccessThree");
         PreparedStatement callstmt;
-        callstmt =
-            conn.prepareStatement(
-                "SELECT userName FROM users WHERE userRole = \"admin\" OR userName = \""
-                    + currentUser
-                    + "\";");
+        callstmt = conn.prepareStatement("SELECT userName FROM users WHERE userName = ?");
+        callstmt.setString(1, currentUser);
         log.debug("Getting User List");
         htmlOutput = new String();
         ResultSet rs = callstmt.executeQuery();

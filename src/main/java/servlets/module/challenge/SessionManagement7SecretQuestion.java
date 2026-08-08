@@ -61,6 +61,44 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
     new String("Ghost Orchid")
   };
 
+  /** Maximum number of failed secret answer attempts permitted per session. */
+  private static final int MAX_RECOVERY_ATTEMPTS = 3;
+
+  /** Session attribute holding the number of failed secret answer attempts. */
+  private static final String RECOVERY_ATTEMPT_KEY = "sessionManagement7FailedAnswers";
+
+  /**
+   * The secret question draws its answer from a small, publicly known set, so unlimited guessing
+   * recovers any account by brute force. Attempts are therefore counted server side per session.
+   *
+   * @param ses the current session
+   * @return true when no further attempts may be made
+   */
+  private static boolean recoveryAttemptsExceeded(HttpSession ses) {
+    Object attempts = ses.getAttribute(RECOVERY_ATTEMPT_KEY);
+    return attempts instanceof Integer && ((Integer) attempts).intValue() >= MAX_RECOVERY_ATTEMPTS;
+  }
+
+  /**
+   * Records a failed secret answer attempt against the current session.
+   *
+   * @param ses the current session
+   */
+  private static void recordFailedRecoveryAttempt(HttpSession ses) {
+    Object attempts = ses.getAttribute(RECOVERY_ATTEMPT_KEY);
+    int count = (attempts instanceof Integer) ? ((Integer) attempts).intValue() : 0;
+    ses.setAttribute(RECOVERY_ATTEMPT_KEY, Integer.valueOf(count + 1));
+  }
+
+  /**
+   * Clears the failed attempt counter once the correct answer has been supplied.
+   *
+   * @param ses the current session
+   */
+  private static void resetRecoveryAttempts(HttpSession ses) {
+    ses.removeAttribute(RECOVERY_ATTEMPT_KEY);
+  }
+
   /**
    * A user submits a username and answer, these values are checked against the DB to see if they
    * are valid
@@ -101,7 +139,16 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
         Object emailObj = request.getParameter("subEmail");
         String subEmail = Validate.validateParameter(emailObj, 60);
         log.debug("subEmail = " + subEmail);
-        if (validAnswer(subAns)) {
+        if (recoveryAttemptsExceeded(ses)) {
+          log.debug("Secret answer attempt limit reached for this session");
+          htmlOutput =
+              new String(
+                  "<h2 class='title'>"
+                      + bundle.getString("question.badAnswer")
+                      + "</h2><p>"
+                      + bundle.getString("question.whoAreYou")
+                      + "</p>");
+        } else if (validAnswer(subAns)) {
           log.debug("Submitted answer is a possible valid answer");
           String ApplicationRoot = getServletContext().getRealPath("");
           try {
@@ -119,6 +166,7 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
               ResultSet rs = callstmt.executeQuery();
               if (rs.next()) {
                 log.debug("Correct Answer Submitted");
+                resetRecoveryAttempts(ses);
                 // Get key and add it to the output
                 String userKey =
                     Hash.generateUserSolution(
@@ -138,6 +186,7 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
                         + "</p>";
               } else {
                 log.debug("Bad Answer Submitted");
+                recordFailedRecoveryAttempt(ses);
                 htmlOutput =
                     new String(
                         "<h2 class='title'>"
@@ -161,6 +210,7 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
           }
         } else {
           log.debug("Invalid answer submitted for any user, skipping rest of function");
+          recordFailedRecoveryAttempt(ses);
           htmlOutput =
               new String(
                   "<h2 class='title'>"

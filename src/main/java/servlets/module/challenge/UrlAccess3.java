@@ -88,13 +88,18 @@ public class UrlAccess3 extends HttpServlet {
           }
         }
         String htmlOutput = null;
+        String serverRole = (String) ses.getAttribute("urlAccess3Role");
+        if (serverRole == null) {
+          serverRole = "aGuest";
+          ses.setAttribute("urlAccess3Role", serverRole);
+        }
         if (theCookie != null) {
           log.debug("Cookie value: " + theCookie.getValue());
           byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
           String decodedCookie = new String(decodedCookieBytes, "UTF-8");
           log.debug("Decoded Cookie: " + decodedCookie);
 
-          if (decodedCookie.equals("MrJohnReillyTheSecond")) {
+          if (serverRole.equals("MrJohnReillyTheSecond")) {
             log.debug("Super Admin Cookie detected");
             // Get key and add it to the output
             String userKey =

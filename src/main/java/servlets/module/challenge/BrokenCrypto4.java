@@ -128,11 +128,26 @@ public class BrokenCrypto4 extends HttpServlet {
         conn.close();
 
         // Work Out Final Cost
-        pineappleCost = pineappleCost - (pineappleCost * (perCentOffPineapple / 100));
-        appleCost = appleCost - (appleCost * (perCentOffApple / 100));
-        bananaCost = bananaCost - (bananaCost * (perCentOffBanana / 100));
-        orangeCost = orangeCost - (orangeCost * (perCentOffOrange / 100));
-        int finalCost = pineappleCost + appleCost + bananaAmount + orangeCost;
+        if (perCentOffPineapple < 0 || perCentOffPineapple > 100) {
+          perCentOffPineapple = 0;
+        }
+        if (perCentOffApple < 0 || perCentOffApple > 100) {
+          perCentOffApple = 0;
+        }
+        if (perCentOffBanana < 0 || perCentOffBanana > 100) {
+          perCentOffBanana = 0;
+        }
+        if (perCentOffOrange < 0 || perCentOffOrange > 100) {
+          perCentOffOrange = 0;
+        }
+        pineappleCost = pineappleCost - ((pineappleCost * perCentOffPineapple) / 100);
+        appleCost = appleCost - ((appleCost * perCentOffApple) / 100);
+        bananaCost = bananaCost - ((bananaCost * perCentOffBanana) / 100);
+        orangeCost = orangeCost - ((orangeCost * perCentOffOrange) / 100);
+        int finalCost = pineappleCost + appleCost + bananaCost + orangeCost;
+        if (finalCost < 0) {
+          finalCost = 0;
+        }
 
         // Output Order
         htmlOutput =

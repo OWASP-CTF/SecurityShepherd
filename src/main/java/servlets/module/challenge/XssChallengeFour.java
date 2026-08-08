@@ -89,7 +89,7 @@ public class XssChallengeFour extends HttpServlet {
                     + "</a>";
           } else {
 
-            searchTerm = XssFilter.encodeForHtml(searchTerm);
+            searchTerm = XssFilter.badUrlValidate(searchTerm);
             userPost =
                 "<a href=\"" + searchTerm + "\" alt=\"" + searchTerm + "\">" + searchTerm + "</a>";
             log.debug("After Encoding - " + searchTerm);
