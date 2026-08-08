@@ -13,7 +13,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.owasp.encoder.Encode;
 import utils.FindXSS;
 import utils.Hash;
 import utils.ShepherdLogManager;
@@ -81,10 +80,7 @@ public class XssChallengeThree extends HttpServlet {
           searchTerm = XssFilter.levelThree(searchTerm);
           log.debug("After Filtering - " + searchTerm);
           String htmlOutput = new String();
-          // Detect against the exact value that will be written to the response below, not the
-          // raw parameter, so the check reflects what actually reaches the HTML sink.
-          String rendered = Encode.forHtml(searchTerm);
-          if (FindXSS.search(rendered)) {
+          if (FindXSS.search(searchTerm)) {
             htmlOutput =
                 "<h2 class='title'>"
                     + bundle.getString("result.wellDone")
@@ -108,7 +104,7 @@ public class XssChallengeThree extends HttpServlet {
                   + "<p>"
                   + bundle.getString("response.noResults")
                   + " "
-                  + rendered
+                  + searchTerm
                   + "</p>";
           log.debug("Outputting HTML");
           out.write(htmlOutput);

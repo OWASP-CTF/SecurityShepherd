@@ -79,8 +79,9 @@ public class SqlInjection5CouponCheck extends HttpServlet {
         PreparedStatement prepstmt =
             conn.prepareStatement(
                 "SELECT itemId, perCentOff, itemName FROM coupons JOIN items USING (itemId) WHERE"
-                    + " couponCode = ?;");
-        prepstmt.setString(1, couponCode);
+                    + " couponCode = '"
+                    + couponCode
+                    + "';");
         ResultSet coupons = prepstmt.executeQuery();
         try {
           if (coupons.next()) {
