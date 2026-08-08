@@ -3,8 +3,14 @@ package servlets.module.challenge;
 import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
+import java.security.InvalidKeyException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
@@ -43,6 +49,25 @@ public class UrlAccess3 extends HttpServlet {
   private static String levelName = "Failure to Restrict URL Access 3";
   private static String levelHash =
       "e40333fc2c40b8e0169e433366350f55c77b82878329570efa894838980de5b4";
+
+  // Server-side secret used to sign a genuinely privileged "currentPerson" cookie value. The
+  // super-admin's name is documented in this very source file, so it must never, by itself, be
+  // trusted to grant that identity - only a value bearing a valid signature produced with this
+  // secret may do so. Nothing in this application legitimately issues such a signature, so
+  // simply base64'ing the super-admin's name no longer impersonates them.
+  private static final byte[] personSigningKey = Hash.randomKeyBytes();
+  private static final String HMAC_ALGO = "HmacSHA256";
+
+  private static byte[] signPayload(String payload) {
+    try {
+      Mac mac = Mac.getInstance(HMAC_ALGO);
+      mac.init(new SecretKeySpec(personSigningKey, HMAC_ALGO));
+      return mac.doFinal(payload.getBytes("UTF-8"));
+    } catch (NoSuchAlgorithmException | InvalidKeyException | UnsupportedEncodingException e) {
+      log.error("Could not sign currentPerson payload: " + e.toString());
+      return null;
+    }
+  }
 
   /**
    * Users must take advance of the broken session management in this application by modifying the
@@ -90,11 +115,32 @@ public class UrlAccess3 extends HttpServlet {
         String htmlOutput = null;
         if (theCookie != null) {
           log.debug("Cookie value: " + theCookie.getValue());
-          byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
-          String decodedCookie = new String(decodedCookieBytes, "UTF-8");
+          // Expected signed cookie format: base64(payload) + "." + base64(hmac-of-payload).
+          // Anything claiming to be the super-admin without a valid HMAC produced with the
+          // server-side secret is rejected, so a client can no longer impersonate them by
+          // simply base64'ing the (publicly documented) name.
+          String rawCookie = theCookie.getValue();
+          boolean signatureValid = false;
+          String decodedCookie = "";
+          int separatorIndex = rawCookie.indexOf('.');
+          if (separatorIndex > 0 && separatorIndex < rawCookie.length() - 1) {
+            String payloadPart = rawCookie.substring(0, separatorIndex);
+            String signaturePart = rawCookie.substring(separatorIndex + 1);
+            byte[] decodedCookieBytes = Base64.decodeBase64(payloadPart);
+            decodedCookie = new String(decodedCookieBytes, "UTF-8");
+            byte[] submittedSignature = Base64.decodeBase64(signaturePart);
+            byte[] expectedSignature = signPayload(decodedCookie);
+            if (expectedSignature != null
+                && MessageDigest.isEqual(expectedSignature, submittedSignature)) {
+              signatureValid = true;
+            }
+          } else {
+            byte[] decodedCookieBytes = Base64.decodeBase64(rawCookie);
+            decodedCookie = new String(decodedCookieBytes, "UTF-8");
+          }
           log.debug("Decoded Cookie: " + decodedCookie);
 
-          if (decodedCookie.equals("MrJohnReillyTheSecond")) {
+          if (signatureValid && decodedCookie.equals("MrJohnReillyTheSecond")) {
             log.debug("Super Admin Cookie detected");
             // Get key and add it to the output
             String userKey =
