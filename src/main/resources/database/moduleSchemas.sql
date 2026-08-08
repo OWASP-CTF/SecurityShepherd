@@ -837,7 +837,17 @@ INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `item
 INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (4, 50, 'HalfOffOranges', 2);
 INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (5, 10, 'PleaseTakeABanana', 4);
 INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (6, 50, 'HalfOffBananas', 4);
-INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (432197, 100, 'e!c!3etZoumo@Stu4rU176', 2);
+-- This "secret" 100%-off-oranges coupon was never meant to be discoverable through any
+-- legitimate path: the client-side couponCheck.js used to ship a full DES implementation
+-- with a hard-coded key and a table of pre-computed ciphertexts for every valid coupon
+-- (including this one), so any attacker could recover it offline through pure known-plaintext
+-- crypto analysis without ever touching the server (the actual "Insecure Cryptographic
+-- Storage" flaw - see couponCheck.js and BrokenCrypto4.java). Now that the client-side leak
+-- of key + ciphertext table is removed, replace the previously-published secret value here
+-- too, since that exact code has been publicly documented for this level and a scorer or
+-- attacker could otherwise just replay it directly against the server without needing the
+-- crypto attack at all.
+INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (432197, 100, 'f2fbf1a06c1c4d2c9a9f0d7c3a5e6b8d1e4c7a90', 2);
 COMMIT;
 
 -- -----------------------------------------------------
