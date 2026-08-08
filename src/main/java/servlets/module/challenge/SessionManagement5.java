@@ -109,7 +109,8 @@ public class SessionManagement5 extends HttpServlet {
 
         callstmt =
             conn.prepareStatement(
-                "SELECT userName, userRole FROM users WHERE userName = ? AND userPassword = SHA(?)");
+                "SELECT userName, userRole FROM users WHERE userName = ? AND userPassword ="
+                    + " SHA(?)");
         callstmt.setString(1, subName);
         callstmt.setString(2, subPass);
         log.debug("Executing findUser");

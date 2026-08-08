@@ -102,8 +102,7 @@ public class CsrfChallengeTargetFour extends HttpServlet {
         if (!userId.equals(plusId)) {
           if (MessageDigest.isEqual(
               storedToken.getBytes(StandardCharsets.UTF_8),
-              csrfToken.getBytes(StandardCharsets.UTF_8)))
-          {
+              csrfToken.getBytes(StandardCharsets.UTF_8))) {
             log.debug("'Valid' Nonce Value Submitted");
             String userName = (String) ses.getAttribute("userName");
             String attackerName = Getter.getUserName(ApplicationRoot, plusId);
@@ -114,7 +113,8 @@ public class CsrfChallengeTargetFour extends HttpServlet {
               String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
               result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
               String replacementToken =
-                  Setter.setCsrfChallengeFourCsrfToken(userId, Hash.randomString(), ApplicationRoot);
+                  Setter.setCsrfChallengeFourCsrfToken(
+                      userId, Hash.randomString(), ApplicationRoot);
               ses.setAttribute(csrfTokenName, replacementToken);
             } else {
               log.error("UserId '" + plusId + "' could not be found in system.");
@@ -139,5 +139,4 @@ public class CsrfChallengeTargetFour extends HttpServlet {
       log.fatal(levelName + " - " + e.toString());
     }
   }
-
 }

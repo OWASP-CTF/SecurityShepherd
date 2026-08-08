@@ -83,8 +83,7 @@ public class UrlAccess3 extends HttpServlet {
         }
         String htmlOutput = null;
         if (currentPerson != null) {
-          if (currentPerson.equals("MrJohnReillyTheSecond")
-              && Validate.validateAdminSession(ses)) {
+          if (currentPerson.equals("MrJohnReillyTheSecond") && Validate.validateAdminSession(ses)) {
             log.debug("Super Admin Cookie detected");
             // Get key and add it to the output
             String userKey =

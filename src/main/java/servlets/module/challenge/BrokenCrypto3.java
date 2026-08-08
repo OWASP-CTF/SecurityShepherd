@@ -128,9 +128,7 @@ public class BrokenCrypto3 extends HttpServlet {
         MessageDigest.getInstance("SHA-256").digest(key.getBytes(StandardCharsets.UTF_8));
     Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
     cipher.init(
-        Cipher.DECRYPT_MODE,
-        new SecretKeySpec(keyBytes, "AES"),
-        new GCMParameterSpec(128, nonce));
+        Cipher.DECRYPT_MODE, new SecretKeySpec(keyBytes, "AES"), new GCMParameterSpec(128, nonce));
     return new String(cipher.doFinal(ciphertext), StandardCharsets.UTF_8);
   }
 }
