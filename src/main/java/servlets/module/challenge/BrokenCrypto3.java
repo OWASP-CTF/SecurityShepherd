@@ -2,7 +2,11 @@ package servlets.module.challenge;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.security.MessageDigest;
+import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.security.SecureRandom;
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.crypto.Cipher;
@@ -45,8 +49,10 @@ public class BrokenCrypto3 extends HttpServlet {
   private static String levelName = "Broken Crypto Challenge 3";
   public static String levelHash =
       "2da053b4afb1530a500120a49a14d422ea56705a7e3fc405a77bc269948ccae1";
-  public static String levelResult =
-      "thisisthesecurityshepherdabcencryptionkey"; // Is used as encryption key in this level
+  private static final int GCM_NONCE_LENGTH_BYTES = 12;
+  private static final int GCM_TAG_LENGTH_BITS = 128;
+  private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+  private static final SecretKeySpec ENCRYPTION_KEY = createEncryptionKey();
 
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -76,8 +82,7 @@ public class BrokenCrypto3 extends HttpServlet {
         log.debug("Ciphertext submitted for decryption");
 
         log.debug("Decrypting user input");
-        // Using level key as encryption key
-        String decryptedUserData = decrypt(userData, levelResult);
+        String decryptedUserData = decrypt(userData);
         log.debug("Ciphertext decrypted successfully");
 
         htmlOutput =
@@ -99,47 +104,62 @@ public class BrokenCrypto3 extends HttpServlet {
   }
 
   /**
-   * Decrypts the supplied string value using the submitted key. Uses AES/GCM so the ciphertext is
-   * authenticated: tampered or attacker-crafted input fails the tag check instead of quietly
-   * decrypting to key-derived material.
+   * Decrypts a nonce-prefixed AES/GCM ciphertext with the process-local key. The key is generated
+   * at startup and is never sent to or derived from client input.
    *
    * @param hash The cipher text to be decrypted
-   * @param key The encryption key
    * @return The plain text revealed from the decryption
-   * @throws Exception Throws illegal state Exception
+   * @throws GeneralSecurityException if the ciphertext is malformed, forged, or corrupt
    */
-  public static String decrypt(String hash, String key) throws Exception {
+  public static String decrypt(String hash) throws GeneralSecurityException {
+    final byte[] envelope;
     try {
-      byte[] cipherText = org.apache.commons.codec.binary.Base64.decodeBase64(hash.getBytes());
-      SecretKeySpec skeySpec = new SecretKeySpec(deriveKeyMaterial(key), "AES");
-      Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-      cipher.init(Cipher.DECRYPT_MODE, skeySpec, new GCMParameterSpec(128, deriveIv(key)));
-      return new String(cipher.doFinal(cipherText), "UTF-8");
-    } catch (java.io.UnsupportedEncodingException ex) {
-      throw new IllegalStateException(ex);
+      envelope = Base64.getDecoder().decode(hash);
+    } catch (IllegalArgumentException e) {
+      throw new GeneralSecurityException("Ciphertext is not valid Base64", e);
+    }
+    if (envelope.length < GCM_NONCE_LENGTH_BYTES + (GCM_TAG_LENGTH_BITS / 8)) {
+      throw new GeneralSecurityException("Ciphertext is too short");
+    }
+
+    byte[] nonce = Arrays.copyOfRange(envelope, 0, GCM_NONCE_LENGTH_BYTES);
+    byte[] cipherText = Arrays.copyOfRange(envelope, GCM_NONCE_LENGTH_BYTES, envelope.length);
+    Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+    cipher.init(
+        Cipher.DECRYPT_MODE, ENCRYPTION_KEY, new GCMParameterSpec(GCM_TAG_LENGTH_BITS, nonce));
+    return new String(cipher.doFinal(cipherText), StandardCharsets.UTF_8);
+  }
+
+  /**
+   * Produces a fresh authenticated ciphertext for the example displayed by the challenge page. Each
+   * ciphertext carries its random nonce as an unencrypted prefix.
+   *
+   * @return Base64-encoded nonce and ciphertext
+   */
+  public static String sampleCiphertext() {
+    try {
+      return encrypt("This crypto is not strong");
+    } catch (GeneralSecurityException e) {
+      throw new IllegalStateException("Could not generate the authenticated sample", e);
     }
   }
 
-  /**
-   * Derives 256 bits of AES key material from the level key so the raw level key is never used
-   * directly as cipher key bytes.
-   *
-   * @param key The encryption key
-   * @return 32 bytes of key material
-   */
-  private static byte[] deriveKeyMaterial(String key) throws Exception {
-    return MessageDigest.getInstance("SHA-256").digest(key.getBytes("UTF-8"));
+  static String encrypt(String value) throws GeneralSecurityException {
+    byte[] nonce = new byte[GCM_NONCE_LENGTH_BYTES];
+    SECURE_RANDOM.nextBytes(nonce);
+    Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+    cipher.init(
+        Cipher.ENCRYPT_MODE, ENCRYPTION_KEY, new GCMParameterSpec(GCM_TAG_LENGTH_BITS, nonce));
+    byte[] cipherText = cipher.doFinal(value.getBytes(StandardCharsets.UTF_8));
+    byte[] envelope = new byte[nonce.length + cipherText.length];
+    System.arraycopy(nonce, 0, envelope, 0, nonce.length);
+    System.arraycopy(cipherText, 0, envelope, nonce.length, cipherText.length);
+    return Base64.getEncoder().encodeToString(envelope);
   }
 
-  /**
-   * Derives a 96 bit GCM nonce from the level key
-   *
-   * @param key The encryption key
-   * @return 12 bytes to use as the GCM IV
-   */
-  private static byte[] deriveIv(String key) throws Exception {
-    byte[] iv = new byte[12];
-    System.arraycopy(deriveKeyMaterial(key), 0, iv, 0, iv.length);
-    return iv;
+  private static SecretKeySpec createEncryptionKey() {
+    byte[] key = new byte[16];
+    SECURE_RANDOM.nextBytes(key);
+    return new SecretKeySpec(key, "AES");
   }
 }
