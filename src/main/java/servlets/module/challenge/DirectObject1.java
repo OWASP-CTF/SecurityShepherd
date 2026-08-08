@@ -75,6 +75,10 @@ public class DirectObject1 extends HttpServlet {
       try {
         String userId = request.getParameter("userId[]");
         log.debug("User Submitted - " + userId);
+        if (!isPublicProfile(userId)) {
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
+        }
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
         String htmlOutput = new String();
@@ -87,8 +91,8 @@ public class DirectObject1 extends HttpServlet {
         ResultSet resultSet = prepstmt.executeQuery();
         if (resultSet.next()) {
           log.debug("Found user: " + resultSet.getString(1));
-          String userName = resultSet.getString(1);
-          String privateMessage = resultSet.getString(2);
+          String userName = Encode.forHtml(resultSet.getString(1));
+          String privateMessage = Encode.forHtml(resultSet.getString(2));
           htmlOutput =
               "<h2 class='title'>"
                   + userName
@@ -122,5 +126,13 @@ public class DirectObject1 extends HttpServlet {
     } else {
       log.error(levelName + " servlet accessed with no session");
     }
+  }
+
+  private static boolean isPublicProfile(String userId) {
+    return "1".equals(userId)
+        || "3".equals(userId)
+        || "5".equals(userId)
+        || "7".equals(userId)
+        || "9".equals(userId);
   }
 }

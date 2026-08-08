@@ -107,8 +107,11 @@ public class SessionManagement5 extends HttpServlet {
         callstmt.execute();
         log.debug("Changes committed.");
 
-        callstmt = conn.prepareStatement("SELECT userName, userRole FROM users WHERE userName = ?");
+        callstmt =
+            conn.prepareStatement(
+                "SELECT userName, userRole FROM users WHERE userName = ? AND userPassword = SHA(?)");
         callstmt.setString(1, subName);
+        callstmt.setString(2, subPass);
         log.debug("Executing findUser");
         ResultSet resultSet = callstmt.executeQuery();
         // Is the username valid?

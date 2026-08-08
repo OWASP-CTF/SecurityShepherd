@@ -6,12 +6,10 @@ import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import utils.Hash;
@@ -78,23 +76,15 @@ public class UrlAccess3 extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
-        Cookie userCookies[] = request.getCookies();
-        int i = 0;
-        Cookie theCookie = null;
-        for (i = 0; i < userCookies.length; i++) {
-          if (userCookies[i].getName().compareTo("currentPerson") == 0) {
-            theCookie = userCookies[i];
-            break; // End Loop, because we found the token
-          }
+        String currentPerson = (String) ses.getAttribute("urlAccess3Identity");
+        if (currentPerson == null) {
+          currentPerson = "aGuest";
+          ses.setAttribute("urlAccess3Identity", currentPerson);
         }
         String htmlOutput = null;
-        if (theCookie != null) {
-          log.debug("Cookie value: " + theCookie.getValue());
-          byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
-          String decodedCookie = new String(decodedCookieBytes, "UTF-8");
-          log.debug("Decoded Cookie: " + decodedCookie);
-
-          if (decodedCookie.equals("MrJohnReillyTheSecond")) {
+        if (currentPerson != null) {
+          if (currentPerson.equals("MrJohnReillyTheSecond")
+              && Validate.validateAdminSession(ses)) {
             log.debug("Super Admin Cookie detected");
             // Get key and add it to the output
             String userKey =
@@ -112,8 +102,8 @@ public class UrlAccess3 extends HttpServlet {
                     + userKey
                     + "</a>"
                     + "</p>";
-          } else if (!decodedCookie.equals("aGuest")) {
-            log.debug("Tampered role cookie detected: " + decodedCookie);
+          } else if (!currentPerson.equals("aGuest")) {
+            log.debug("Invalid server-side challenge identity detected");
             htmlOutput = "<!-- " + bundle.getString("response.invalidUser") + " -->";
           } else {
             log.debug("No change to role cookie submitted");

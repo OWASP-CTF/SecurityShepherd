@@ -114,12 +114,15 @@ public class SessionManagement3 extends HttpServlet {
 
         callstmt =
             conn.prepareStatement(
-                "SELECT userName, userAddress, userRole FROM users WHERE userName = ?");
+                "SELECT userName, userAddress, userRole FROM users WHERE userName = ? AND"
+                    + " userPassword = SHA(?)");
         callstmt.setString(1, subName);
+        callstmt.setString(2, subPass);
         log.debug("Executing findUser");
         ResultSet resultSet = callstmt.executeQuery();
         if (resultSet.next()) {
           log.debug("User found");
+          ses.setAttribute("sessionManagement3User", resultSet.getString(1));
           if (resultSet.getString(3).equalsIgnoreCase("admin")) {
             log.debug("Admin Detected");
             callstmt =

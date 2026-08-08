@@ -8,6 +8,7 @@ import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.Scanner;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -67,6 +68,15 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
       boolean result = false;
       HttpSession ses = request.getSession(true);
       if (Validate.validateSession(ses)) {
+        Cookie tokenCookie = Validate.getToken(request.getCookies());
+        Object tokenHeader = request.getHeader("csrfToken");
+        String contentType = request.getContentType();
+        if (contentType == null
+            || !contentType.toLowerCase(Locale.ROOT).startsWith("application/json")
+            || !Validate.validateTokens(tokenCookie, tokenHeader)) {
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
+        }
         ShepherdLogManager.setRequestIp(
             request.getRemoteAddr(),
             request.getHeader("X-Forwarded-For"),

@@ -4,6 +4,8 @@ import dbProcs.Database;
 import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -98,7 +100,7 @@ public class BrokenCrypto4 extends HttpServlet {
         log.debug("Looking for Coupons");
         PreparedStatement prepstmt =
             conn.prepareStatement("SELECT itemId, perCentOff FROM coupons WHERE couponCode = ?");
-        prepstmt.setString(1, couponCode);
+        prepstmt.setString(1, sha256Hex(couponCode));
         ResultSet coupons = prepstmt.executeQuery();
         try {
           if (coupons.next()) {
@@ -128,11 +130,11 @@ public class BrokenCrypto4 extends HttpServlet {
         conn.close();
 
         // Work Out Final Cost
-        pineappleCost = pineappleCost - (pineappleCost * (perCentOffPineapple / 100));
-        appleCost = appleCost - (appleCost * (perCentOffApple / 100));
-        bananaCost = bananaCost - (bananaCost * (perCentOffBanana / 100));
-        orangeCost = orangeCost - (orangeCost * (perCentOffOrange / 100));
-        int finalCost = pineappleCost + appleCost + bananaAmount + orangeCost;
+        pineappleCost = pineappleCost - ((pineappleCost * perCentOffPineapple) / 100);
+        appleCost = appleCost - ((appleCost * perCentOffApple) / 100);
+        bananaCost = bananaCost - ((bananaCost * perCentOffBanana) / 100);
+        orangeCost = orangeCost - ((orangeCost * perCentOffOrange) / 100);
+        int finalCost = pineappleCost + appleCost + bananaCost + orangeCost;
 
         // Output Order
         htmlOutput =
@@ -175,9 +177,19 @@ public class BrokenCrypto4 extends HttpServlet {
   }
 
   private static int validateAmount(int amount) {
-    if (amount < 0 || amount > 9000) {
-      amount = 0;
+    if (amount < 0 || amount > 1000) {
+      throw new IllegalArgumentException("Item amount is outside the allowed range");
     }
     return amount;
+  }
+
+  private static String sha256Hex(String value) throws Exception {
+    byte[] digest =
+        MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
+    StringBuilder hex = new StringBuilder(digest.length * 2);
+    for (byte item : digest) {
+      hex.append(String.format("%02x", item));
+    }
+    return hex.toString();
   }
 }

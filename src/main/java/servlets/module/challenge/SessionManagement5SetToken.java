@@ -6,6 +6,8 @@ import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -110,16 +112,18 @@ public class SessionManagement5SetToken extends HttpServlet {
         // Is the username valid?
         if (resultSet.next()) {
           log.debug("User found");
-          htmlOutput =
-              bundle.getString("setToken.sentTo.1")
-                  + " '"
-                  + Encode.forHtml(userName)
-                  + "' "
-                  + bundle.getString("setToken.sentTo.2");
+          byte[] tokenBytes = new byte[32];
+          new SecureRandom().nextBytes(tokenBytes);
+          ses.setAttribute(
+              "sessionManagement5ResetToken",
+              Base64.getUrlEncoder().withoutPadding().encodeToString(tokenBytes));
+          ses.setAttribute("sessionManagement5ResetUser", resultSet.getString(1));
+          ses.setAttribute(
+              "sessionManagement5ResetExpires", System.currentTimeMillis() + (10 * 60 * 1000));
         } else {
           log.debug("User not Found");
-          htmlOutput = bundle.getString("response.badUser") + "" + Encode.forHtml(userName);
         }
+        htmlOutput = "If the account exists, reset instructions have been sent.";
         Database.closeConnection(conn);
         log.debug("Outputting HTML");
         out.write(htmlOutput);

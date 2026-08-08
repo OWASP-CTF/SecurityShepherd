@@ -2,8 +2,16 @@ package servlets.module.challenge;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
+import java.util.Base64;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import javax.crypto.Cipher;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -39,10 +47,9 @@ public class BrokenCrypto3 extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(BrokenCrypto3.class);
   private static String levelName = "Broken Crypto Challenge 3";
+  private static final String KEY_ENVIRONMENT_VARIABLE = "SECURITY_SHEPHERD_CRYPTO_KEY";
   public static String levelHash =
       "2da053b4afb1530a500120a49a14d422ea56705a7e3fc405a77bc269948ccae1";
-  public static String levelResult =
-      "thisisthesecurityshepherdabcencryptionkey"; // Is used as encryption key in this level
 
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -72,9 +79,8 @@ public class BrokenCrypto3 extends HttpServlet {
         log.debug("User Submitted - " + userData);
 
         log.debug("Decrypting user input");
-        // Using level key as encryption key
-        String decryptedUserData = decrypt(userData, levelResult);
-        log.debug("Decrypted to: " + decryptedUserData);
+        String encryptionKey = System.getenv(KEY_ENVIRONMENT_VARIABLE);
+        String decryptedUserData = decrypt(userData, encryptionKey);
 
         htmlOutput =
             "<h2 class='title'>"
@@ -103,32 +109,28 @@ public class BrokenCrypto3 extends HttpServlet {
    * @throws Exception Throws illegal state Exception
    */
   public static String decrypt(String hash, String key) throws Exception {
-    try {
-      return new String(
-          xor(org.apache.commons.codec.binary.Base64.decodeBase64(hash.getBytes()), key), "UTF-8");
-    } catch (java.io.UnsupportedEncodingException ex) {
-      throw new IllegalStateException(ex);
+    if (hash == null || key == null || key.length() < 16) {
+      throw new GeneralSecurityException("Encrypted data or encryption key is unavailable");
     }
-  }
 
-  /**
-   * XOR Function
-   *
-   * @param input Byte array to be XOR'd
-   * @param key Encryption Key
-   * @return
-   */
-  private static byte[] xor(final byte[] input, String theKey) {
-    final byte[] output = new byte[input.length];
-    final byte[] secret = theKey.getBytes();
-    int spos = 0;
-    for (int pos = 0; pos < input.length; pos += 1) {
-      output[pos] = (byte) (input[pos] ^ secret[spos]);
-      spos += 1;
-      if (spos >= secret.length) {
-        spos = 0;
-      }
+    byte[] encrypted = Base64.getDecoder().decode(hash);
+    if (encrypted.length <= 12) {
+      throw new GeneralSecurityException("Encrypted data is malformed");
     }
-    return output;
+
+    ByteBuffer buffer = ByteBuffer.wrap(encrypted);
+    byte[] nonce = new byte[12];
+    buffer.get(nonce);
+    byte[] ciphertext = new byte[buffer.remaining()];
+    buffer.get(ciphertext);
+
+    byte[] keyBytes =
+        MessageDigest.getInstance("SHA-256").digest(key.getBytes(StandardCharsets.UTF_8));
+    Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+    cipher.init(
+        Cipher.DECRYPT_MODE,
+        new SecretKeySpec(keyBytes, "AES"),
+        new GCMParameterSpec(128, nonce));
+    return new String(cipher.doFinal(ciphertext), StandardCharsets.UTF_8);
   }
 }

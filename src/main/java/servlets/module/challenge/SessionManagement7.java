@@ -124,9 +124,6 @@ public class SessionManagement7 extends HttpServlet {
             callstmt.execute();
             log.debug("Changes committed.");
 
-            // Filtering password for !, so that it is impossible for users to sign in
-            subPass = subPass.replaceAll("!", "");
-
             callstmt =
                 conn.prepareStatement(
                     "SELECT userName, userAddress FROM users WHERE userName = ? AND userPassword ="
