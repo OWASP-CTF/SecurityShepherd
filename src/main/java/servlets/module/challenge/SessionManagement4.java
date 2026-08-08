@@ -74,16 +74,9 @@ public class SessionManagement4 extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
-        String challengeSessionId = (String) ses.getAttribute("sessionManagement4SessionId");
-        if (challengeSessionId == null) {
-          challengeSessionId = "0000000000000001";
-          ses.setAttribute("sessionManagement4SessionId", challengeSessionId);
-        }
         String htmlOutput = null;
-        if (challengeSessionId.equals("0000000000000001")) {
-          log.debug("Guest Session Detected");
-        } else if (challengeSessionId.equals("0000000000000009")) {
-          log.debug("Server-authorized admin session detected");
+        if (Validate.validateAdminSession(ses)) {
+          log.debug("Server-authorized administrator detected");
           String userKey =
               Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
           htmlOutput =
@@ -97,8 +90,6 @@ public class SessionManagement4 extends HttpServlet {
                   + userKey
                   + "</a>"
                   + "</p>";
-        } else {
-          log.debug("Dead Session Detected");
         }
         if (htmlOutput == null) {
           log.debug("Challenge Not Complete");

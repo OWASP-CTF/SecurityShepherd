@@ -65,8 +65,6 @@ String i18nLevelName = bundle.getString("securityMisconfig.stealTokens.challenge
 		String userId = Encode.forHtml(ses.getAttribute("userStamp").toString());
 		String challengeUrl = request.getRequestURL().toString();
 		ShepherdLogManager.logEvent(request.getRemoteAddr(), request.getHeader("X-Forwarded-For"), levelName +".jsp: DEBUG: Challenge URL " + challengeUrl);
-		//Changing URL to HTTP
-		challengeUrl = challengeUrl.replaceAll("(?i)https", "http");
 		//Set User  Cookie
 		try
 		{

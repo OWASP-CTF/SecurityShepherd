@@ -63,8 +63,7 @@ public class UrlAccess1Admin extends HttpServlet {
     ResourceBundle bundle =
         ResourceBundle.getBundle("i18n.servlets.challenges.urlAccess.urlAccess1", locale);
 
-    if (Validate.validateSession(ses)
-        && Boolean.TRUE.equals(ses.getAttribute("urlAccess1ChallengeAdmin"))) {
+    if (Validate.validateAdminSession(ses)) {
       ShepherdLogManager.setRequestIp(
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
@@ -118,7 +117,7 @@ public class UrlAccess1Admin extends HttpServlet {
       out.write(htmlOutput);
     } else {
       response.sendError(HttpServletResponse.SC_FORBIDDEN);
-      log.error(levelName + " servlet accessed without challenge administrator authorization");
+      log.error(levelName + " servlet accessed without administrator authorization");
     }
   }
 }
