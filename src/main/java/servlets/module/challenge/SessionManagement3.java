@@ -132,6 +132,10 @@ public class SessionManagement3 extends HttpServlet {
             ResultSet resultSet2 = callstmt.executeQuery();
             if (resultSet2.next()) {
               log.debug("Successful Admin Login");
+              // Record the authenticated sub schema user server side. The change password
+              // function reads this instead of a client supplied cookie, so the only account
+              // a caller can reset is the one the server itself signed them in as.
+              ses.setAttribute("sessionManagement3CurrentUser", resultSet2.getString(1));
               // Get key and add it to the output
               String userKey =
                   Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
@@ -158,6 +162,8 @@ public class SessionManagement3 extends HttpServlet {
             }
           } else {
             log.debug("Successful Guest Login");
+            // Record the authenticated sub schema user server side (see the admin branch).
+            ses.setAttribute("sessionManagement3CurrentUser", resultSet.getString(1));
             htmlOutput =
                 makeTable(bundle)
                     + "<h2 class='title'>"
