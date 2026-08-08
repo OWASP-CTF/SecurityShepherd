@@ -15,6 +15,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
 import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
@@ -46,9 +47,10 @@ public class SessionManagement2ChangePassword extends HttpServlet {
       "f5ddc0ed2d30e597ebacf5fdd117083674b19bb92ffc3499121b9e6a12c92959";
 
   /**
-   * A user with the submitted email address is set a new random password. The new password is a
-   * credential of that account, so it is only ever sent to the address on file and never returned
-   * in this response.
+   * A user with the submitted email address is set a new random password, the password is also
+   * returned from the database procedure and is forwards through to the HTTP response. This
+   * response is not consumed by the client interface by default, and the user will have to discover
+   * it.
    *
    * @param subEmail Sub schema user email address
    */
@@ -74,6 +76,7 @@ public class SessionManagement2ChangePassword extends HttpServlet {
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
 
+      String htmlOutput = new String();
       log.debug(levelName + " Servlet accessed");
       try {
         log.debug("Getting Challenge Parameter");
@@ -105,12 +108,13 @@ public class SessionManagement2ChangePassword extends HttpServlet {
           callstmt.execute();
           log.debug("Changes committed.");
 
+          htmlOutput = Encode.forHtml(newPassword);
           Database.closeConnection(conn);
         } catch (SQLException e) {
           log.error(levelName + " SQL Error: " + e.toString());
         }
         log.debug("Outputting HTML");
-        out.write(bundle.getString("response.changedTo"));
+        out.write(bundle.getString("response.changedTo") + " " + htmlOutput);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());

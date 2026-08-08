@@ -459,7 +459,7 @@ COMMIT;
 -- -----------------------------------------------------
 START TRANSACTION;
 USE `SQLiC5Shop`;
-INSERT INTO `SQLiC5Shop`.`vipCoupons` (`vipCouponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (861267, 100, 'spcil\/|Pse3cr3etCouponStu.f4rU176', 2);
+INSERT INTO `SQLiC5Shop`.`vipCoupons` (`vipCouponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (861267, 100, 'ddPHvbusBm4Fc2aybHUbf29CtVVY', 2);
 
 COMMIT;
 
@@ -933,29 +933,29 @@ SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
 -- -----------------------------------------------------
 START TRANSACTION;
 USE `sqlInjectSeven`;
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (40, 'User 1', 'de1027fnNys6687as!283619fj1237fault', 'UserJohn1@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (41, 'User 2', 'd128361027fnNys6687as!9fj1237efault', 'UserJim2@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (42, 'User 3', 'defa1283619f027fnNys6687as!j1237ult', 'UserJone3@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (43, 'User 4', 'd1283619fj12027fnNys6687as!37efault', 'UserBell4@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (44, 'User 5', 'defau1283619fj1237lt', 'UserConan5@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (45, 'User 6', 'de1283619fj1237fault', 'UserSmioth6@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (46, 'User 7', 'def1d88027fnNys6687as!sd&dsault', 'UserHat7@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (47, 'User 8', 'def1d027fnNys6687as!88sd&dsault', 'UserPage8@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (48, 'User 9', 'defaul027fnNys6687as!1d88sd&dst', 'UserCube9@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (49, 'User 11', 'd1d88027fnNys6687as!sd&dsefault', 'MrsJohn1@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (50, 'User 12', 'defau027fnNys6687as!l1d88sd&dst', 'MrsJim2@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (51, 'User 13', 'def_926diUUscnaosOault', 'MrsJone3@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (52, 'User 14', 'd_926diUUscnaosOefault', 'MrsBell4@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (53, 'User 15', 'defaul_926diUUscnaosOt', 'MrsConan5@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (54, 'User 16', 'de_926diUUscnaosOfault', 'MrsSmioth6@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (55, 'User 17', 'defaul_926diUUscnaosOt', 'MrsHat7@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (56, 'User 18', 'de_926diUUscnaosOfault', 'MrsPage8@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (57, 'User 19', 'defa_926diUUscnaosOult', 'MrsCube9@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (58, 'User 20', 'd_926diUUscnaosOefault', 'Mr20@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (59, 'User 21', 'defa1027fnNys6687as!ult', 'Mr2John1@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (60, 'User 22', 'de027fnNys6687as!fault', 'Mr2Jim2@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (61, 'User 23', 'defau027fnNys6687as!lt', 'Mr2Jone3@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (62, 'User 10', 'def027fnNys6687as!ault', 'Mrs0@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (40, 'User 1', '4FyoLHcquB9z0pZvrRH1NwjMBjJbTP', 'UserJohn1@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (41, 'User 2', 'nqL8IBbqkWtGVllYZIlNhhjImwsLAM', 'UserJim2@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (42, 'User 3', 'LAMxq4X0Vu3a9IBHQQnr45fweiF2sM', 'UserJone3@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (43, 'User 4', 'j5v0X2QoE2MBW8ccywvEQKqh7IiSWP', 'UserBell4@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (44, 'User 5', 'b0cERw3dlYEf4JgqHBNFC5f7Hw4ws2', 'UserConan5@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (45, 'User 6', 'RaPHonVSQJN5vy9pRZV8mIJtNqU0kU', 'UserSmioth6@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (46, 'User 7', 'umz3RI1GuhUi9asGv8zOoqGGLyfTTl', 'UserHat7@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (47, 'User 8', 'Bh0Fjd2JFtZ3GxVBWlbnonhDYeeXEs', 'UserPage8@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (48, 'User 9', 'LymtLR9sc0CIZx72AClYoeHQkCNmpI', 'UserCube9@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (49, 'User 11', 'ZsW372wi1sH9gI251Ox5NmTL051AZk', 'MrsJohn1@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (50, 'User 12', 'cLlO7ALEguBhmCCOsr3utu4LeegEP1', 'MrsJim2@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (51, 'User 13', 'uls8WmikfLupMOOlsVndtOclH4baI6', 'MrsJone3@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (52, 'User 14', 'f9uNhzzJsbgrSNvYqvwRlX7mGO8fzT', 'MrsBell4@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (53, 'User 15', 'qNoRcy2q8pwQrd8gJUZF9wiIet33QC', 'MrsConan5@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (54, 'User 16', 'SUDkeKwi7uYDkdBRRn0wz8Tgc2nCQP', 'MrsSmioth6@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (55, 'User 17', '7Aubp6l2wR6JpNVjQii9s1cEPFHejs', 'MrsHat7@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (56, 'User 18', 'Znj6jeecc5rTAzBXvp40MoIqo6xAST', 'MrsPage8@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (57, 'User 19', 'F34JpoOYbmT05W2WYh2BB8kefGyZQh', 'MrsCube9@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (58, 'User 20', 'zX0ZJ3wz1jR6WulqybRIRbobTkbCqu', 'Mr20@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (59, 'User 21', 'KA6mrXp223x3dVU0q4xMSQiw4LdEnW', 'Mr2John1@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (60, 'User 22', '8s4Fbaeqjqb6DTLVkzkJcIiTVU5SR8', 'Mr2Jim2@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (61, 'User 23', 'BupRMq8nGwhxbmMLFSZNhu8WgEbgiy', 'Mr2Jone3@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (62, 'User 10', 'P5knt9VL8Em1inzEI78N2ygpuX40cV', 'Mrs0@User.com', 'default');
 
 COMMIT;
 
