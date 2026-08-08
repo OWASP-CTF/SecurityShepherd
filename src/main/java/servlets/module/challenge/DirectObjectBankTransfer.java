@@ -74,7 +74,14 @@ public class DirectObjectBankTransfer extends HttpServlet {
       String applicationRoot = getServletContext().getRealPath("");
       Connection conn = null;
       try {
-        String senderAccountNumber = request.getParameter("senderAccountNumber");
+        // Funds may only be sent from the account signed into this session
+        Object bankAccount = ses.getAttribute("directObjectBankAccount");
+        if (bankAccount == null) {
+          log.debug("No bank account signed into this session");
+          out.write(errors.getString("error.noSession"));
+          return;
+        }
+        String senderAccountNumber = bankAccount.toString();
         log.debug("Sender Account Number - " + senderAccountNumber);
         String receiverAccountNumber = request.getParameter("receiverAccountNumber");
         log.debug("Receiver Account Number - " + receiverAccountNumber);
