@@ -3,8 +3,8 @@ package servlets.module.challenge;
 import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.sql.CallableStatement;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Locale;
@@ -78,9 +78,12 @@ public class SqlInjectionStoredProcedure extends HttpServlet {
         log.debug("Getting Connection to Database");
         Connection conn =
             Database.getChallengeConnection(ApplicationRoot, "SqlChallengeStoredProc");
-        CallableStatement callstmt = conn.prepareCall("{CALL findUser(?)}");
-        callstmt.setString(1, userIdentity);
-        ResultSet resultSet = callstmt.executeQuery();
+        // Prepared rather than a CallableStatement: the driver would have to read the routine
+        // definition out of the server to describe a callable's parameters, and this challenge's
+        // database user is only granted EXECUTE on the procedure.
+        PreparedStatement prepstmt = conn.prepareStatement("CALL findUser(?)");
+        prepstmt.setString(1, userIdentity);
+        ResultSet resultSet = prepstmt.executeQuery();
 
         int i = 0;
         htmlOutput = "<h2 class='title'>" + bundle.getString("response.searchResults") + "</h2>";
