@@ -73,7 +73,13 @@ public class CsrfChallengeSevenGetToken extends HttpServlet {
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
         String htmlOutput = new String("Your csrf Token for this Challenge is: ");
-        String userId = request.getParameter("userId").toString();
+        // The "userId" request parameter is attacker-controlled and must never be trusted to
+        // select whose token gets returned - doing so previously let any authenticated user
+        // read any other user's CSRF token by supplying their id (or enumerate ids via a
+        // wildcard match), completely undermining the token's purpose. Only ever return the
+        // token belonging to the caller's own authenticated session, looked up with an exact
+        // match rather than a pattern match.
+        String userId = (String) ses.getAttribute("userStamp");
 
         Connection conn =
             Database.getChallengeConnection(
@@ -82,8 +88,7 @@ public class CsrfChallengeSevenGetToken extends HttpServlet {
           log.debug("Preparing setCsrfChallengeSevenToken call");
           PreparedStatement callstmnt =
               conn.prepareStatement(
-                  "SELECT csrfTokenscol FROM csrfChallengeEnumTokens.csrfTokens WHERE userId LIKE"
-                      + " ?");
+                  "SELECT csrfTokenscol FROM csrfChallengeEnumTokens.csrfTokens WHERE userId = ?");
           callstmnt.setString(1, userId);
           log.debug("Executing setCsrfChallengeSevenTokenQuery");
           ResultSet rs = callstmnt.executeQuery();
