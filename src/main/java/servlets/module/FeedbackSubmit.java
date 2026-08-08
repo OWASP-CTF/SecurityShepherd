@@ -66,7 +66,7 @@ public class FeedbackSubmit extends HttpServlet {
     PrintWriter out = response.getWriter();
     out.print(getServletInfo());
     request.setCharacterEncoding("UTF-8");
-    HttpSession ses = request.getSession(false);
+    HttpSession ses = request.getSession(true);
     if (Validate.validateSession(ses)) {
       ShepherdLogManager.setRequestIp(
           request.getRemoteAddr(),
@@ -75,7 +75,7 @@ public class FeedbackSubmit extends HttpServlet {
       log.debug("Current User: " + ses.getAttribute("userName").toString());
       Cookie tokenCookie = Validate.getToken(request.getCookies());
       Object tokenParmeter = request.getParameter("csrfToken");
-      if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
+      if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
         boolean notNull = false;
         String storedResult = null;
         try {

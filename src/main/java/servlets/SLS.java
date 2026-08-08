@@ -55,7 +55,7 @@ public class SLS extends HttpServlet {
     log.debug("**** servlets.SLS ***");
     response.setCharacterEncoding("UTF-8");
     request.setCharacterEncoding("UTF-8");
-    HttpSession ses = request.getSession(false);
+    HttpSession ses = request.getSession(true);
     if (Validate.validateSession(ses)) {
       ShepherdLogManager.setRequestIp(
           request.getRemoteAddr(),
@@ -90,14 +90,14 @@ public class SLS extends HttpServlet {
           log.debug("Error when performing SSO Logout: " + StringUtils.join(errors, ", "));
         }
 
-        if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
+        if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
           // Remove Everything
           ses.removeAttribute("userStamp");
           ses.removeAttribute("userName");
           ses.removeAttribute("userRole");
           // Invalid Session on server
           ses.invalidate();
-          ses = request.getSession(false);
+          ses = request.getSession(true);
           // Remove cookie
           Cookie emptyCookie = new Cookie("token", "");
           emptyCookie.setPath("/");

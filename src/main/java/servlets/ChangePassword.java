@@ -3,6 +3,7 @@ package servlets;
 import dbProcs.Getter;
 import dbProcs.Setter;
 import java.io.IOException;
+import java.math.BigInteger;
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
@@ -54,7 +55,7 @@ public class ChangePassword extends HttpServlet {
     try {
       response.setCharacterEncoding("UTF-8");
       request.setCharacterEncoding("UTF-8");
-      HttpSession ses = request.getSession(false);
+      HttpSession ses = request.getSession(true);
       if (Validate.validateSession(ses)) {
         ShepherdLogManager.setRequestIp(
             request.getRemoteAddr(),
@@ -63,7 +64,7 @@ public class ChangePassword extends HttpServlet {
         log.debug("Current User: " + ses.getAttribute("userName").toString());
         Cookie tokenCookie = Validate.getToken(request.getCookies());
         Object tokenParmeter = request.getParameter("csrfToken");
-        if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
+        if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
           log.debug("Getting Parameters");
           String userName = (String) ses.getAttribute("userName");
           String currentPassword = (String) request.getParameter("currentPassword");
@@ -71,7 +72,16 @@ public class ChangePassword extends HttpServlet {
           String passwordConfirm = (String) request.getParameter("passwordConfirmation");
           String ApplicationRoot = getServletContext().getRealPath("");
 
-          if (isValidPasswordChange(currentPassword, newPassword, passwordConfirm)) {
+          boolean validData = false;
+          boolean passwordChange = false;
+          boolean validPassword = false;
+          validData =
+              newPassword.equalsIgnoreCase(passwordConfirm)
+                  && !newPassword.isEmpty()
+                  && newPassword != null;
+          passwordChange = !currentPassword.equalsIgnoreCase(newPassword);
+          validPassword = newPassword.length() > 4 && newPassword.length() <= 512;
+          if (validData && passwordChange && validPassword) {
             log.debug("Validating Current Password");
             String user[] = Getter.authUser(ApplicationRoot, userName, currentPassword);
             if (user != null) {
@@ -85,8 +95,32 @@ public class ChangePassword extends HttpServlet {
               return;
             }
           } else {
-            log.error("Invalid password change request");
-            ses.setAttribute("errorMessage", "Invalid password change. Please try again.");
+            if (validData && passwordChange) {
+              try {
+                // User Account is Locked
+                log.debug("The user account is locked. Logging the user out");
+                Cookie cookieToken = Validate.getToken(request.getCookies());
+                BigInteger temp = new BigInteger(cookieToken.getValue());
+                response.sendRedirect("logout?csrfToken=" + temp);
+              } catch (Exception e) {
+                log.error(
+                    "Cant Log the user out because they dont have a valid CSRF token : "
+                        + e.toString());
+                response.sendRedirect("login.jsp");
+              }
+            }
+            // Return error message
+            else if (!validData) {
+              log.error("Bad Data Received");
+              ses.setAttribute("errorMessage", "Invalid Request! Please try again.");
+            } else if (!validPassword) {
+              log.error("Invalid Password Submitted (Too Short/Long)");
+              ses.setAttribute("errorMessage", "Invalid Password! Please try again.");
+            } else {
+              log.error("No password Change Detected");
+              ses.setAttribute(
+                  "errorMessage", "You have to CHANGE your password! Please try again.");
+            }
           }
         } else {
           log.error("CSRF Attack Detected");
@@ -100,15 +134,5 @@ public class ChangePassword extends HttpServlet {
     }
     log.debug("*** END ChangePassword ***");
     response.sendRedirect("index.jsp");
-  }
-
-  static boolean isValidPasswordChange(
-      String currentPassword, String newPassword, String passwordConfirmation) {
-    return currentPassword != null
-        && newPassword != null
-        && passwordConfirmation != null
-        && newPassword.equals(passwordConfirmation)
-        && !currentPassword.equals(newPassword)
-        && Validate.isValidPassword(newPassword);
   }
 }

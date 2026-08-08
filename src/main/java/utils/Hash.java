@@ -1,7 +1,7 @@
 package utils;
 
 import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -29,7 +29,6 @@ import org.apache.logging.log4j.Logger;
 public class Hash {
 
   private static final Logger log = LogManager.getLogger(Hash.class);
-  private static final SecureRandom secureRandom = new SecureRandom();
   private static byte[] serverEncryptionKey = randomKeyBytes();
 
   /**
@@ -76,12 +75,13 @@ public class Hash {
       byte[] key = getCurrentKey();
       SecretKeySpec keySpec = new SecretKeySpec(key, HMAC_SHA512);
       sha512_HMAC.init(keySpec);
-      byte[] mac_data = sha512_HMAC.doFinal((baseKey + userSalt).getBytes(StandardCharsets.UTF_16));
+      byte[] mac_data = sha512_HMAC.doFinal((baseKey + userSalt).getBytes("UTF-16"));
       StringBuilder sb = new StringBuilder();
       for (byte b : mac_data) {
         sb.append(String.format("%02X", b));
       }
       String userSpecificSolution = sb.toString();
+      log.debug("Returning: " + userSpecificSolution);
       toReturn = userSpecificSolution;
     } catch (Exception e) {
       log.error("Encrypt Failure: " + e.toString());
@@ -94,8 +94,17 @@ public class Hash {
   }
 
   public static byte[] randomKeyBytes() {
-    byte byteArray[] = new byte[32];
-    secureRandom.nextBytes(byteArray);
+    byte byteArray[] = new byte[16];
+
+    SecureRandom psn1;
+    try {
+      psn1 = SecureRandom.getInstance("SHA1PRNG");
+    } catch (NoSuchAlgorithmException e) {
+      log.error("Could not find SHA1PRNG: " + e.toString());
+      throw new RuntimeException(e);
+    }
+    psn1.setSeed(psn1.nextLong());
+    psn1.nextBytes(byteArray);
 
     return byteArray;
   }
@@ -110,9 +119,20 @@ public class Hash {
 
     byte byteArray[] = new byte[16];
 
-    secureRandom.nextBytes(byteArray);
+    SecureRandom psn1 = null;
+
+    try {
+      psn1 = SecureRandom.getInstance("SHA1PRNG");
+    } catch (NoSuchAlgorithmException e) {
+      log.error("Could not find SHA1PRNG: " + e.toString());
+      throw new RuntimeException(e);
+    }
+
+    psn1.setSeed(psn1.nextLong());
+    psn1.nextBytes(byteArray);
     BigInteger bigInt = new BigInteger(byteArray);
     result = bigInt.toString();
+    log.debug("Generated String = " + result);
 
     return result;
   }

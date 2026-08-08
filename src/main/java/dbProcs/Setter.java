@@ -2,6 +2,8 @@ package dbProcs;
 
 import de.mkammerer.argon2.Argon2;
 import de.mkammerer.argon2.Argon2Factory;
+import java.io.DataOutputStream;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.sql.CallableStatement;
@@ -10,7 +12,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
-import java.util.Properties;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import utils.CountdownHandler;
@@ -285,22 +286,29 @@ public class Setter {
    */
   public static boolean setCoreDatabaseInfo(
       String applicationRoot, String url, String userName, String password) {
-    try (FileOutputStream databaseOutput =
-            new FileOutputStream(applicationRoot + "/WEB-INF/database.properties", false);
-        FileOutputStream coreDatabaseOutput =
-            new FileOutputStream(applicationRoot + "/WEB-INF/coreDatabase.properties", false)) {
-      // Update Database Settings
-      Properties databaseProperties = new Properties();
-      databaseProperties.setProperty("databaseConnectionURL", url);
-      databaseProperties.setProperty("DriverType", "org.mariadb.jdbc.Driver");
-      databaseProperties.store(databaseOutput, null);
 
+    userName = userName.toLowerCase();
+
+    try {
+      // Update Database Settings
+      File siteProperties = new File(applicationRoot + "/WEB-INF/database.properties");
+      DataOutputStream writer = new DataOutputStream(new FileOutputStream(siteProperties, false));
+      String theProperties =
+          new String("databaseConnectionURL=" + url + "\nDriverType=org.mariadb.jdbc.Driver");
+      writer.write(theProperties.getBytes());
+      writer.close();
       // Update Core Schema Settings
-      Properties coreDatabaseProperties = new Properties();
-      coreDatabaseProperties.setProperty("databaseConnectionURL", "core");
-      coreDatabaseProperties.setProperty("databaseUsername", userName);
-      coreDatabaseProperties.setProperty("databasePassword", password);
-      coreDatabaseProperties.store(coreDatabaseOutput, null);
+      siteProperties = new File(applicationRoot + "/WEB-INF/coreDatabase.properties");
+      writer = new DataOutputStream(new FileOutputStream(siteProperties, false));
+      theProperties =
+          new String(
+              "databaseConnectionURL=core"
+                  + "\ndatabaseUsername="
+                  + userName
+                  + "\ndatabasePassword="
+                  + password);
+      writer.write(theProperties.getBytes());
+      writer.close();
       return true;
     } catch (IOException e) {
       log.error("Could not update Core Database Info: " + e.toString());

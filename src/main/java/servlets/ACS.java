@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -18,7 +19,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.CsrfToken;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.UserKicker;
 
@@ -249,12 +250,6 @@ public class ACS extends HttpServlet {
               log.debug("userClassId = " + user[4]);
 
               ses.setAttribute("userClass", user[4]);
-              ses.setAttribute("attributes", attributes);
-              ses.setAttribute("nameId", nameId);
-              ses.setAttribute("nameIdFormat", nameIdFormat);
-              ses.setAttribute("sessionIndex", sessionIndex);
-              ses.setAttribute("nameidNameQualifier", nameidNameQualifier);
-              ses.setAttribute("nameidSPNameQualifier", nameidSPNameQualifier);
 
               if (user[5].equalsIgnoreCase("true")) {
                 log.debug("Temporary Username Detected, user will be prompted to change");
@@ -262,7 +257,15 @@ public class ACS extends HttpServlet {
               }
 
               log.debug("Setting CSRF cookie");
-              CsrfToken.issue(request, response, ses);
+              Cookie token = new Cookie("token", Hash.randomString());
+              if (request.getRequestURL().toString().startsWith("https")) // If Requested over HTTPs
+              {
+                token.setSecure(true);
+              }
+
+              // We must set the path because the ACS servlet is in a subdir...
+              token.setPath("/");
+              response.addCookie(token);
 
               mustRedirect = true;
 
@@ -283,6 +286,12 @@ public class ACS extends HttpServlet {
 
             errorMessage += "SSO login failed.";
             ses.setAttribute("loginFailed", errorMessage);
+            // Lagging Response
+            try {
+              Thread.sleep(2000);
+            } catch (InterruptedException ex) {
+              Thread.currentThread().interrupt();
+            }
             response.sendRedirect("../login.jsp");
           }
         }

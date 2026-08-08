@@ -52,7 +52,7 @@ public class GetFeedback extends HttpServlet {
     request.setCharacterEncoding("UTF-8");
     PrintWriter out = response.getWriter();
     out.print(getServletInfo());
-    HttpSession ses = request.getSession(false);
+    HttpSession ses = request.getSession(true);
     Cookie tokenCookie = Validate.getToken(request.getCookies());
     Object tokenParmeter = request.getParameter("csrfToken");
     if (Validate.validateAdminSession(ses, tokenCookie, tokenParmeter)) {
@@ -60,7 +60,7 @@ public class GetFeedback extends HttpServlet {
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
-      if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
+      if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
         String moduleId = Validate.validateParameter(request.getParameter("moduleId"), 64);
         log.debug("moduleId: " + moduleId);
         String ApplicationRoot = getServletContext().getRealPath("");

@@ -56,7 +56,7 @@ public class AssignPlayers extends HttpServlet {
     out.print(getServletInfo());
     response.setCharacterEncoding("UTF-8");
     request.setCharacterEncoding("UTF-8");
-    HttpSession ses = request.getSession(false);
+    HttpSession ses = request.getSession(true);
     Cookie tokenCookie = Validate.getToken(request.getCookies());
     Object tokenParmeter = request.getParameter("csrfToken");
     if (Validate.validateAdminSession(ses, tokenCookie, tokenParmeter)) {
@@ -64,7 +64,7 @@ public class AssignPlayers extends HttpServlet {
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
-      if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
+      if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
         boolean notNull = false;
         boolean validPlayer = false;
         String[] classInfo = new String[2];

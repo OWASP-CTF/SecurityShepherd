@@ -79,7 +79,8 @@ public class Register extends HttpServlet {
 
         log.debug("Ensuring not a CSRF");
         String paramToken = (String) request.getParameter("csrfToken");
-        if (Validate.validateSessionToken(ses, paramToken)) {
+        String sessToken = (String) ses.getAttribute("csrfToken");
+        if (paramToken.compareTo(sessToken) == 0) {
           log.debug("Getting Registration Parameters");
           String userName = (String) request.getParameter("userName");
           log.debug("userName = " + userName);
@@ -94,16 +95,14 @@ public class Register extends HttpServlet {
 
           // Validation
           log.debug("Checking for nulls");
-          notNull = (userName != null && passWord != null && passWordConfirm != null);
+          notNull = (userName != null && passWord != null);
           log.debug("Ensuring strings are not empty");
-          notEmpty = notNull && !userName.isEmpty() && !passWord.isEmpty();
+          notEmpty = (!userName.isEmpty() && !passWord.isEmpty());
           log.debug("Validating passwords");
-          validPasswords = notNull && passWord.equals(passWordConfirm);
+          validPasswords = passWord.compareTo(passWordConfirm) == 0; // 0 returned if the same
           log.debug("Validating addresses");
-          validAddress =
-              userAddress != null
-                  && userAddress.equals(userAddressCnf)
-                  && Validate.isValidEmailAddress(userAddress);
+          validAddress = userAddress.compareTo(userAddressCnf) == 0;
+          validAddress = (Validate.isValidEmailAddress(userAddress) && validAddress);
           if (!validAddress) {
             userAddress = new String();
           }
@@ -154,7 +153,8 @@ public class Register extends HttpServlet {
             response.sendRedirect("register.jsp");
           }
         } else {
-          log.warn("Registration request rejected because its CSRF token was invalid");
+          log.debug("paramToken = " + paramToken);
+          log.debug("sessToken = " + sessToken);
         }
       } catch (Exception e) {
         log.error("Registration Error: " + e.toString());

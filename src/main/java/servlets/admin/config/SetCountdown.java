@@ -52,7 +52,7 @@ public class SetCountdown extends HttpServlet {
     log.debug("*** servlets.Admin.SetCountdown ***");
     PrintWriter out = response.getWriter();
     out.print(getServletInfo());
-    HttpSession ses = request.getSession(false);
+    HttpSession ses = request.getSession(true);
     Cookie tokenCookie = Validate.getToken(request.getCookies());
     Object tokenParameter = request.getParameter("csrfToken");
     if (Validate.validateAdminSession(ses, tokenCookie, tokenParameter)) {
@@ -61,14 +61,13 @@ public class SetCountdown extends HttpServlet {
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
       log.debug("Current User: " + ses.getAttribute("userName").toString());
-      if (Validate.validateTokens(ses, tokenCookie, tokenParameter)) {
+      if (Validate.validateTokens(tokenCookie, tokenParameter)) {
 
-        LocalDateTime[] requestedTimes = requestedTimes(request);
-        LocalDateTime startTime = requestedTimes[0];
+        LocalDateTime startTime = LocalDateTime.parse(request.getParameter("startTime"));
         boolean hasStartTime = Boolean.parseBoolean(request.getParameter("hasStartTime"));
-        LocalDateTime lockTime = requestedTimes[1];
+        LocalDateTime lockTime = LocalDateTime.parse(request.getParameter("lockTime"));
         boolean hasLockTime = Boolean.parseBoolean(request.getParameter("hasLockTime"));
-        LocalDateTime endTime = requestedTimes[2];
+        LocalDateTime endTime = LocalDateTime.parse(request.getParameter("lockTime"));
         boolean hasEndTime = Boolean.parseBoolean(request.getParameter("hasEndTime"));
 
         CountdownHandler.setStartTime(startTime);
@@ -90,13 +89,5 @@ public class SetCountdown extends HttpServlet {
       out.write("<img src='css/images/loggedOutSheep.jpg'/>");
     }
     log.debug("*** END servlets.Admin.SetCountdown ***");
-  }
-
-  static LocalDateTime[] requestedTimes(HttpServletRequest request) {
-    return new LocalDateTime[] {
-      LocalDateTime.parse(request.getParameter("startTime")),
-      LocalDateTime.parse(request.getParameter("lockTime")),
-      LocalDateTime.parse(request.getParameter("endTime"))
-    };
   }
 }

@@ -51,7 +51,7 @@ public class SetCtfMode extends HttpServlet {
     log.debug("*** servlets.Admin.SetCtfMode ***");
     PrintWriter out = response.getWriter();
     out.print(getServletInfo());
-    HttpSession ses = request.getSession(false);
+    HttpSession ses = request.getSession(true);
     Cookie tokenCookie = Validate.getToken(request.getCookies());
     Object tokenParmeter = request.getParameter("csrfToken");
     if (Validate.validateAdminSession(ses, tokenCookie, tokenParmeter)) {
@@ -59,7 +59,7 @@ public class SetCtfMode extends HttpServlet {
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
-      if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
+      if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
         ModulePlan.setIncrementalFloor();
         log.debug("CTF Mode enabled");
         out.write(

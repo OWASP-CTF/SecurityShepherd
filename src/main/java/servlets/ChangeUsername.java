@@ -52,7 +52,7 @@ public class ChangeUsername extends HttpServlet {
 
     request.setCharacterEncoding("UTF-8");
 
-    HttpSession ses = request.getSession(false);
+    HttpSession ses = request.getSession(true);
     if (Validate.validateSession(ses)) {
       ShepherdLogManager.setRequestIp(
           request.getRemoteAddr(),
@@ -62,7 +62,7 @@ public class ChangeUsername extends HttpServlet {
       Cookie tokenCookie = Validate.getToken(request.getCookies());
 
       Object tokenParmeter = request.getParameter("csrfToken");
-      if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
+      if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
         log.debug("Getting Parameters");
         String userName = (String) ses.getAttribute("userName");
         String newUsername = Encode.forHtml((String) request.getParameter("newUsername"));

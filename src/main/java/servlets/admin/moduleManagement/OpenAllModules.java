@@ -39,7 +39,7 @@ public class OpenAllModules extends HttpServlet {
     PrintWriter out = response.getWriter();
     out.print(getServletInfo());
 
-    HttpSession ses = request.getSession(false);
+    HttpSession ses = request.getSession(true);
     if (request.getCookies() == null) {
       log.warn("Cookies are null");
       htmlOutput = "<img src=\"css/images/loggedOutSheep.jpg\" /><br/>";
@@ -53,7 +53,7 @@ public class OpenAllModules extends HttpServlet {
             request.getRemoteAddr(),
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
-        if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
+        if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
           unsafeLevels = request.getParameter("unsafeLevels");
           if (unsafeLevels == null) {
             unsafeLevels = "disable";

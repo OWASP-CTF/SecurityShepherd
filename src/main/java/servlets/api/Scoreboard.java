@@ -20,9 +20,8 @@ public class Scoreboard extends HttpServlet {
       throws ServletException, IOException {
     PrintWriter out = response.getWriter();
     out.print(getServletInfo());
-    HttpSession ses = request.getSession(false);
-    String userRole = ses == null ? null : (String) ses.getAttribute("userRole");
-    if (ScoreboardStatus.canSeeScoreboard(userRole)) {
+    HttpSession ses = request.getSession(true);
+    if (ScoreboardStatus.canSeeScoreboard((String) ses.getAttribute("userRole"))) {
       out.write("true");
     } else {
       // Return 403

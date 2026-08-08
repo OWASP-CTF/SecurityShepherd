@@ -1,8 +1,6 @@
 package utils;
 
 import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
 import javax.servlet.http.Cookie;
@@ -39,16 +37,15 @@ public class Validate {
    * @return JSession Id
    */
   public static Cookie getSessionId(Cookie[] userCookies) {
-    if (userCookies == null) {
-      return null;
-    }
-
-    for (Cookie userCookie : userCookies) {
-      if (userCookie != null && "JSESSIONID".equals(userCookie.getName())) {
-        return userCookie;
+    int i = 0;
+    Cookie theSessionId = null;
+    for (i = 0; i < userCookies.length; i++) {
+      if (userCookies[i].getName().compareTo("JSESSIONID") == 0) {
+        theSessionId = userCookies[i];
+        break; // End Loop, because we found the theSessionId
       }
     }
-    return null;
+    return theSessionId;
   }
 
   /**
@@ -58,14 +55,11 @@ public class Validate {
    * @return csrfCookie
    */
   public static Cookie getToken(Cookie[] userCookies) {
-    if (userCookies == null) {
-      return null;
-    }
-
+    int i = 0;
     Cookie theToken = null;
-    for (Cookie userCookie : userCookies) {
-      if (userCookie != null && "token".equals(userCookie.getName())) {
-        theToken = userCookie;
+    for (i = 0; i < userCookies.length; i++) {
+      if (userCookies[i].getName().compareTo("token") == 0) {
+        theToken = userCookies[i];
         break; // End Loop, because we found the token
       }
     }
@@ -100,10 +94,18 @@ public class Validate {
    * @return Boolean value stating weather or not these supplied attributes make a valid class year
    */
   public static boolean isValidClassYear(String classYear) {
-    if (classYear == null || !classYear.matches("[0-9]{4}")) {
-      return false;
+    boolean result = false;
+    result = classYear.length() == 4;
+    if (result) {
+      try {
+        result = Integer.parseInt(classYear) > 2010;
+      } catch (NumberFormatException e) {
+        log.error("Could not parse classYear " + classYear);
+        result = false;
+        throw new RuntimeException(e);
+      }
     }
-    return Integer.parseInt(classYear) > 2010;
+    return result;
   }
 
   /**
@@ -113,16 +115,17 @@ public class Validate {
    * @return Boolean reflect email validity
    */
   public static boolean isValidEmailAddress(String email) {
-    if (email == null || email.isEmpty() || containsControlCharacter(email)) {
-      return false;
-    }
+    boolean result = true;
     try {
+      log.debug("Validating email");
       InternetAddress emailAddr = new InternetAddress(email);
+      log.debug("Did we crash");
       emailAddr.validate();
-      return true;
+      log.debug("Didn't crash");
     } catch (AddressException ex) {
-      return false;
+      result = false;
     }
+    return result;
   }
 
   /**
@@ -132,7 +135,8 @@ public class Validate {
    * @return
    */
   public static boolean isValidPassword(String passWord) {
-    boolean result = passWord != null && passWord.length() > 7 && passWord.length() <= 512;
+    boolean result = false;
+    result = passWord.length() > 7 && passWord.length() <= 512;
     if (!result) {
       log.debug("Invalid Password detected");
     }
@@ -147,8 +151,11 @@ public class Validate {
    * @return Boolean value stating weather or not these supplied attributes make a valid user
    */
   public static boolean isValidUser(String userName, String passWord) {
-    boolean userOK = isValidUserName(userName);
-    boolean passOK = isValidPassword(passWord);
+    int userLength = userName.length();
+    int passLength = passWord.length();
+
+    boolean userOK = userLength > 2 && userLength <= 32;
+    boolean passOK = passLength > 7 && passLength <= 512;
 
     boolean result = userOK && passOK;
 
@@ -167,24 +174,17 @@ public class Validate {
    * @return Boolean value stating weather or not these supplied attributes make a valid user
    */
   public static boolean isValidUser(String userName, String passWord, String userAddress) {
-    boolean result =
-        isValidUserName(userName)
-            && isValidPassword(passWord)
-            && userAddress != null
-            && userAddress.length() <= 128
-            && !containsControlCharacter(userAddress);
+    boolean result = false;
+    result =
+        userName.length() > 2
+            && passWord.length() >= 8
+            && userName.length() <= 32
+            && passWord.length() <= 512
+            && userAddress.length() <= 128;
     if (!result) {
       log.debug("Invalid Data detected in Validate.isValidUser()");
     }
     return result;
-  }
-
-  private static boolean isValidUserName(String userName) {
-    return userName != null && userName.matches("[A-Za-z0-9._-]{3,32}");
-  }
-
-  private static boolean containsControlCharacter(String value) {
-    return value.codePoints().anyMatch(Character::isISOControl);
   }
 
   /**
@@ -225,7 +225,7 @@ public class Validate {
             userName = (String) ses.getAttribute("userName");
             // log.debug("Session holder is " + userName);
             String role = (String) ses.getAttribute("userRole");
-            result = role.equals("admin");
+            result = (role.compareTo("admin") == 0);
             if (!result) {
               log.fatal(
                   "User " + userName + " Attempting Admin functions! (CSRF Tokens Not Checked)");
@@ -265,11 +265,11 @@ public class Validate {
             userName = (String) ses.getAttribute("userName");
             // log.debug("Session holder is " + userName);
             String role = (String) ses.getAttribute("userRole");
-            result = role.equals("admin") && validateTokens(ses, cookieToken, requestToken);
+            result = (role.compareTo("admin") == 0);
             if (!result) {
               // Check CSRF Tokens of User to ensure they are not being CSRF'd into causing
               // Unauthorised Access Alert
-              boolean validCsrfTokens = validateTokens(ses, cookieToken, requestToken);
+              boolean validCsrfTokens = validateTokens(cookieToken, requestToken);
               if (validCsrfTokens) {
                 log.fatal(
                     "User account "
@@ -362,14 +362,19 @@ public class Validate {
    * @return Validated String value or empty string value
    */
   public static String validateParameter(Object input, int maxLength) {
-    if (!(input instanceof String) || maxLength < 0) {
-      return "";
+    String result = new String();
+
+    if (input == null) {
+      result = new String();
+    } else {
+      result = (String) input;
+      if (result.length() > maxLength) {
+        log.debug("Parameter Too Long: " + result.length() + " characters");
+        log.debug("Parameter Was: " + result);
+        result = new String();
+      }
     }
-    String result = (String) input;
-    if (result.length() > maxLength) {
-      log.debug("Parameter too long: " + result.length() + " characters");
-      return "";
-    }
+
     return result;
   }
 
@@ -390,9 +395,7 @@ public class Validate {
         ses.invalidate(); // make servlet engine forget the session
       } else {
         // log.debug("Active Session Found");
-        if (ses.getAttribute("userRole") instanceof String
-            && ses.getAttribute("userName") instanceof String
-            && !((String) ses.getAttribute("userName")).isEmpty()) {
+        if (ses.getAttribute("userRole") != null) {
           try {
             // log.debug("Session holder is "+ses.getAttribute("userName").toString());
             String role = (String) ses.getAttribute("userRole");
@@ -416,7 +419,6 @@ public class Validate {
             }
           } catch (Exception e) {
             log.fatal("Tampered Parameter Detected!!! Could not Decrypt stamp");
-            result = false;
           }
         } else {
           log.debug("Session has no credentials");
@@ -439,18 +441,13 @@ public class Validate {
     boolean requestNull = (requestToken == null);
     if (!cookieNull && !requestNull) {
 
-      if (!(requestToken instanceof String)) {
-        log.error("Request Token had an unexpected type");
-        return false;
-      }
-
       String theRequest = (String) requestToken;
       String theCookie = cookieToken.getValue();
       boolean cookieEmpty = theCookie.isEmpty();
       boolean requestEmpty = theRequest.isEmpty();
 
       if (!cookieEmpty && !requestEmpty) {
-        result = constantTimeEquals(theRequest, theCookie);
+        result = theRequest.compareTo(theCookie) == 0;
       } else if (cookieEmpty) {
         log.error("Cookie Token Empty");
       } else if (requestEmpty) {
@@ -469,48 +466,6 @@ public class Validate {
       }
     }
     return result;
-  }
-
-  /** Validates that the request and cookie tokens match the authenticated session's token. */
-  public static boolean validateTokens(
-      HttpSession session, Cookie cookieToken, Object requestToken) {
-    if (session == null
-        || cookieToken == null
-        || !(requestToken instanceof String)
-        || !(session.getAttribute("csrfToken") instanceof String)) {
-      log.error("CSRF token data was missing or invalid");
-      return false;
-    }
-
-    String sessionToken = (String) session.getAttribute("csrfToken");
-    String cookieValue = cookieToken.getValue();
-    String requestValue = (String) requestToken;
-    boolean result =
-        !sessionToken.isEmpty()
-            && constantTimeEquals(sessionToken, cookieValue)
-            && constantTimeEquals(sessionToken, requestValue);
-    if (!result) {
-      log.error("CSRF tokens did not match the authenticated session");
-    }
-    return result;
-  }
-
-  /** Validates a request token against a pre-authentication session, such as registration. */
-  public static boolean validateSessionToken(HttpSession session, Object requestToken) {
-    if (session == null
-        || !(requestToken instanceof String)
-        || !(session.getAttribute("csrfToken") instanceof String)) {
-      return false;
-    }
-    String sessionToken = (String) session.getAttribute("csrfToken");
-    return !sessionToken.isEmpty() && constantTimeEquals(sessionToken, (String) requestToken);
-  }
-
-  private static boolean constantTimeEquals(String first, String second) {
-    return first != null
-        && second != null
-        && MessageDigest.isEqual(
-            first.getBytes(StandardCharsets.UTF_8), second.getBytes(StandardCharsets.UTF_8));
   }
 
   /**
@@ -532,7 +487,7 @@ public class Validate {
   public static boolean validHostUrl(String hostUrl) {
     // TODO - Pull other validation steps into this
     boolean result;
-    result = hostUrl != null && hostUrl.endsWith("/");
+    result = hostUrl.endsWith("/");
     if (!result) {
       log.error("URL Doesn't end with a forward slash. Very likely wrong");
     }
@@ -546,18 +501,14 @@ public class Validate {
    * @return Boolean value reflecting if valid or not
    */
   public static boolean isValidPortNumber(String portNum) {
-    if (portNum == null || !portNum.matches("[0-9]{1,5}")) {
-      log.error("Invalid port number supplied");
-      return false;
-    }
     try {
       Integer validPort = Integer.valueOf(portNum);
       if (validPort < 1 || validPort > 65535) {
-        log.error("Port number was outside the valid range");
+        log.fatal("Value: " + portNum + "is not a valid port number");
         return false;
       }
     } catch (NumberFormatException e) {
-      log.error("Invalid port number supplied");
+      log.fatal("Value: " + portNum + "is not a valid port number");
       return false;
     }
     return true;

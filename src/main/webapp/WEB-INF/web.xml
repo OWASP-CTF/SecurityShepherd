@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://xmlns.jcp.org/xml/ns/javaee" xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_4_0.xsd" id="WebApp_ID" version="4.0">
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://java.sun.com/xml/ns/javaee" xmlns:web="http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" id="WebApp_ID" version="2.5">
 
 	<display-name>Security Shepherd</display-name>
 	<welcome-file-list>
@@ -17,15 +17,6 @@
 			<page-encoding>UTF-8</page-encoding>
 		</jsp-property-group>
 	</jsp-config>
-
-	<session-config>
-		<session-timeout>30</session-timeout>
-		<cookie-config>
-			<http-only>true</http-only>
-			<secure>true</secure>
-		</cookie-config>
-		<tracking-mode>COOKIE</tracking-mode>
-	</session-config>
 
 	<error-page>
 		<error-code>403</error-code>
@@ -1318,16 +1309,6 @@
 		<url-pattern>/challenges/ac8f3f6224b1ea3fb8a0f017aadd0d84013ea2c80e232c980e54dd753700123eOldWebService</url-pattern>
 	</servlet-mapping>
 
-
-	<filter>
-		<filter-name>SecurityHeadersFilter</filter-name>
-		<filter-class>servlets.SecurityHeadersFilter</filter-class>
-	</filter>
-	<filter-mapping>
-		<filter-name>SecurityHeadersFilter</filter-name>
-		<url-pattern>/*</url-pattern>
-		<dispatcher>REQUEST</dispatcher>
-	</filter-mapping>
 
 	<filter>
 		<filter-name>SetupFilter</filter-name>

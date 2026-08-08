@@ -56,7 +56,7 @@ public class GetJsonScore extends HttpServlet {
 
     PrintWriter out = response.getWriter();
     out.print(getServletInfo());
-    HttpSession ses = request.getSession(false);
+    HttpSession ses = request.getSession(true);
     boolean loggedIn = Validate.validateSession(ses);
     if (loggedIn || ScoreboardStatus.isPublicScoreboard()) {
 
@@ -69,16 +69,16 @@ public class GetJsonScore extends HttpServlet {
       } else {
         log.debug("Scoreboard accessed by someone not logged in.");
       }
-      String userRole = loggedIn ? (String) ses.getAttribute("userRole") : null;
-      boolean canSeeScoreboard = ScoreboardStatus.canSeeScoreboard(userRole);
+      boolean canSeeScoreboard =
+          ScoreboardStatus.canSeeScoreboard((String) ses.getAttribute("userRole"));
       Cookie tokenCookie = Validate.getToken(request.getCookies());
       Object tokenParmeter = request.getParameter("csrfToken");
       String scoreboardClass = new String();
-      if ((Validate.validateTokens(ses, tokenCookie, tokenParmeter) && canSeeScoreboard)
+      if ((Validate.validateTokens(tokenCookie, tokenParmeter) && canSeeScoreboard)
           || ScoreboardStatus.isPublicScoreboard()) {
         // What Class to List?
         if (ScoreboardStatus.getClassSpecificScoreboard()) {
-          if ("admin".equals(userRole)) {
+          if (ses.getAttribute("userRole").toString().compareTo("admin") == 0) {
             // Admin should get default class Scoreboard
             scoreboardClass = Register.getDefaultClass();
           } else {

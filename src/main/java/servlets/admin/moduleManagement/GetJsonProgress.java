@@ -55,7 +55,7 @@ public class GetJsonProgress extends HttpServlet {
     response.setContentType("application/json");
     PrintWriter out = response.getWriter();
     out.print(getServletInfo());
-    HttpSession ses = request.getSession(false);
+    HttpSession ses = request.getSession(true);
     Cookie tokenCookie = Validate.getToken(request.getCookies());
     Object tokenParmeter = request.getParameter("csrfToken");
     if (Validate.validateAdminSession(ses, tokenCookie, tokenParmeter)) {
@@ -63,7 +63,7 @@ public class GetJsonProgress extends HttpServlet {
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
-      if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
+      if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
         String classId = Validate.validateParameter(request.getParameter("classId"), 64);
         log.debug("classId: " + classId);
         String ApplicationRoot = getServletContext().getRealPath("");

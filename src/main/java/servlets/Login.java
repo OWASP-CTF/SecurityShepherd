@@ -3,13 +3,14 @@ package servlets;
 import dbProcs.Getter;
 import java.io.IOException;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.CsrfToken;
+import utils.Hash;
 import utils.LoginMethod;
 import utils.ShepherdLogManager;
 import utils.UserKicker;
@@ -95,7 +96,12 @@ public class Login extends HttpServlet {
 
         ses.setAttribute("userClass", user[4]);
         log.debug("Setting CSRF cookie");
-        CsrfToken.issue(request, response, ses);
+        Cookie token = new Cookie("token", Hash.randomString());
+        if (request.getRequestURL().toString().startsWith("https")) // If Requested over HTTPs
+        {
+          token.setSecure(true);
+        }
+        response.addCookie(token);
         mustRedirect = true;
 
         if (user[3].equalsIgnoreCase("true")) {
@@ -118,6 +124,12 @@ public class Login extends HttpServlet {
       } else {
         String loginFailed = "Invalid User name or Password.";
         ses.setAttribute("loginFailed", loginFailed);
+        // Lagging Response
+        try {
+          Thread.sleep(2000);
+        } catch (InterruptedException ex) {
+          Thread.currentThread().interrupt();
+        }
         response.sendRedirect("login.jsp");
         return;
       }
