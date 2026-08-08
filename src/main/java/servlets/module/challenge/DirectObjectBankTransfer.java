@@ -67,13 +67,17 @@ public class DirectObjectBankTransfer extends HttpServlet {
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
       log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+      String senderAccountNumber = (String) ses.getAttribute("directObjectBankAccount");
+      if (senderAccountNumber == null) {
+        response.sendError(HttpServletResponse.SC_FORBIDDEN);
+        return;
+      }
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
       boolean performTransfer = false;
       String errorMessage = new String();
       String applicationRoot = getServletContext().getRealPath("");
       try {
-        String senderAccountNumber = request.getParameter("senderAccountNumber");
         log.debug("Sender Account Number - " + senderAccountNumber);
         String receiverAccountNumber = request.getParameter("receiverAccountNumber");
         log.debug("Receiver Account Number - " + receiverAccountNumber);
