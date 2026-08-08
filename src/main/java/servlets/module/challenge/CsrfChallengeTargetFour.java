@@ -139,17 +139,16 @@ public class CsrfChallengeTargetFour extends HttpServlet {
 
   /**
    * CSRF Validator that checks if the user submitted CSRF token is the token issued to the user
-   * making the request. The token is only accepted when it both exists in the database and is
-   * owned by the session the request was made from, so a nonce handed to one user cannot be
-   * replayed against another.
+   * making the request. The token is only accepted when it both exists in the database and is owned
+   * by the session the request was made from, so a nonce handed to one user cannot be replayed
+   * against another.
    *
    * @param ApplicationRoot Running context of the application
    * @param csrfToken CSRF Token value to search DB for
    * @param userId Identifier of the user the request was authenticated as
    * @return Returns true if the CSRF Token is Deemed valid
    */
-  private static boolean validCsrfToken(
-      String ApplicationRoot, String csrfToken, String userId) {
+  private static boolean validCsrfToken(String ApplicationRoot, String csrfToken, String userId) {
     log.debug("*** CSRF4.validCsrfToken ***");
     boolean result = false;
     Connection conn;

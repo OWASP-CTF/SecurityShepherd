@@ -130,8 +130,8 @@ public class PoorValidation1 extends HttpServlet {
 
   /**
    * Confines a submitted quantity to a sane range. A negative quantity subtracts from the order
-   * total and a very large one overflows the cost arithmetic, so both are refused here rather
-   * than being trusted from the request.
+   * total and a very large one overflows the cost arithmetic, so both are refused here rather than
+   * being trusted from the request.
    *
    * @param amount Quantity as submitted by the client
    * @return The quantity confined to 0..MAX_ITEM_AMOUNT

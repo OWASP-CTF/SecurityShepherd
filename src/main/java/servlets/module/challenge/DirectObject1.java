@@ -46,10 +46,11 @@ public class DirectObject1 extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(DirectObject1.class);
   private static String levelName = "Insecure Direct Object Challenge Challenge One";
+
   /**
-   * The profiles this challenge publishes. Any other identifier is a direct object
-   * reference the requester was never authorised to use, so it is refused regardless of
-   * whether a matching row happens to exist.
+   * The profiles this challenge publishes. Any other identifier is a direct object reference the
+   * requester was never authorised to use, so it is refused regardless of whether a matching row
+   * happens to exist.
    */
   private static final List<String> authorisedUserIds =
       Collections.unmodifiableList(Arrays.asList("1", "3", "5", "7", "9"));

@@ -82,8 +82,7 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
         String plusId = (String) json.get("userId");
         log.debug("User Submitted - " + plusId);
         Cookie tokenCookie = Validate.getToken(request.getCookies());
-        Object tokenParmeter =
-            json.optString("csrfToken", request.getParameter("csrfToken"));
+        Object tokenParmeter = json.optString("csrfToken", request.getParameter("csrfToken"));
         String userId = (String) ses.getAttribute("userStamp");
         if (!userId.equals(plusId) && Validate.validateTokens(tokenCookie, tokenParmeter)) {
           String ApplicationRoot = getServletContext().getRealPath("");

@@ -97,8 +97,7 @@ public class UrlAccess3 extends HttpServlet {
           // The currentPerson cookie is supplied by the client and carries no authority, so it
           // can never be what grants the super admin view. Privilege is taken from the
           // authenticated session instead.
-          if (decodedCookie.equals("MrJohnReillyTheSecond")
-              && Validate.validateAdminSession(ses)) {
+          if (decodedCookie.equals("MrJohnReillyTheSecond") && Validate.validateAdminSession(ses)) {
             log.debug("Super Admin session detected");
             // Get key and add it to the output
             String userKey =

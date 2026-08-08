@@ -65,9 +65,9 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
   };
 
   /**
-   * Wrong secret answers seen so far, keyed by the account being recovered. A secret question
-   * has far too small an answer space to be guessed at freely, so attempts are counted and the
-   * account stops accepting recovery once the budget is spent.
+   * Wrong secret answers seen so far, keyed by the account being recovered. A secret question has
+   * far too small an answer space to be guessed at freely, so attempts are counted and the account
+   * stops accepting recovery once the budget is spent.
    */
   private static final ConcurrentMap<String, AtomicInteger> failedAnswerAttempts =
       new ConcurrentHashMap<String, AtomicInteger>();

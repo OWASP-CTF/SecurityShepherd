@@ -3,11 +3,8 @@ package servlets.module.challenge;
 import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 import java.util.ResourceBundle;
@@ -16,7 +13,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import utils.ShepherdLogManager;
@@ -121,9 +117,7 @@ public class SessionManagement5ChangePassword extends HttpServlet {
         } else {
           Date currentDateTime = new Date();
           tokenLife =
-              (int)
-                  ((currentDateTime.getTime() / 60000)
-                      - (((Long) issuedAt).longValue() / 60000));
+              (int) ((currentDateTime.getTime() / 60000) - (((Long) issuedAt).longValue() / 60000));
           log.debug("Token life = " + tokenLife);
 
           if (tokenLife < 10 && tokenLife >= 0) {

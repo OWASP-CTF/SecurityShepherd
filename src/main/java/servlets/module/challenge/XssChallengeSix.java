@@ -1,6 +1,5 @@
 package servlets.module.challenge;
 
-import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;
@@ -14,8 +13,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
-import utils.FindXSS;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 import utils.XssFilter;
@@ -81,8 +78,7 @@ public class XssChallengeSix extends HttpServlet {
           String searchTerm = request.getParameter("searchTerm");
           log.debug("User Submitted - " + searchTerm);
           searchTerm = XssFilter.safeHttpUrl(searchTerm);
-          userPost =
-              "<a href=\"" + Encode.forHtmlAttribute(searchTerm) + "\">Your HTTP Link!</a>";
+          userPost = "<a href=\"" + Encode.forHtmlAttribute(searchTerm) + "\">Your HTTP Link!</a>";
           log.debug("After Sanitising - " + searchTerm);
 
           log.debug("Adding searchTerm to Html: " + searchTerm);

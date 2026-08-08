@@ -36,8 +36,8 @@ public class XssFilter {
    * <p>Only the http and https schemes are allowed through, so values that would turn an href into
    * a script sink (javascript:, data:, vbscript:, protocol relative links) are rejected outright
    * rather than filtered. Anything that is not a well formed absolute http(s) URL is replaced with
-   * a harmless placeholder link. Callers must still encode the result for the context it is
-   * written into.
+   * a harmless placeholder link. Callers must still encode the result for the context it is written
+   * into.
    *
    * @param input URL to validate
    * @return The submitted URL when it is an absolute http(s) URL, otherwise a placeholder link

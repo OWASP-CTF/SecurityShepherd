@@ -94,8 +94,7 @@ public class SessionManagement8 extends HttpServlet {
 
           // A cookie is supplied by the client and asserts nothing about who the requester is.
           // The role has to be read from the session the server itself authenticated.
-          if (theCookie.getValue().equals("nmHqLjQknlHs")
-              && Validate.validateAdminSession(ses)) {
+          if (theCookie.getValue().equals("nmHqLjQknlHs") && Validate.validateAdminSession(ses)) {
             log.debug("Super User session detected");
             // Get key and add it to the output
             String userKey =
