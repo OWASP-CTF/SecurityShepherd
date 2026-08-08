@@ -78,7 +78,7 @@ public class SessionManagement3ChangePassword extends HttpServlet {
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
-      log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+      log.debug(levelName + " servlet accessed by an authenticated session");
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
       String htmlOutput = new String();
@@ -108,7 +108,7 @@ public class SessionManagement3ChangePassword extends HttpServlet {
         if (passCurrentObj != null) {
           subCurrentPass = (String) passCurrentObj;
         }
-        log.debug("subName = " + subName);
+        log.debug("Account cookie supplied = " + !subName.isEmpty());
         // Base 64 Decode
         try {
           byte[] decodedName = Base64.decodeBase64(subName);
@@ -119,8 +119,8 @@ public class SessionManagement3ChangePassword extends HttpServlet {
           log.debug("Could not decode username");
           subName = new String();
         }
-        log.debug("subName Decoded = " + subName);
-        log.debug("subPass = " + subNewPass);
+        log.debug("Account cookie decoded = " + !subName.isEmpty());
+        log.debug("New password supplied = " + !subNewPass.isEmpty());
 
         if (subNewPass.length() >= 6) {
           log.debug("Getting ApplicationRoot");
@@ -138,8 +138,7 @@ public class SessionManagement3ChangePassword extends HttpServlet {
           log.debug("Verifying current password proves ownership of the account");
           ResultSet resultSet = callstmt.executeQuery();
           if (resultSet.next()) {
-            log.debug("Changing password for user: " + subName);
-            log.debug("Changing password to: " + subNewPass);
+            log.debug("Changing password after successful current-password validation");
 
             callstmt =
                 conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userName = ?");
@@ -159,7 +158,7 @@ public class SessionManagement3ChangePassword extends HttpServlet {
             htmlOutput = "<p>" + bundle.getString("reset.failed") + "</p>";
           }
         } else {
-          log.debug("invalid password submitted: " + subNewPass);
+          log.debug("Invalid password length submitted");
           htmlOutput = "<p>" + bundle.getString("reset.failed") + "</p>";
         }
         log.debug("Outputting HTML");

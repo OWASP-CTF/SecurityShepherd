@@ -1,13 +1,7 @@
 package servlets.module.challenge;
 
-import dbProcs.Database;
-import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -19,8 +13,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.owasp.encoder.Encode;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -75,75 +67,20 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
-      log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+      log.debug(levelName + " servlet accessed by an authenticated session");
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
 
-      String htmlOutput = new String();
       log.debug(levelName + " Servlet accessed");
       try {
-        log.debug("Getting Challenge Parameters");
-        Object emailObj = request.getParameter("subEmail");
-        String subEmail = Validate.validateParameter(emailObj, 60);
-        log.debug("subEmail = " + subEmail);
-        Object ansObj = request.getParameter("subAnswer");
-        String subAns = Validate.validateParameter(ansObj, 128);
-        log.debug("subAnswer = " + subAns);
-
-        String ApplicationRoot = getServletContext().getRealPath("");
-        try {
-          if (Validate.isValidEmailAddress(subEmail) && subAns.length() > 5) {
-            Connection conn =
-                Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalSix");
-            log.debug("Checking Secret Answer");
-            PreparedStatement callstmt =
-                conn.prepareStatement(
-                    "SELECT userName FROM users WHERE userAddress = ? AND secretAnswer = ?");
-            callstmt.setString(1, subEmail);
-            callstmt.setString(2, subAns);
-            log.debug("Running secret Answer Check");
-            ResultSet rs = callstmt.executeQuery();
-            if (rs.next()) {
-              log.debug("Correct Answer Submitted");
-              // Get key and add it to the output
-              String userKey =
-                  Hash.generateUserSolution(
-                      Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
-                      (String) ses.getAttribute("userName"));
-              htmlOutput =
-                  "<h2 class='title'>"
-                      + bundle.getString("response.welcome")
-                      + " "
-                      + Encode.forHtml(rs.getString(1))
-                      + "</h2>"
-                      + "<p>"
-                      + bundle.getString("response.welcome")
-                      + " <a>"
-                      + userKey
-                      + "</a>"
-                      + "</p>";
-            } else {
-              log.debug("Bad Answer Submitted");
-              htmlOutput =
-                  new String(
-                      "<h2 class='title'>"
-                          + bundle.getString("question.badAnswer")
-                          + "</h2><p>"
-                          + bundle.getString("question.whoAreYou"));
-            }
-            Database.closeConnection(conn);
-          } else {
-            log.debug("Invalid data submitted");
-            htmlOutput = new String("<b>" + bundle.getString("question.invalidData") + ": </b>");
-            if (subAns.length() < 5) {
-              htmlOutput += bundle.getString("question.invalidAns");
-            } else {
-              htmlOutput += bundle.getString("question.invalidEmail");
-            }
-          }
-        } catch (SQLException e) {
-          log.error(levelName + " SQL Error: " + e.toString());
-        }
+        // Security questions are shared secrets, not a safe authenticator. Return the same response
+        // for every email/answer pair and never turn knowledge of an answer into account access.
+        String htmlOutput =
+            "<h2 class='title'>"
+                + bundle.getString("question.badAnswer")
+                + "</h2><p>"
+                + bundle.getString("question.whoAreYou")
+                + "</p>";
         log.debug("Outputting HTML");
         out.write(htmlOutput);
       } catch (Exception e) {
@@ -180,7 +117,7 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
-      log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+      log.debug(levelName + " servlet accessed by an authenticated session");
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
 
@@ -204,48 +141,8 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
 
           if (decodedCookie.equals("doNotReturnAnswers")) // Untampered Cookie
           {
-            log.debug("Getting Parameter");
-            Object emailObj = request.getParameter("subEmail");
-            String subEmail = Validate.validateParameter(emailObj, 75);
-            log.debug("subEmail = " + subEmail);
-
-            String ApplicationRoot = getServletContext().getRealPath("");
-            try {
-              if (subEmail.length() < 10) {
-                log.debug("Invalid data submitted");
-                htmlOutput =
-                    new String(
-                        "<b>"
-                            + bundle.getString("question.invalidData")
-                            + ": </b>"
-                            + bundle.getString("question.invalidEmail"));
-              } else {
-                Connection conn =
-                    Database.getChallengeConnection(
-                        ApplicationRoot, "BrokenAuthAndSessMangChalSix");
-                log.debug("Getting Secret Question");
-                PreparedStatement callstmt =
-                    conn.prepareStatement("SELECT secretQuestion FROM users WHERE userAddress = ?");
-                callstmt.setString(1, subEmail);
-                ResultSet rs = callstmt.executeQuery();
-                if (rs.next()) {
-                  log.debug("'Valid' User Detected");
-                  log.debug("Encoding for output: " + rs.getString(1));
-                  // rs.getString(1) contains the question for the user to answer. This question is
-                  // asked in English as it must be answered in English to successfully pass the
-                  // level
-                  htmlOutput = new String(Encode.forHtml(rs.getString(1)));
-                } else {
-                  log.debug("No question found for user");
-                  htmlOutput = bundle.getString("question.noQuestion");
-                }
-                Database.closeConnection(conn);
-              }
-            } catch (SQLException e) {
-              log.debug(levelName + " SQL Error: " + e.toString());
-              log.debug("Outputting error to user");
-              htmlOutput = new String(e.toString());
-            }
+            // Do not disclose user-specific recovery questions or whether an address exists.
+            htmlOutput = bundle.getString("question.noQuestion");
           } else {
             log.debug("Tampered cookie detected");
             htmlOutput = new String(bundle.getString("response.configError"));

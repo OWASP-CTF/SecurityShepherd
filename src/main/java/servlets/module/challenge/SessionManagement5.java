@@ -71,7 +71,7 @@ public class SessionManagement5 extends HttpServlet {
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
-      log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+      log.debug(levelName + " servlet accessed by an authenticated session");
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
 
@@ -83,15 +83,14 @@ public class SessionManagement5 extends HttpServlet {
         Object passObj = request.getParameter("subUserPassword");
         String subName = new String();
         String subPass = new String();
-        String userAddress = new String();
         if (nameObj != null) {
           subName = (String) nameObj;
         }
         if (passObj != null) {
           subPass = (String) passObj;
         }
-        log.debug("subName = " + subName);
-        log.debug("subPass = " + subPass);
+        log.debug("Username supplied = " + !subName.isEmpty());
+        log.debug("Password supplied = " + !subPass.isEmpty());
 
         log.debug("Getting ApplicationRoot");
         String ApplicationRoot = getServletContext().getRealPath("");
@@ -107,50 +106,33 @@ public class SessionManagement5 extends HttpServlet {
         callstmt.execute();
         log.debug("Changes committed.");
 
-        callstmt = conn.prepareStatement("SELECT userName, userRole FROM users WHERE userName = ?");
+        callstmt =
+            conn.prepareStatement(
+                "SELECT userName, userRole FROM users WHERE userName = ? AND userPassword = SHA(?)");
         callstmt.setString(1, subName);
-        log.debug("Executing findUser");
+        callstmt.setString(2, subPass);
+        log.debug("Executing authenticated user lookup");
         ResultSet resultSet = callstmt.executeQuery();
-        // Is the username valid?
         if (resultSet.next()) {
-          log.debug("User found");
+          log.debug("Valid credentials submitted");
           // Is the user an Admin?
           if (resultSet.getString(2).equalsIgnoreCase("admin")) {
             log.debug("Admin Detected");
-            callstmt =
-                conn.prepareStatement(
-                    "SELECT userName, userRole FROM users WHERE userName = ? AND userPassword ="
-                        + " SHA(?)");
-            callstmt.setString(1, subName);
-            callstmt.setString(2, subPass);
-            log.debug("Executing Login Check");
-            ResultSet resultSet2 = callstmt.executeQuery();
-            if (resultSet2.next()) {
-              log.debug("Successful Admin Login");
-              // Get key and add it to the output
-              String userKey =
-                  Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
+            String userKey =
+                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
 
-              htmlOutput =
-                  "<h2 class='title'>"
-                      + bundle.getString("response.welcome")
-                      + " "
-                      + Encode.forHtml(resultSet2.getString(1))
-                      + "</h2>"
-                      + "<p>"
-                      + bundle.getString("response.resultKey")
-                      + " <a>"
-                      + userKey
-                      + "</a>"
-                      + "</p>";
-            } else {
-              userAddress =
-                  bundle.getString("response.badPass")
-                      + " <a>"
-                      + Encode.forHtml(resultSet.getString(1))
-                      + "</a><br/>";
-              htmlOutput = makeTable(userAddress, bundle);
-            }
+            htmlOutput =
+                "<h2 class='title'>"
+                    + bundle.getString("response.welcome")
+                    + " "
+                    + Encode.forHtml(resultSet.getString(1))
+                    + "</h2>"
+                    + "<p>"
+                    + bundle.getString("response.resultKey")
+                    + " <a>"
+                    + userKey
+                    + "</a>"
+                    + "</p>";
           } else {
             log.debug("Successful Pleb Login");
             htmlOutput =
@@ -163,8 +145,8 @@ public class SessionManagement5 extends HttpServlet {
                     + "</p><br/><br/>";
           }
         } else {
-          userAddress = bundle.getString("response.badUser") + "<br/>";
-          htmlOutput = makeTable(userAddress, bundle);
+          log.debug("Invalid credentials submitted");
+          htmlOutput = makeTable(bundle.getString("response.badCredentials") + "<br/>", bundle);
         }
         Database.closeConnection(conn);
         log.debug("Outputting HTML");

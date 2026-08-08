@@ -15,7 +15,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.owasp.encoder.Encode;
 import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
@@ -77,7 +76,7 @@ public class SessionManagement5SetToken extends HttpServlet {
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
-      log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+      log.debug(levelName + " servlet accessed by an authenticated session");
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
 
@@ -90,7 +89,7 @@ public class SessionManagement5SetToken extends HttpServlet {
         if (nameObj != null) {
           userName = (String) nameObj;
         }
-        log.debug("subName = " + userName);
+        log.debug("Username supplied = " + !userName.isEmpty());
 
         log.debug("Getting ApplicationRoot");
         String ApplicationRoot = getServletContext().getRealPath("");
@@ -120,16 +119,11 @@ public class SessionManagement5SetToken extends HttpServlet {
           ses.setAttribute("sessionManagement5ResetUser", userName);
           ses.setAttribute("sessionManagement5ResetToken", resetToken);
           ses.setAttribute("sessionManagement5ResetTokenTime", System.currentTimeMillis());
-          htmlOutput =
-              bundle.getString("setToken.sentTo.1")
-                  + " '"
-                  + Encode.forHtml(userName)
-                  + "' "
-                  + bundle.getString("setToken.sentTo.2");
         } else {
           log.debug("User not Found");
-          htmlOutput = bundle.getString("response.badUser") + "" + Encode.forHtml(userName);
         }
+        // Account recovery must not disclose whether the submitted user exists.
+        htmlOutput = bundle.getString("setToken.genericResponse");
         Database.closeConnection(conn);
         log.debug("Outputting HTML");
         out.write(htmlOutput);

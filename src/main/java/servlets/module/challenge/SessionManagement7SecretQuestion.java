@@ -1,13 +1,7 @@
 package servlets.module.challenge;
 
-import dbProcs.Database;
-import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -19,8 +13,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.owasp.encoder.Encode;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -49,17 +41,6 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
   private static String levelName = "Session Management Challenge 7 (Secret Question)";
   private static String levelHash =
       "269d55bc0e0ff635dcaeec8533085e5eae5d25e8646dcd4b05009353c9cf9c80";
-  // To catch most requests before calling the DB, the in comming Answers must be one of the
-  // following flowers
-  private static String possibleAnswers[] = {
-    new String("Jade Vine"),
-    new String("Corpse Flower"),
-    new String("Gibraltar Campion"),
-    new String("Franklin Tree"),
-    new String("Middlemist Red"),
-    new String("Chocolate Cosmos"),
-    new String("Ghost Orchid")
-  };
 
   /**
    * A user submits a username and answer, these values are checked against the DB to see if they
@@ -86,89 +67,21 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
-      log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+      log.debug(levelName + " servlet accessed by an authenticated session");
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
 
-      String htmlOutput = new String();
       log.debug(levelName + " Servlet accessed");
       try {
-        log.debug("Getting Challenge Parameters");
-
-        Object ansObj = request.getParameter("subAnswer");
-        String subAns = Validate.validateParameter(ansObj, 35);
-        log.debug("subAnswer = " + subAns);
-        Object emailObj = request.getParameter("subEmail");
-        String subEmail = Validate.validateParameter(emailObj, 60);
-        log.debug("subEmail = " + subEmail);
-        if (validAnswer(subAns)) {
-          log.debug("Submitted answer is a possible valid answer");
-          String ApplicationRoot = getServletContext().getRealPath("");
-          try {
-            if (Validate.isValidEmailAddress(subEmail) && subAns.length() > 5) {
-              Connection conn =
-                  Database.getChallengeConnection(
-                      ApplicationRoot, "BrokenAuthAndSessMangChalFlowers");
-              log.debug("Checking Secret Answer");
-              PreparedStatement callstmt =
-                  conn.prepareStatement(
-                      "SELECT userName FROM users WHERE userAddress = ? AND secretAnswer = ?");
-              callstmt.setString(1, subEmail);
-              callstmt.setString(2, subAns);
-              log.debug("Running secret Answer Check");
-              ResultSet rs = callstmt.executeQuery();
-              if (rs.next()) {
-                log.debug("Correct Answer Submitted");
-                // Get key and add it to the output
-                String userKey =
-                    Hash.generateUserSolution(
-                        Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
-                        (String) ses.getAttribute("userName"));
-                htmlOutput =
-                    "<h2 class='title'>"
-                        + bundle.getString("response.welcome")
-                        + " "
-                        + Encode.forHtml(rs.getString(1))
-                        + "</h2>"
-                        + "<p>"
-                        + bundle.getString("response.resultKey")
-                        + " <a>"
-                        + userKey
-                        + "</a>"
-                        + "</p>";
-              } else {
-                log.debug("Bad Answer Submitted");
-                htmlOutput =
-                    new String(
-                        "<h2 class='title'>"
-                            + bundle.getString("question.badAnswer")
-                            + "</h2><p>"
-                            + bundle.getString("question.whoAreYou")
-                            + "</p>");
-              }
-              Database.closeConnection(conn);
-            } else {
-              log.debug("Invalid data submitted");
-              htmlOutput = new String("<b>" + bundle.getString("question.invalidData") + ": </b>");
-              if (subAns.length() < 5) {
-                htmlOutput += bundle.getString("question.invalidAns");
-              } else {
-                htmlOutput += bundle.getString("question.invalidEmail");
-              }
-            }
-          } catch (SQLException e) {
-            log.error(levelName + " SQL Error: " + e.toString());
-          }
-        } else {
-          log.debug("Invalid answer submitted for any user, skipping rest of function");
-          htmlOutput =
-              new String(
-                  "<h2 class='title'>"
-                      + bundle.getString("question.badAnswer")
-                      + "</h2><p>"
-                      + bundle.getString("question.whoAreYou")
-                      + "</p>");
-        }
+        // Knowledge-based recovery with a small, shared answer set is not authentication. Keep the
+        // response uniform so the endpoint cannot be used to recover privileged accounts or
+        // enumerate whether an email/answer pair exists.
+        String htmlOutput =
+            "<h2 class='title'>"
+                + bundle.getString("question.badAnswer")
+                + "</h2><p>"
+                + bundle.getString("question.whoAreYou")
+                + "</p>";
         log.debug("Outputting HTML");
         out.write(htmlOutput);
       } catch (Exception e) {
@@ -205,7 +118,7 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
-      log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+      log.debug(levelName + " servlet accessed by an authenticated session");
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
       String htmlOutput = new String();
@@ -248,14 +161,5 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
     } else {
       log.error(levelName + " servlet accessed with no session");
     }
-  }
-
-  private static boolean validAnswer(String submittedAns) {
-    for (int i = 0; i < possibleAnswers.length; i++) {
-      if (possibleAnswers[i].equalsIgnoreCase(submittedAns)) {
-        return true;
-      }
-    }
-    return false;
   }
 }

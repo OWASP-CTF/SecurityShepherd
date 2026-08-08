@@ -72,7 +72,7 @@ public class SessionManagement5ChangePassword extends HttpServlet {
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
-      log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+      log.debug(levelName + " servlet accessed by an authenticated session");
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
       String htmlOutput = new String();
@@ -94,9 +94,9 @@ public class SessionManagement5ChangePassword extends HttpServlet {
         if (tokenObj != null) {
           token = (String) tokenObj;
         }
-        log.debug("userName = " + userName);
-        log.debug("newPass = " + newPass);
-        log.debug("token = " + token);
+        log.debug("Username supplied = " + !userName.isEmpty());
+        log.debug("New password supplied = " + !newPass.isEmpty());
+        log.debug("Reset token supplied = " + !token.isEmpty());
 
         // The submitted token is only ever valid if it is exactly the one this session was
         // issued, by SessionManagement5SetToken, for this exact user name. A token the caller
@@ -131,8 +131,7 @@ public class SessionManagement5ChangePassword extends HttpServlet {
 
             Connection conn =
                 Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalFive");
-            log.debug("Changing password for user: " + userName);
-            log.debug("Changing password to: " + newPass);
+            log.debug("Changing password after successful reset-token validation");
             PreparedStatement callstmt;
 
             callstmt =
@@ -156,7 +155,7 @@ public class SessionManagement5ChangePassword extends HttpServlet {
 
             htmlOutput = "<p>" + bundle.getString("changePass.success") + "</p>";
           } else {
-            log.debug("Invalid password submitted: " + newPass);
+            log.debug("Invalid password length submitted");
             htmlOutput = "<p>" + bundle.getString("changePass.failure") + "</p>";
           }
         } else if (tokenLife >= 10) {
