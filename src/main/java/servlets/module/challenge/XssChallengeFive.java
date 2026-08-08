@@ -13,11 +13,11 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
 import utils.FindXSS;
 import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
-import utils.XssFilter;
 
 /**
  * Cross Site Scripting Challenge Five control class. <br>
@@ -79,9 +79,15 @@ public class XssChallengeFive extends HttpServlet {
           String userPost = new String();
           String searchTerm = request.getParameter("searchTerm");
           log.debug("User Submitted - " + searchTerm);
-          searchTerm = XssFilter.badUrlValidate(searchTerm);
+          String validatedUrl = "https://www.google.com/search?q=What+does+a+HTTP+link+look+like";
+          if (Validate.isSafeHttpUrl(searchTerm)) {
+            validatedUrl = searchTerm;
+          } else {
+            log.debug("Rejected unsafe or malformed HTTP URL");
+          }
+          searchTerm = Encode.forHtmlAttribute(validatedUrl);
           userPost = "<a href=\"" + searchTerm + "\">Your HTTP Link!</a>";
-          log.debug("After WhiteListing - " + searchTerm);
+          log.debug("After Encoding - " + searchTerm);
 
           boolean xssDetected = FindXSS.search(userPost);
           if (xssDetected) {

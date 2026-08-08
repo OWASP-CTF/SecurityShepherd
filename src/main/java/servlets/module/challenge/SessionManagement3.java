@@ -88,15 +88,13 @@ public class SessionManagement3 extends HttpServlet {
         Object passObj = request.getParameter("subUserPassword");
         String subName = new String();
         String subPass = new String();
-        String userAddress = new String();
         if (nameObj != null) {
           subName = (String) nameObj;
         }
         if (passObj != null) {
           subPass = (String) passObj;
         }
-        log.debug("subName = " + subName);
-        log.debug("subPass = " + subPass);
+        log.debug("Received a Session Management 3 authentication attempt");
 
         log.debug("Getting ApplicationRoot");
         String ApplicationRoot = getServletContext().getRealPath("");
@@ -114,50 +112,32 @@ public class SessionManagement3 extends HttpServlet {
 
         callstmt =
             conn.prepareStatement(
-                "SELECT userName, userAddress, userRole FROM users WHERE userName = ?");
+                "SELECT userName, userAddress, userRole FROM users WHERE userName = ? AND"
+                    + " userPassword = SHA(?)");
         callstmt.setString(1, subName);
-        log.debug("Executing findUser");
+        callstmt.setString(2, subPass);
+        log.debug("Executing credential lookup");
         ResultSet resultSet = callstmt.executeQuery();
         if (resultSet.next()) {
-          log.debug("User found");
           if (resultSet.getString(3).equalsIgnoreCase("admin")) {
-            log.debug("Admin Detected");
-            callstmt =
-                conn.prepareStatement(
-                    "SELECT userName, userAddress, userRole FROM users WHERE userName = ? AND"
-                        + " userPassword = SHA(?)");
-            callstmt.setString(1, subName);
-            callstmt.setString(2, subPass);
-            log.debug("Executing authUser");
-            ResultSet resultSet2 = callstmt.executeQuery();
-            if (resultSet2.next()) {
-              log.debug("Successful Admin Login");
-              // Get key and add it to the output
-              String userKey =
-                  Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
+            log.debug("Successful admin authentication");
+            String userKey =
+                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
 
-              htmlOutput =
-                  "<h2 class='title'>"
-                      + bundle.getString("response.welcome")
-                      + " "
-                      + Encode.forHtml(resultSet2.getString(1))
-                      + "</h2>"
-                      + "<p>"
-                      + bundle.getString("response.resultKey")
-                      + " <a>"
-                      + userKey
-                      + "</a>"
-                      + "</p>";
-            } else {
-              userAddress =
-                  bundle.getString("response.badPass")
-                      + " <a>"
-                      + Encode.forHtml(resultSet.getString(1))
-                      + "</a><br/>";
-              htmlOutput = makeTable(userAddress, bundle);
-            }
+            htmlOutput =
+                "<h2 class='title'>"
+                    + bundle.getString("response.welcome")
+                    + " "
+                    + Encode.forHtml(resultSet.getString(1))
+                    + "</h2>"
+                    + "<p>"
+                    + bundle.getString("response.resultKey")
+                    + " <a>"
+                    + userKey
+                    + "</a>"
+                    + "</p>";
           } else {
-            log.debug("Successful Guest Login");
+            log.debug("Successful guest authentication");
             htmlOutput =
                 makeTable(bundle)
                     + "<h2 class='title'>"
@@ -168,8 +148,8 @@ public class SessionManagement3 extends HttpServlet {
                     + "</p><br/><br/>";
           }
         } else {
-          userAddress = bundle.getString("response.badUser") + "<br/>";
-          htmlOutput = makeTable(userAddress, bundle);
+          log.debug("Authentication failed");
+          htmlOutput = makeTable(bundle.getString("response.badUser") + "<br/>", bundle);
         }
         Database.closeConnection(conn);
         log.debug("Outputting HTML");

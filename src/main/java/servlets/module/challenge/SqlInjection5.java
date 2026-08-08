@@ -79,7 +79,7 @@ public class SqlInjection5 extends HttpServlet {
         int bananaAmount = validateAmount(Integer.parseInt(request.getParameter("bananaAmount")));
         log.debug("bananaAmount - " + bananaAmount);
         String couponCode = request.getParameter("couponCode");
-        log.debug("couponCode - " + couponCode);
+        log.debug("Coupon supplied = " + (couponCode != null && !couponCode.isEmpty()));
 
         // Working out costs
         int pineappleCost = pineappleAmount * 30;

@@ -74,7 +74,7 @@ public class SessionManagement2 extends HttpServlet {
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
-      log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+      log.debug(levelName + " servlet accessed by an authenticated session");
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
 
@@ -86,15 +86,14 @@ public class SessionManagement2 extends HttpServlet {
         Object passObj = request.getParameter("subPassword");
         String subName = new String();
         String subPass = new String();
-        String userAddress = new String();
         if (nameObj != null) {
           subName = (String) nameObj;
         }
         if (passObj != null) {
           subPass = (String) passObj;
         }
-        log.debug("subName = " + subName);
-        log.debug("subPass = " + subPass);
+        log.debug("Username supplied = " + !subName.isEmpty());
+        log.debug("Password supplied = " + !subPass.isEmpty());
 
         log.debug("Getting ApplicationRoot");
         String ApplicationRoot = getServletContext().getRealPath("");
@@ -138,22 +137,8 @@ public class SessionManagement2 extends HttpServlet {
                   + "</a>"
                   + "</p>";
         } else {
-          log.debug("Incorrect credentials, checking if user name correct");
-          callstmt = conn.prepareStatement("SELECT userAddress FROM users WHERE userName = ?");
-          callstmt.setString(1, subName);
-          log.debug("Executing getAddress");
-          resultSet = callstmt.executeQuery();
-          if (resultSet.next()) {
-            log.debug("User Found");
-            userAddress =
-                bundle.getString("response.badPass")
-                    + " <a>"
-                    + Encode.forHtml(resultSet.getString(1))
-                    + "</a><br/>";
-          } else {
-            userAddress = bundle.getString("response.badUser") + "<br/>";
-          }
-          htmlOutput = makeTable(userAddress, bundle);
+          log.debug("Incorrect credentials");
+          htmlOutput = makeTable(bundle.getString("response.badCredentials") + "<br/>", bundle);
         }
         Database.closeConnection(conn);
         log.debug("Outputting HTML");

@@ -5,7 +5,6 @@ import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;
-import java.util.Random;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -14,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -79,23 +79,21 @@ public class CsrfChallengeTargetFive extends HttpServlet {
         if (ses.getAttribute("csrfChallengeFiveNonce") == null
             || ses.getAttribute("csrfChallengeFiveNonce").toString().isEmpty()) {
           log.debug("No CSRF Token associated with user");
-          Random random = new Random();
-          int newToken = random.nextInt(3);
+          String newToken = Hash.randomString();
           out.write(csrfGenerics.getString("target.noTokenNewToken") + " " + newToken + "<br><br>");
-          storedToken = "" + newToken;
+          storedToken = newToken;
           ses.setAttribute("csrfChallengeFiveNonce", newToken);
         } else {
           storedToken = "" + ses.getAttribute("csrfChallengeFiveNonce");
         }
-        String userId = (String) ses.getAttribute("userStamp");
-
         String plusId = (String) request.getParameter("userId").trim();
         log.debug("User Submitted - " + plusId);
         String csrfToken = (String) request.getParameter("csrfToken").trim();
         ;
-        log.debug("csrfToken Submitted - " + csrfToken);
+        log.debug("CSRF token submitted; validating it");
 
-        if (!userId.equals(plusId)) {
+        String counterOwner = CsrfChallengeSecurity.counterOwner(ses, plusId);
+        if (counterOwner != null) {
           if (csrfToken.equalsIgnoreCase(storedToken)) {
             log.debug("Valid Nonce Value Submitted");
             String ApplicationRoot = getServletContext().getRealPath("");
@@ -106,7 +104,7 @@ public class CsrfChallengeTargetFive extends HttpServlet {
 
               log.debug("Attempting to Increment ");
               String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, levelHash);
-              result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
+              result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, counterOwner);
             } else {
               log.error("UserId '" + plusId + "' could not be found.");
             }
@@ -114,7 +112,7 @@ public class CsrfChallengeTargetFive extends HttpServlet {
             log.debug("User " + plusId + " CSRF attack failed due to invalid nonce");
           }
         } else {
-          log.debug("User " + userId + " is attacking themselves");
+          log.debug("User is attacking their own account");
         }
 
         if (result) {

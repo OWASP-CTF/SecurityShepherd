@@ -145,8 +145,7 @@ public class BrokenCryptoHomeMade extends HttpServlet {
                           (String) ses.getAttribute("userName"))
                       + "</a>";
             } else {
-              log.debug("Expected: " + expectedSolution);
-              log.debug("Got     : " + submittedSolution);
+              log.debug("Incorrect homemade-crypto solution submitted");
               htmlOutput =
                   "<h2 class='title'>"
                       + bundle.getString("insecureCryptoStorage.homemade.badanswer")
@@ -395,7 +394,7 @@ public class BrokenCryptoHomeMade extends HttpServlet {
               + "</button>"
               + "</span><p>&nbsp;</p>"
               + "</div>";
-      log.debug("Returning: " + forLog);
+      log.debug("Generated user-specific encrypted solution");
     } catch (Exception e) {
       log.error("Encrypt Failure: " + e.toString());
       toReturn = "Key Should be here! Please refresh the home page and try again!";
@@ -412,7 +411,7 @@ public class BrokenCryptoHomeMade extends HttpServlet {
       String key = createUserSpecificEncryptionKey(Validate.validateEncryptionKey(userSalt));
       forLog = BrokenCryptoHomeMade.encrypt(key, baseKey + getCurrentSalt());
 
-      log.debug("Returning: " + forLog);
+      log.debug("Generated user-specific encrypted solution");
     } catch (Exception e) {
       log.error("Encrypt Failure: " + e.toString());
     }

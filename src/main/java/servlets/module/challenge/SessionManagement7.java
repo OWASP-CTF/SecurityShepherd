@@ -73,7 +73,7 @@ public class SessionManagement7 extends HttpServlet {
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
-      log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+      log.debug(levelName + " servlet accessed by an authenticated session");
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
 
@@ -102,79 +102,54 @@ public class SessionManagement7 extends HttpServlet {
             Object passObj = request.getParameter("subPassword");
             String subName = new String();
             String subPass = new String();
-            String userAddress = new String();
             if (nameObj != null) {
               subName = (String) nameObj;
             }
             if (passObj != null) {
               subPass = (String) passObj;
             }
-            log.debug("subName = " + subName);
-            log.debug("subPass = " + subPass);
+            log.debug("Username supplied = " + !subName.isEmpty());
+            log.debug("Password supplied = " + !subPass.isEmpty());
 
             String ApplicationRoot = getServletContext().getRealPath("");
             Connection conn =
                 Database.getChallengeConnection(
                     ApplicationRoot, "BrokenAuthAndSessMangChalFlowers");
             log.debug("Checking credentials");
-            PreparedStatement callstmt;
-
-            log.debug("Committing changes made to database");
-            callstmt = conn.prepareStatement("COMMIT");
-            callstmt.execute();
-            log.debug("Changes committed.");
-
-            // Filtering password for !, so that it is impossible for users to sign in
-            subPass = subPass.replaceAll("!", "");
-
-            callstmt =
+            try (PreparedStatement callstmt =
                 conn.prepareStatement(
-                    "SELECT userName, userAddress FROM users WHERE userName = ? AND userPassword ="
-                        + " SHA(?)");
-            callstmt.setString(1, subName);
-            callstmt.setString(2, subPass);
-            log.debug("Executing authUser");
-            ResultSet resultSet = callstmt.executeQuery();
-            if (resultSet.next()) {
-              // This should never happen. But just in case;
-              log.debug("Successful Login");
-              // Get key and add it to the output
-              String userKey =
-                  Hash.generateUserSolution(
-                      Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
-                      (String) ses.getAttribute("userName"));
-              htmlOutput =
-                  "<h2 class='title'>"
-                      + bundle.getString("response.welcome")
-                      + " "
-                      + Encode.forHtml(resultSet.getString(1))
-                      + "</h2>"
-                      + "<p>"
-                      + ""
-                      + bundle.getString("response.resultKey")
-                      + " <a>"
-                      + userKey
-                      + "</a>"
-                      + "</p>";
-            } else {
-              log.debug("Incorrect credentials, checking if user name correct");
-              callstmt = conn.prepareStatement("SELECT userAddress FROM users WHERE userName = ?");
+                    "SELECT userName FROM users WHERE userName = ? AND userPassword = SHA(?)")) {
               callstmt.setString(1, subName);
-              log.debug("Executing getAddress");
-              resultSet = callstmt.executeQuery();
-              if (resultSet.next()) {
-                log.debug("User Found");
-                userAddress =
-                    bundle.getString("response.badPass")
-                        + " <a>"
-                        + Encode.forHtml(resultSet.getString(1))
-                        + "</a><br/>";
-              } else {
-                userAddress = bundle.getString("response.badUser") + "<br/>";
+              callstmt.setString(2, subPass);
+              log.debug("Executing authUser");
+              try (ResultSet resultSet = callstmt.executeQuery()) {
+                if (resultSet.next()) {
+                  log.debug("Successful Login");
+                  String userKey =
+                      Hash.generateUserSolution(
+                          Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
+                          (String) ses.getAttribute("userName"));
+                  htmlOutput =
+                      "<h2 class='title'>"
+                          + bundle.getString("response.welcome")
+                          + " "
+                          + Encode.forHtml(resultSet.getString(1))
+                          + "</h2>"
+                          + "<p>"
+                          + bundle.getString("response.resultKey")
+                          + " <a>"
+                          + userKey
+                          + "</a>"
+                          + "</p>";
+                } else {
+                  log.debug("Incorrect credentials");
+                  htmlOutput =
+                      makeTable(bundle.getString("response.badCredentials") + "<br/>", bundle);
+                }
               }
-              htmlOutput = makeTable(userAddress, bundle);
+            } finally {
+              Database.closeConnection(conn);
             }
-            Database.closeConnection(conn);
             log.debug("Outputting HTML");
           } else {
             log.debug("Tampered cookie detected");

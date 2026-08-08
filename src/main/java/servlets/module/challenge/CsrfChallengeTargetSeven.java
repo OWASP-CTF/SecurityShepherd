@@ -71,8 +71,12 @@ public class CsrfChallengeTargetSeven extends HttpServlet {
       String csrfTokenName = "csrfChallengeSevenNonce";
       boolean result = false;
       HttpSession ses = request.getSession(true);
-      String userId = (String) ses.getAttribute("userStamp");
       if (Validate.validateSession(ses)) {
+        String userId = CsrfChallengeSecurity.authenticatedUserId(ses);
+        if (userId == null) {
+          out.write(csrfGenerics.getString("target.noSession"));
+          return;
+        }
         ShepherdLogManager.setRequestIp(
             request.getRemoteAddr(),
             request.getHeader("X-Forwarded-For"),
@@ -94,10 +98,10 @@ public class CsrfChallengeTargetSeven extends HttpServlet {
         String plusId = request.getParameter("userId").trim();
         log.debug("User Submitted - " + plusId);
         String csrfToken = request.getParameter("csrfToken").trim();
-        log.debug("csrfToken Submitted - '" + csrfToken + "'");
-        log.debug("storedCsrf Token is - '" + storedToken + "'");
+        log.debug("CSRF token submitted; validating against stored token");
 
-        if (!userId.equals(plusId)) {
+        String counterOwner = CsrfChallengeSecurity.counterOwner(ses, plusId);
+        if (counterOwner != null) {
           if (csrfToken.equalsIgnoreCase(storedToken)) {
             log.debug("Valid Nonce Value Submitted");
             String userName = (String) ses.getAttribute("userName");
@@ -107,7 +111,7 @@ public class CsrfChallengeTargetSeven extends HttpServlet {
 
               log.debug("Attempting to Increment ");
               String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
-              result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
+              result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, counterOwner);
             } else {
               log.error("UserId '" + plusId + "' could not be found.");
             }
@@ -115,7 +119,7 @@ public class CsrfChallengeTargetSeven extends HttpServlet {
             log.debug("User " + plusId + " CSRF attack failed due to invalid nonce");
           }
         } else {
-          log.debug("User " + userId + " is attacking themselves");
+          log.debug("User is attacking their own account");
         }
 
         if (result) {

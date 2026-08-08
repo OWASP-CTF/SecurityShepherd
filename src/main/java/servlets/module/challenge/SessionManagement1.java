@@ -93,7 +93,13 @@ public class SessionManagement1 extends HttpServlet {
           String decodedCookie = new String(decodedCookieBytes, "UTF-8");
           log.debug("Decoded Cookie: " + decodedCookie);
 
-          if (decodedCookie.equals("userRole=administrator")) {
+          // The simulated application this challenge models has no administrator provisioning:
+          // no legitimate flow makes a caller its admin. Authority therefore comes from
+          // server-side state only, never from the client-supplied cookie and never from
+          // Shepherd's own userRole -- the latter is a different authority, and gating on it
+          // hands the key straight back to anyone already browsing as a Shepherd admin.
+          if (decodedCookie.equals("userRole=administrator")
+              && Boolean.TRUE.equals(ses.getAttribute("sessionManagement1SimulatedAdmin"))) {
             log.debug("Challenge Complete");
             // Get key and add it to the output
             String userKey =

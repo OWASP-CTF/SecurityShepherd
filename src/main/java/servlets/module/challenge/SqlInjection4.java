@@ -4,9 +4,9 @@ import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -83,23 +83,21 @@ public class SqlInjection4 extends HttpServlet {
         theUserName = SqlFilter.levelFour(theUserName);
         log.debug("Filtered to " + theUserName);
         String thePassword = request.getParameter("thePassword");
-        log.debug("thePassword Submitted - " + thePassword);
+        log.debug("Password submitted");
         thePassword = SqlFilter.levelFour(thePassword);
-        log.debug("Filtered to " + thePassword);
+        log.debug("Password input filtered");
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
 
         log.debug("Getting Connection to Database");
         Connection conn = Database.getChallengeConnection(ApplicationRoot, "SqlChallengeFour");
-        Statement stmt = conn.createStatement();
+        PreparedStatement prepstmt =
+            conn.prepareStatement(
+                "SELECT userName FROM users WHERE userName = ? AND userPassword = ?");
+        prepstmt.setString(1, theUserName);
+        prepstmt.setString(2, thePassword);
         log.debug("Gathering result set");
-        ResultSet resultSet =
-            stmt.executeQuery(
-                "SELECT userName FROM users WHERE userName = '"
-                    + theUserName
-                    + "' AND userPassword = '"
-                    + thePassword
-                    + "'");
+        ResultSet resultSet = prepstmt.executeQuery();
 
         int i = 0;
         htmlOutput = "<h2 class='title'>" + bundle.getString("response.loginResults") + "</h2>";

@@ -67,7 +67,7 @@ public class SqlInjection5VipCheck extends HttpServlet {
 
       try {
         String couponCode = request.getParameter("couponCode");
-        log.debug("couponCode - " + couponCode);
+        log.debug("VIP coupon supplied = " + (couponCode != null && !couponCode.isEmpty()));
         if (couponCode == null || couponCode.isEmpty()) {
           couponCode = new String();
         }
@@ -79,9 +79,8 @@ public class SqlInjection5VipCheck extends HttpServlet {
         PreparedStatement prepstmt =
             conn.prepareStatement(
                 "SELECT itemId, perCentOff, itemName FROM vipCoupons JOIN items USING (itemId)"
-                    + " WHERE couponCode = '"
-                    + couponCode
-                    + "';");
+                    + " WHERE couponCode = ?;");
+        prepstmt.setString(1, couponCode);
         ResultSet coupons = prepstmt.executeQuery();
         try {
           if (coupons.next()) {

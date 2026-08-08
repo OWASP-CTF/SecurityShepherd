@@ -17,7 +17,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -47,15 +46,8 @@ public class SecurityMisconfigStealTokens extends HttpServlet {
   private static String levelName = "Security Misconfig Cookie Flags Servlet";
   public static String levelHash =
       "c4285bbc6734a10897d672c1ed3dd9417e0530a4e0186c27699f54637c7fb5d4";
-  private static String levelResult =
-      "92755de2ebb012e689caf8bfec629b1e237d23438427499b6bf0d7933f1b8215"; // Base Key. User is given
 
-  // user specific key
-
-  /**
-   * This servlet will return the key to complete as long as the cookie submitted is valid and does
-   * not belong to the user making the request
-   */
+  /** Rejects bearer tokens that are not bound server-side to the authenticated user. */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
     // Setting IpAddress To Log and taking header for original IP if forwarded from proxy
@@ -73,7 +65,7 @@ public class SecurityMisconfigStealTokens extends HttpServlet {
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
-      log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+      log.debug(levelName + " servlet accessed by an authenticated session");
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
       String htmlOutput = new String();
@@ -94,10 +86,9 @@ public class SecurityMisconfigStealTokens extends HttpServlet {
         }
         String cookieValue = theToken.getValue();
 
-        log.debug("User Submitted Cookie: " + cookieValue);
-        log.debug("Stored Cookie Value  : " + userActualCookie);
+        log.debug("Checking submitted token against the authenticated user's token");
 
-        if (cookieValue.compareTo(userActualCookie) == 0) {
+        if (isCurrentSessionToken(userActualCookie, cookieValue)) {
           // User is using their own Cookie: Not Complete
           htmlOutput =
               new String(
@@ -109,35 +100,17 @@ public class SecurityMisconfigStealTokens extends HttpServlet {
                           "securityMisconfig.servlet.stealTokens.notComplete.message")
                       + "<p>");
         } else {
-          // User submitted something different from their cookie
-          boolean notUsersTokenButValid = validToken(userId, cookieValue, applicationRoot);
-          if (notUsersTokenButValid) {
-            log.debug("Valid Cookie of another User Dectected");
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("securityMisconfig.servlet.stealTokens.complete")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("securityMisconfig.servlet.stealTokens.youDidIt")
-                    + " "
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
-          } else {
-            htmlOutput =
-                new String(
-                    "<h2 class='title'>"
-                        + bundle.getString("securityMisconfig.servlet.stealTokens.notComplete")
-                        + "</h2>"
-                        + "<p>"
-                        + bundle.getString(
-                            "securityMisconfig.servlet.stealTokens.notComplete.yourToken")
-                        + "<p>");
-          }
+          // A bearer token copied from another browser is never authority for this session. The
+          // submitted value must match the token bound server-side to the authenticated user.
+          htmlOutput =
+              new String(
+                  "<h2 class='title'>"
+                      + bundle.getString("securityMisconfig.servlet.stealTokens.notComplete")
+                      + "</h2>"
+                      + "<p>"
+                      + bundle.getString(
+                          "securityMisconfig.servlet.stealTokens.notComplete.yourToken")
+                      + "<p>");
         }
       } catch (Exception e) {
         out.write(errors.getString("securityMisconfig.servlet.stealTokens.notComplete.yourToken"));
@@ -150,6 +123,10 @@ public class SecurityMisconfigStealTokens extends HttpServlet {
     }
   }
 
+  static boolean isCurrentSessionToken(String expectedToken, String submittedToken) {
+    return expectedToken != null && expectedToken.equals(submittedToken);
+  }
+
   /**
    * Method that will return a users token. If the user does not have a token, this will set one.
    *
@@ -160,7 +137,7 @@ public class SecurityMisconfigStealTokens extends HttpServlet {
    */
   public static String getUserToken(String userId, String applicationRoot) throws SQLException {
     String userToken = new String();
-    log.debug("Getting user token with id: " + userId);
+    log.debug("Getting token for the authenticated session user");
     Connection conn =
         Database.getChallengeConnection(applicationRoot, "SecurityMisconfigStealToken");
     try {
@@ -180,50 +157,6 @@ public class SecurityMisconfigStealTokens extends HttpServlet {
       throw e;
     }
     conn.close();
-    if (!userToken.isEmpty()) {
-      log.debug("Found token: " + userToken);
-    }
     return userToken;
-  }
-
-  /**
-   * Method to validate if a token exists in the database which does not belong to the user
-   * submitting the request
-   *
-   * @param userId The ID of the user submitting the request
-   * @param token The token submitted in the request
-   * @param applicationRoot Running context of the application
-   * @return Boolean depicting if the token exists in the database and does not belong to the user
-   *     submitting the request
-   * @throws SQLException
-   */
-  public static boolean validToken(String userId, String token, String applicationRoot)
-      throws SQLException {
-    boolean validToken = false;
-    log.debug("Checking token:" + token);
-    Connection conn =
-        Database.getChallengeConnection(applicationRoot, "SecurityMisconfigStealToken");
-    try {
-      CallableStatement validateTokenCs = conn.prepareCall("call validToken(?, ?)");
-      validateTokenCs.setString(1, userId);
-      validateTokenCs.setString(2, token);
-      log.debug("Executing validToken procedure...");
-      ResultSet tokenRs = validateTokenCs.executeQuery();
-      if (tokenRs.next()) {
-        if (tokenRs.getInt(1) > 0) {
-          log.debug("Valid Token Detected");
-          validToken = true;
-        }
-      } else {
-        log.error("No Results From validToken Call");
-        throw new SQLException("No results from validToken Call. Empty Result Set");
-      }
-      tokenRs.close();
-    } catch (SQLException e) {
-      log.error("Could not verify token: " + e.toString());
-      throw e;
-    }
-    conn.close();
-    return validToken;
   }
 }

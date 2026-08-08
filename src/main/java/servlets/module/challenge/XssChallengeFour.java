@@ -13,11 +13,11 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
 import utils.FindXSS;
 import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
-import utils.XssFilter;
 
 /**
  * Cross Site Scripting Challenge Four control class. <br>
@@ -79,7 +79,7 @@ public class XssChallengeFour extends HttpServlet {
           String userPost = new String();
           String searchTerm = request.getParameter("searchTerm");
           log.debug("User Submitted - " + searchTerm);
-          if (!searchTerm.startsWith("http")) {
+          if (!Validate.isSafeHttpUrl(searchTerm)) {
             searchTerm = "https://www.owasp.org/index.php/OWASP_Security_Shepherd";
             userPost =
                 "<a href=\""
@@ -88,10 +88,16 @@ public class XssChallengeFour extends HttpServlet {
                     + searchTerm
                     + "</a>";
           } else {
-
-            searchTerm = XssFilter.encodeForHtml(searchTerm);
+            String encodedAttribute = Encode.forHtmlAttribute(searchTerm);
             userPost =
-                "<a href=\"" + searchTerm + "\" alt=\"" + searchTerm + "\">" + searchTerm + "</a>";
+                "<a href=\""
+                    + encodedAttribute
+                    + "\" alt=\""
+                    + encodedAttribute
+                    + "\">"
+                    + Encode.forHtml(searchTerm)
+                    + "</a>";
+            searchTerm = encodedAttribute;
             log.debug("After Encoding - " + searchTerm);
             if (FindXSS.search(userPost)) {
               htmlOutput =

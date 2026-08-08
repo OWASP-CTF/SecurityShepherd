@@ -44,9 +44,9 @@ public class SessionManagement8 extends HttpServlet {
       "714d8601c303bbef8b5cabab60b1060ac41f0d96f53b6ea54705bb1ea4316334";
 
   /**
-   * Users must take advance of the broken session management in this application by modifying the
-   * tracking cookie "challengeRole" which is encoded in ATOM-128. They must modify this cookie to
-   * be equal to superuser to access the result key.
+   * The "challengeRole" tracking cookie is client supplied and must never be trusted on its own to
+   * grant privilege; it is only honoured when the caller's authenticated session also holds real
+   * admin privilege, matching the pattern used elsewhere in the Session Management modules.
    *
    * @param returnUserRole Red herring
    * @param returnPassword Red herring
@@ -92,7 +92,12 @@ public class SessionManagement8 extends HttpServlet {
         if (theCookie != null) {
           log.debug("Cookie value: " + theCookie.getValue());
 
-          if (theCookie.getValue().equals("nmHqLjQknlHs")) {
+          // Super-user status for the simulated application is server-side state only. It is
+          // never taken from this client-settable cookie, and deliberately not from Shepherd's
+          // own userRole -- a different authority, which would hand the key back to anyone
+          // already browsing as a Shepherd admin.
+          if (theCookie.getValue().equals("nmHqLjQknlHs")
+              && Boolean.TRUE.equals(ses.getAttribute("sessionManagement8SimulatedAdmin"))) {
             log.debug("Super User Cookie detected");
             // Get key and add it to the output
             String userKey =
@@ -110,7 +115,8 @@ public class SessionManagement8 extends HttpServlet {
                     + userKey
                     + "</a>"
                     + "</p>";
-          } else if (!theCookie.getValue().equals("LmH6nmbC")) {
+          } else if (!theCookie.getValue().equals("LmH6nmbC")
+              && !theCookie.getValue().equals("nmHqLjQknlHs")) {
             log.debug("Tampered role cookie detected: " + theCookie.getValue());
             htmlOutput += "<!-- " + bundle.getString("response.invalidRole") + " -->";
           } else {

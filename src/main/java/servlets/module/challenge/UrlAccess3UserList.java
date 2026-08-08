@@ -9,12 +9,10 @@ import java.sql.ResultSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
@@ -70,31 +68,20 @@ public class UrlAccess3UserList extends HttpServlet {
       String htmlOutput = new String();
 
       try {
-        Cookie userCookies[] = request.getCookies();
-        int i = 0;
-        Cookie theCookie = null;
-        for (i = 0; i < userCookies.length; i++) {
-          if (userCookies[i].getName().compareTo("currentPerson") == 0) {
-            theCookie = userCookies[i];
-            break; // End Loop, because we found the token
-          }
-        }
-        String currentUser = new String("aGuest");
-        if (theCookie != null) {
-          log.debug("Cookie value: " + theCookie.getValue());
-          byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
-          String decodedCookie = new String(decodedCookieBytes, "UTF-8");
-          log.debug("Decoded Cookie: " + decodedCookie);
-          currentUser = decodedCookie;
-        }
+        String currentUser = getSimulatedUser(ses);
+        // Server-side state only. Deliberately NOT Validate.validateAdminSession(): that is
+        // Shepherd's own admin role, a different authority from this simulated application's,
+        // so gating on it would still disclose the full roster to any Shepherd admin.
+        boolean isAdmin = Boolean.TRUE.equals(ses.getAttribute("urlAccess3SimulatedAdmin"));
         String ApplicationRoot = getServletContext().getRealPath("");
         Connection conn = Database.getChallengeConnection(ApplicationRoot, "UrlAccessThree");
         PreparedStatement callstmt;
-        callstmt =
-            conn.prepareStatement(
-                "SELECT userName FROM users WHERE userRole = \"admin\" OR userName = \""
-                    + currentUser
-                    + "\";");
+        String userListQuery =
+            isAdmin
+                ? "SELECT userName FROM users WHERE userRole = \"admin\" OR userName = ?;"
+                : "SELECT userName FROM users WHERE userName = ?;";
+        callstmt = conn.prepareStatement(userListQuery);
+        callstmt.setString(1, currentUser);
         log.debug("Getting User List");
         htmlOutput = new String();
         ResultSet rs = callstmt.executeQuery();
@@ -113,5 +100,12 @@ public class UrlAccess3UserList extends HttpServlet {
     } else {
       log.error(levelName + " servlet accessed with no session");
     }
+  }
+
+  static String getSimulatedUser(HttpSession session) {
+    Object simulatedUser = session.getAttribute("urlAccess3SimulatedUser");
+    return simulatedUser instanceof String && !((String) simulatedUser).isEmpty()
+        ? (String) simulatedUser
+        : "aGuest";
   }
 }

@@ -6,6 +6,7 @@ import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -51,9 +52,12 @@ public class SessionManagement3ChangePassword extends HttpServlet {
 
   /**
    * Function used by Session Management Challenge Three to change the password of the submitted
-   * user name specified in the "Current" cookie
+   * user name specified in the "Current" cookie. The caller must also prove ownership of that
+   * account by supplying its current password.
    *
    * @param current User cookie used to store the current user (encoded twice with base64)
+   * @param subUserPassword The account's current password, used to prove ownership before it may be
+   *     changed
    * @param newPassword the password which to use to update an accounts password
    */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
@@ -74,7 +78,7 @@ public class SessionManagement3ChangePassword extends HttpServlet {
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
           ses.getAttribute("userName").toString());
-      log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+      log.debug(levelName + " servlet accessed by an authenticated session");
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
       String htmlOutput = new String();
@@ -91,15 +95,20 @@ public class SessionManagement3ChangePassword extends HttpServlet {
           }
         }
         Object passNewObj = request.getParameter("newPassword");
+        Object passCurrentObj = request.getParameter("subUserPassword");
         String subName = new String();
         String subNewPass = new String();
+        String subCurrentPass = new String();
         if (theCookie != null) {
           subName = theCookie.getValue();
         }
         if (passNewObj != null) {
           subNewPass = (String) passNewObj;
         }
-        log.debug("subName = " + subName);
+        if (passCurrentObj != null) {
+          subCurrentPass = (String) passCurrentObj;
+        }
+        log.debug("Account cookie supplied = " + !subName.isEmpty());
         // Base 64 Decode
         try {
           byte[] decodedName = Base64.decodeBase64(subName);
@@ -110,8 +119,8 @@ public class SessionManagement3ChangePassword extends HttpServlet {
           log.debug("Could not decode username");
           subName = new String();
         }
-        log.debug("subName Decoded = " + subName);
-        log.debug("subPass = " + subNewPass);
+        log.debug("Account cookie decoded = " + !subName.isEmpty());
+        log.debug("New password supplied = " + !subNewPass.isEmpty());
 
         if (subNewPass.length() >= 6) {
           log.debug("Getting ApplicationRoot");
@@ -119,25 +128,37 @@ public class SessionManagement3ChangePassword extends HttpServlet {
 
           Connection conn =
               Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalThree");
-          log.debug("Changing password for user: " + subName);
-          log.debug("Changing password to: " + subNewPass);
           PreparedStatement callstmt;
 
           callstmt =
-              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userName = ?");
-          callstmt.setString(1, subNewPass);
-          callstmt.setString(2, subName);
-          log.debug("Executing changePassword");
-          callstmt.execute();
+              conn.prepareStatement(
+                  "SELECT userName FROM users WHERE userName = ? AND userPassword = SHA(?)");
+          callstmt.setString(1, subName);
+          callstmt.setString(2, subCurrentPass);
+          log.debug("Verifying current password proves ownership of the account");
+          ResultSet resultSet = callstmt.executeQuery();
+          if (resultSet.next()) {
+            log.debug("Changing password after successful current-password validation");
 
-          log.debug("Committing changes made to database");
-          callstmt = conn.prepareStatement("COMMIT");
-          callstmt.execute();
-          log.debug("Changes committed.");
+            callstmt =
+                conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userName = ?");
+            callstmt.setString(1, subNewPass);
+            callstmt.setString(2, subName);
+            log.debug("Executing changePassword");
+            callstmt.execute();
 
-          htmlOutput = "<p>" + bundle.getString("reset.password") + "</p>";
+            log.debug("Committing changes made to database");
+            callstmt = conn.prepareStatement("COMMIT");
+            callstmt.execute();
+            log.debug("Changes committed.");
+
+            htmlOutput = "<p>" + bundle.getString("reset.password") + "</p>";
+          } else {
+            log.debug("Current password did not match, refusing to reset password");
+            htmlOutput = "<p>" + bundle.getString("reset.failed") + "</p>";
+          }
         } else {
-          log.debug("invalid password submitted: " + subNewPass);
+          log.debug("Invalid password length submitted");
           htmlOutput = "<p>" + bundle.getString("reset.failed") + "</p>";
         }
         log.debug("Outputting HTML");

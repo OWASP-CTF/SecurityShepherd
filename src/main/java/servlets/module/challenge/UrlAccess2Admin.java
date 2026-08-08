@@ -70,7 +70,12 @@ public class UrlAccess2Admin extends HttpServlet {
 
       try {
         String userData = request.getParameter("adminData");
-        boolean tamperedRequest = !userData.equalsIgnoreCase("youAreAnAdminOfAwesomenessWoopWoop");
+        // Server-side state only. Deliberately NOT Validate.validateAdminSession(): that is
+        // Shepherd's own admin role, a different authority, and gating on it would still expose
+        // this simulated admin function to anyone browsing as a Shepherd admin.
+        boolean isAdmin = Boolean.TRUE.equals(ses.getAttribute("urlAccess2SimulatedAdmin"));
+        boolean tamperedRequest =
+            !isAdmin || !userData.equalsIgnoreCase("youAreAnAdminOfAwesomenessWoopWoop");
         if (!tamperedRequest) {
           log.debug("No request tampering detected");
         } else {
@@ -95,7 +100,7 @@ public class UrlAccess2Admin extends HttpServlet {
         } else {
           htmlOutput =
               "<h2 class='title'>"
-                  + bundle.getString("response.failue")
+                  + bundle.getString("response.failure")
                   + "</h2>"
                   + "<p>"
                   + bundle.getString("response.failue.message")
