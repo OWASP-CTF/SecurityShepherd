@@ -133,14 +133,10 @@ public class SqlInjection4 extends HttpServlet {
                   + "</p>";
         }
       } catch (SQLException e) {
-        log.debug("SQL Error caught - " + e.toString());
-        htmlOutput +=
-            "<p>"
-                + errors.getString("error.detected")
-                + "</p>"
-                + "<p>"
-                + Encode.forHtml(e.toString())
-                + "</p>";
+        // The database's own complaint is not for the caller - it names tables, columns and
+        // the statement that failed, which is exactly the feedback an injection attempt needs.
+        log.error("SQL Error caught - " + e.toString());
+        htmlOutput += "<p>" + errors.getString("error.detected") + "</p>";
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
