@@ -1,7 +1,6 @@
 package servlets.module.challenge;
 
 import dbProcs.Database;
-import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -20,7 +19,6 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -103,34 +101,21 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
             callstmt.setString(2, subAns);
             log.debug("Running secret Answer Check");
             ResultSet rs = callstmt.executeQuery();
+            // The same reply whether or not the answer was right, and no account handed over
+            // either way. The answer is one fact about a person that plenty of people other than
+            // the account holder can know, so it is not proof of identity, and confirming a
+            // correct one turns this into an oracle for guessing the rest.
             if (rs.next()) {
-              log.debug("Correct Answer Submitted");
-              // Get key and add it to the output
-              String userKey =
-                  Hash.generateUserSolution(
-                      Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
-                      (String) ses.getAttribute("userName"));
-              htmlOutput =
-                  "<h2 class='title'>"
-                      + bundle.getString("response.welcome")
-                      + " "
-                      + Encode.forHtml(rs.getString(1))
-                      + "</h2>"
-                      + "<p>"
-                      + bundle.getString("response.welcome")
-                      + " <a>"
-                      + userKey
-                      + "</a>"
-                      + "</p>";
+              log.debug("Correct secret answer submitted; no account access is granted here");
             } else {
               log.debug("Bad Answer Submitted");
-              htmlOutput =
-                  new String(
-                      "<h2 class='title'>"
-                          + bundle.getString("question.badAnswer")
-                          + "</h2><p>"
-                          + bundle.getString("question.whoAreYou"));
             }
+            htmlOutput =
+                new String(
+                    "<h2 class='title'>"
+                        + bundle.getString("question.badAnswer")
+                        + "</h2><p>"
+                        + bundle.getString("question.whoAreYou"));
             Database.closeConnection(conn);
           } else {
             log.debug("Invalid data submitted");
