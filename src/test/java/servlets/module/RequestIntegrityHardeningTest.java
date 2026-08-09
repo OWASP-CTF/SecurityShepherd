@@ -21,6 +21,21 @@ class RequestIntegrityHardeningTest {
     assertTrue(
         source("CsrfChallengeTargetFour").contains("MessageDigest.isEqual("),
         "Four does not compare against its session token");
+    for (String target : new String[] {"Five", "Six", "Seven"}) {
+      String targetSource = source("CsrfChallengeTarget" + target);
+      assertTrue(targetSource.contains("Hash.randomString()"), target + " uses a weak nonce");
+      assertTrue(
+          targetSource.contains("MessageDigest.isEqual("),
+          target + " does not compare its nonce safely");
+    }
+  }
+
+  @Test
+  void homemadeCryptoSubmissionIsBoundToTheAuthenticatedUser() throws IOException {
+    String source = source("BrokenCryptoHomeMade");
+    assertTrue(source.contains("MessageDigest.isEqual("));
+    assertTrue(source.contains("ses.getAttribute(\"userName\")"));
+    assertTrue(source.contains("HttpServletResponse.SC_FORBIDDEN"));
   }
 
   @Test
