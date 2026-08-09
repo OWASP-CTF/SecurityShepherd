@@ -357,9 +357,11 @@ public class MongoDatabase {
     } catch (MongoSocketException | MongoTimeoutException e) {
       log.fatal("Unable to get Mongodb connection (Is it on?): " + e);
     } catch (MongoException e) {
-      log.fatal("Something went wrong with Mongo: " + e, e);
+      log.fatal("Something went wrong with Mongo: " + e);
+      e.printStackTrace();
     } catch (Exception e) {
-      log.fatal("Something went wrong: " + e, e);
+      log.fatal("Something went wrong: " + e);
+      e.printStackTrace();
     }
 
     return mongoDb;
