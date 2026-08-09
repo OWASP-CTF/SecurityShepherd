@@ -246,11 +246,11 @@ public class SolutionSubmit extends HttpServlet {
    */
   private static String generateFeedbackForm(String moduleId, String csrfToken, String theKey) {
     return feedbackForm
-        + Encode.forHtml(moduleId)
+        + Encode.forJavaScriptBlock(moduleId)
         + feedbackForm21
-        + Encode.forHtml(theKey)
+        + Encode.forJavaScriptBlock(theKey)
         + feedbackForm22
-        + Encode.forHtml(csrfToken)
+        + Encode.forJavaScriptBlock(csrfToken)
         + feedbackForm3;
   }
 
