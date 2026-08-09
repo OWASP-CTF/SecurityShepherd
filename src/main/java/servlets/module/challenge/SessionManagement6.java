@@ -79,7 +79,6 @@ public class SessionManagement6 extends HttpServlet {
 
       String htmlOutput = new String();
       log.debug(levelName + " Servlet Accessed");
-      Connection conn = null;
       try {
         log.debug("Getting Cookies");
         Cookie userCookies[] = request.getCookies();
@@ -117,7 +116,8 @@ public class SessionManagement6 extends HttpServlet {
             log.debug("Getting ApplicationRoot");
             String ApplicationRoot = getServletContext().getRealPath("");
 
-            conn = Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalSix");
+            Connection conn =
+                Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalSix");
             log.debug("Checking credentials");
             PreparedStatement callstmt;
 
@@ -125,6 +125,9 @@ public class SessionManagement6 extends HttpServlet {
             callstmt = conn.prepareStatement("COMMIT");
             callstmt.execute();
             log.debug("Changes committed.");
+
+            // Filtering password for !, so that it is impossible for users to sign in
+            subPass = subPass.replaceAll("!", "");
 
             callstmt =
                 conn.prepareStatement(
@@ -155,12 +158,25 @@ public class SessionManagement6 extends HttpServlet {
                       + "</a>"
                       + "</p>";
             } else {
-              log.debug("Incorrect credentials");
-              // The same message for a bad user name and a bad password, so accounts and their
-              // email addresses cannot be enumerated with the sign in form
-              userAddress = "" + bundle.getString("response.badUser") + "<br/>";
+              log.debug("Incorrect credentials, checking if user name correct");
+              callstmt = conn.prepareStatement("SELECT userAddress FROM users WHERE userName = ?");
+              callstmt.setString(1, subName);
+              log.debug("Executing getAddress");
+              resultSet = callstmt.executeQuery();
+              if (resultSet.next()) {
+                log.debug("User Found");
+                userAddress =
+                    ""
+                        + bundle.getString("response.badPass")
+                        + " <a>"
+                        + Encode.forHtml(resultSet.getString(1))
+                        + "</a><br/>";
+              } else {
+                userAddress = "" + bundle.getString("response.badUser") + "<br/>";
+              }
               htmlOutput = makeTable(userAddress, bundle);
             }
+            Database.closeConnection(conn);
             log.debug("Outputting HTML");
           } else {
             log.debug("Tampered cookie detected");
@@ -174,8 +190,6 @@ public class SessionManagement6 extends HttpServlet {
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
-      } finally {
-        Database.closeConnection(conn);
       }
     } else {
       log.error(levelName + " servlet accessed with no session");

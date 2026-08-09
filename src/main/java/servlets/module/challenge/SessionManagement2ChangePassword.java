@@ -15,6 +15,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
 import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
@@ -46,9 +47,10 @@ public class SessionManagement2ChangePassword extends HttpServlet {
       "f5ddc0ed2d30e597ebacf5fdd117083674b19bb92ffc3499121b9e6a12c92959";
 
   /**
-   * A user with the submitted email address is set a new random password. The new password is a
-   * credential of that account, so it is only ever sent to the address on file and never returned
-   * in this response.
+   * A user with the submitted email address is set a new random password, the password is also
+   * returned from the database procedure and is forwards through to the HTTP response. This
+   * response is not consumed by the client interface by default, and the user will have to discover
+   * it.
    *
    * @param subEmail Sub schema user email address
    */
@@ -74,8 +76,8 @@ public class SessionManagement2ChangePassword extends HttpServlet {
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
 
-      log.debug(levelName + " Servlet accessed");
       String htmlOutput = new String();
+      log.debug(levelName + " Servlet accessed");
       try {
         log.debug("Getting Challenge Parameter");
         Object emailObj = request.getParameter("subEmail");
@@ -85,25 +87,18 @@ public class SessionManagement2ChangePassword extends HttpServlet {
         }
         log.debug("subEmail = " + subEmail);
 
-        String authenticatedUser = (String) ses.getAttribute("sessionManagement2User");
-        String authenticatedAddress = (String) ses.getAttribute("sessionManagement2Address");
-        if (authenticatedUser == null || !subEmail.equals(authenticatedAddress)) {
-          response.sendError(HttpServletResponse.SC_FORBIDDEN);
-          return;
-        }
-
         log.debug("Getting ApplicationRoot");
         String ApplicationRoot = getServletContext().getRealPath("");
 
         String newPassword = Hash.randomString();
-        Connection conn = null;
         try {
-          conn = Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
+          Connection conn =
+              Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
           log.debug("Checking credentials");
           PreparedStatement callstmt =
-              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userName = ?");
+              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userAddress = ?");
           callstmt.setString(1, newPassword);
-          callstmt.setString(2, authenticatedUser);
+          callstmt.setString(2, subEmail);
           log.debug("Executing resetPassword");
           callstmt.execute();
           log.debug("Statement executed");
@@ -112,15 +107,14 @@ public class SessionManagement2ChangePassword extends HttpServlet {
           callstmt = conn.prepareStatement("COMMIT");
           callstmt.execute();
           log.debug("Changes committed.");
-          htmlOutput = "<p>Password changed.</p>";
 
+          htmlOutput = Encode.forHtml(newPassword);
+          Database.closeConnection(conn);
         } catch (SQLException e) {
           log.error(levelName + " SQL Error: " + e.toString());
-        } finally {
-          Database.closeConnection(conn);
         }
         log.debug("Outputting HTML");
-        out.write(htmlOutput);
+        out.write(bundle.getString("response.changedTo") + " " + htmlOutput);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
