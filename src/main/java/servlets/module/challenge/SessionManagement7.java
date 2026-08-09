@@ -10,12 +10,10 @@ import java.sql.ResultSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
@@ -46,6 +44,8 @@ public class SessionManagement7 extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(SessionManagement7.class);
   private static String levelName = "Session Management Challenge 7";
+  // The answer disclosure policy is held server side, so no client supplied cookie can change it.
+  public static final String ANSWER_POLICY = "sessionManagement7AnswerPolicy";
   public static String levelHash =
       "269d55bc0e0ff635dcaeec8533085e5eae5d25e8646dcd4b05009353c9cf9c80";
 
@@ -79,115 +79,87 @@ public class SessionManagement7 extends HttpServlet {
 
       String htmlOutput = new String();
       log.debug(levelName + " Servlet Accessed");
+      Connection conn = null;
       try {
-        log.debug("Getting Cookies");
-        Cookie userCookies[] = request.getCookies();
-        int i = 0;
-        Cookie theCookie = null;
-        for (i = 0; i < userCookies.length; i++) {
-          if (userCookies[i].getName().compareTo("ac") == 0) {
-            theCookie = userCookies[i];
-            break; // End Loop, because we found the token
-          }
+        // The answer disclosure policy is decided server side; no client cookie can change it
+        String answerPolicy = (String) ses.getAttribute(ANSWER_POLICY);
+        if (answerPolicy == null) {
+          answerPolicy = "doNotReturnAnswers";
+          ses.setAttribute(ANSWER_POLICY, answerPolicy);
         }
-        if (theCookie != null) {
-          log.debug("Cookie value: " + theCookie.getValue());
-          byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
-          String decodedCookie = new String(decodedCookieBytes, "UTF-8");
-          log.debug("Decoded Cookie: " + decodedCookie);
-          if (decodedCookie.equals("doNotReturnAnswers")) // Untampered Cookie
-          {
-            log.debug("Getting Challenge Parameters");
-            Object nameObj = request.getParameter("subName");
-            Object passObj = request.getParameter("subPassword");
-            String subName = new String();
-            String subPass = new String();
-            String userAddress = new String();
-            if (nameObj != null) {
-              subName = (String) nameObj;
-            }
-            if (passObj != null) {
-              subPass = (String) passObj;
-            }
-            log.debug("subName = " + subName);
-            log.debug("subPass = " + subPass);
-
-            String ApplicationRoot = getServletContext().getRealPath("");
-            Connection conn =
-                Database.getChallengeConnection(
-                    ApplicationRoot, "BrokenAuthAndSessMangChalFlowers");
-            log.debug("Checking credentials");
-            PreparedStatement callstmt;
-
-            log.debug("Committing changes made to database");
-            callstmt = conn.prepareStatement("COMMIT");
-            callstmt.execute();
-            log.debug("Changes committed.");
-
-            // Filtering password for !, so that it is impossible for users to sign in
-            subPass = subPass.replaceAll("!", "");
-
-            callstmt =
-                conn.prepareStatement(
-                    "SELECT userName, userAddress FROM users WHERE userName = ? AND userPassword ="
-                        + " SHA(?)");
-            callstmt.setString(1, subName);
-            callstmt.setString(2, subPass);
-            log.debug("Executing authUser");
-            ResultSet resultSet = callstmt.executeQuery();
-            if (resultSet.next()) {
-              // This should never happen. But just in case;
-              log.debug("Successful Login");
-              // Get key and add it to the output
-              String userKey =
-                  Hash.generateUserSolution(
-                      Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
-                      (String) ses.getAttribute("userName"));
-              htmlOutput =
-                  "<h2 class='title'>"
-                      + bundle.getString("response.welcome")
-                      + " "
-                      + Encode.forHtml(resultSet.getString(1))
-                      + "</h2>"
-                      + "<p>"
-                      + ""
-                      + bundle.getString("response.resultKey")
-                      + " <a>"
-                      + userKey
-                      + "</a>"
-                      + "</p>";
-            } else {
-              log.debug("Incorrect credentials, checking if user name correct");
-              callstmt = conn.prepareStatement("SELECT userAddress FROM users WHERE userName = ?");
-              callstmt.setString(1, subName);
-              log.debug("Executing getAddress");
-              resultSet = callstmt.executeQuery();
-              if (resultSet.next()) {
-                log.debug("User Found");
-                userAddress =
-                    bundle.getString("response.badPass")
-                        + " <a>"
-                        + Encode.forHtml(resultSet.getString(1))
-                        + "</a><br/>";
-              } else {
-                userAddress = bundle.getString("response.badUser") + "<br/>";
-              }
-              htmlOutput = makeTable(userAddress, bundle);
-            }
-            Database.closeConnection(conn);
-            log.debug("Outputting HTML");
-          } else {
-            log.debug("Tampered cookie detected");
-            htmlOutput = new String(bundle.getString("response.configError"));
+        if (answerPolicy.equals("doNotReturnAnswers")) {
+          log.debug("Getting Challenge Parameters");
+          Object nameObj = request.getParameter("subName");
+          Object passObj = request.getParameter("subPassword");
+          String subName = new String();
+          String subPass = new String();
+          String userAddress = new String();
+          if (nameObj != null) {
+            subName = (String) nameObj;
           }
+          if (passObj != null) {
+            subPass = (String) passObj;
+          }
+          log.debug("subName = " + subName);
+          log.debug("subPass = " + subPass);
+
+          String ApplicationRoot = getServletContext().getRealPath("");
+          conn =
+              Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalFlowers");
+          log.debug("Checking credentials");
+          PreparedStatement callstmt;
+
+          log.debug("Committing changes made to database");
+          callstmt = conn.prepareStatement("COMMIT");
+          callstmt.execute();
+          log.debug("Changes committed.");
+
+          // Filtering password for !, so that it is impossible for users to sign in
+          subPass = subPass.replaceAll("!", "");
+
+          callstmt =
+              conn.prepareStatement(
+                  "SELECT userName, userAddress FROM users WHERE userName = ? AND userPassword ="
+                      + " SHA(?)");
+          callstmt.setString(1, subName);
+          callstmt.setString(2, subPass);
+          log.debug("Executing authUser");
+          ResultSet resultSet = callstmt.executeQuery();
+          if (resultSet.next()) {
+            log.debug("Successful Login");
+            // Get key and add it to the output
+            String userKey =
+                Hash.generateUserSolution(
+                    Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
+                    (String) ses.getAttribute("userName"));
+            htmlOutput =
+                "<h2 class='title'>"
+                    + bundle.getString("response.welcome")
+                    + " "
+                    + Encode.forHtml(resultSet.getString(1))
+                    + "</h2><p>"
+                    + bundle.getString("response.resultKey")
+                    + " <a>"
+                    + userKey
+                    + "</a></p>";
+          } else {
+            log.debug("Incorrect credentials");
+            // The same message for a bad user name and a bad password, so accounts and their
+            // email addresses cannot be enumerated with the sign in form
+            userAddress = bundle.getString("response.badUser") + "<br/>";
+            htmlOutput = makeTable(userAddress, bundle);
+          }
+          log.debug("Outputting HTML");
         } else {
-          log.debug("Tampered cookie detected");
+          log.debug("Answer disclosure is disabled");
           htmlOutput = new String(bundle.getString("response.configError"));
         }
         out.write(htmlOutput);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
+      } finally {
+        Database.closeConnection(conn);
       }
     } else {
       log.error(levelName + " servlet accessed with no session");

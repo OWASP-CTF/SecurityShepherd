@@ -86,7 +86,7 @@ public class XxeChallenge1 extends HttpServlet {
 
           if (Validate.validateTokens(tokenCookie, tokenHeader)) {
             InputStream json = request.getInputStream();
-            String emailAddr = readJson(json, errors);
+            String emailAddr = readJson(json);
             emailAddr = Encode.forHtml(emailAddr);
             log.debug("Email Addr: " + emailAddr);
 
@@ -94,7 +94,7 @@ public class XxeChallenge1 extends HttpServlet {
 
             if (emailAddr == null) {
               htmlOutput += "<p>" + bundle.getString("response.blank.email") + "</p>";
-              out.write(htmlOutput + emailAddr);
+              out.write(htmlOutput);
             } else if (Validate.isValidEmailAddress(emailAddr)) {
               log.debug("User Submitted - " + emailAddr);
 
@@ -126,7 +126,7 @@ public class XxeChallenge1 extends HttpServlet {
     log.debug("End of " + LEVEL_NAME + " Servlet");
   }
 
-  public static String readJson(InputStream jsonEmail, ResourceBundle errors) {
+  public static String readJson(InputStream jsonEmail) {
     String result;
 
     JSONObject jsonObject;
@@ -136,8 +136,10 @@ public class XxeChallenge1 extends HttpServlet {
       result = jsonObject.get("email").toString();
       return result;
     } catch (JSONException e) {
-      e.printStackTrace();
-      return errors.getString("error.funky");
+      // Returning a message here would be validated as if it were the submitted address, and the
+      // caller's null check would never fire
+      log.error("Could not parse the submitted JSON: " + e.toString());
+      return null;
     }
   }
 
