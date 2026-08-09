@@ -72,7 +72,12 @@ public class UrlAccess2Admin extends HttpServlet {
         // principal here, rather than relying on the URL not being linked from the user page.
         boolean authorised = Validate.validateAdminSession(ses);
         if (!authorised) {
+          // Refuse outright rather than answering 200 with a failure page. An administrator
+          // only function that replies the same way to everyone is still reachable; the caller
+          // simply reads a different sentence. The refusal has to be the response itself.
           log.error(levelName + " admin function requested without the admin role");
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
         }
         String userData = request.getParameter("adminData");
         boolean tamperedRequest = !userData.equalsIgnoreCase("youAreAnAdminOfAwesomenessWoopWoop");
