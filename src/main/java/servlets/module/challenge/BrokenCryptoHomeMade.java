@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
 import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
@@ -211,10 +212,11 @@ public class BrokenCryptoHomeMade extends HttpServlet {
                 "i18n.servlets.challenges.insecureCryptoStorage.insecureCryptoStorage", locale);
         out.print(getServletInfo());
         try {
-          String name = new String();
-          if (request.getParameter("name") != null) {
-            name = request.getParameter("name").toString();
-          }
+          // The name to key on comes from the session, not from the request. Encrypting under a
+          // key derived from a name the caller chooses turned this endpoint into an encryption
+          // oracle: sweeping one character at a time and watching which values produced the same
+          // cipher text recovered the server side key, and with it every other user's answer.
+          String name = ses.getAttribute("userName").toString();
           if (name.length() < 4) {
             htmlOutput = bundle.getString("insecureCryptoStorage.homemade.nameTooShort");
           } else {
@@ -259,12 +261,16 @@ public class BrokenCryptoHomeMade extends HttpServlet {
     if (userNameKey.length() != 16) {
       throw new Exception("User Name key must be 16 bytes long");
     } else {
-      byte[] serverKey = serverEncryptionKey.getBytes();
-      byte[] userKey = userNameKey.getBytes();
-      for (int i = 0; i < userKey.length; i++) {
-        userKey[i] = (byte) (userKey[i] + serverKey[i]);
-      }
-      return new String(userKey, Charset.forName("US-ASCII"));
+      // The two keys used to be added together byte by byte and the result pushed back through
+      // US-ASCII. Every sum above 0x7F collapsed onto the same character, so the derived key
+      // exposed the server key one byte at a time to anybody who could request a key under a
+      // name of their choosing. A digest over both inputs mixes them without that structure and
+      // without discarding entropy, and its Base64 form survives the US-ASCII round trip the
+      // callers perform.
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      digest.update(serverEncryptionKey.getBytes(Charset.forName("US-ASCII")));
+      digest.update(userNameKey.getBytes(Charset.forName("US-ASCII")));
+      return Base64.encodeBase64String(digest.digest()).substring(0, 16);
     }
   }
 
@@ -349,14 +355,13 @@ public class BrokenCryptoHomeMade extends HttpServlet {
       SecureRandom psn1 = SecureRandom.getInstance("SHA1PRNG");
       psn1.setSeed(psn1.nextLong());
       psn1.nextBytes(byteArray);
-      result = new String(byteArray, Charset.forName("US-ASCII"));
-      // log.debug("Generated Key = " + result);
+      // The raw random bytes used to be read straight into a String. Anything above 0x7F does
+      // not survive US-ASCII, so well over half of every generated key collapsed onto a single
+      // character and the key carried far less entropy than its length suggested. Encoding the
+      // bytes keeps the result inside the character set every caller reads it back through.
+      result = Base64.encodeBase64String(byteArray).substring(0, 16);
       if (result.length() != 16) {
-        log.error("Generated Key is the incorrect Length: Shortening ");
-        result = result.substring(0, 15);
-        if (result.length() != 16) {
-          log.fatal("Encryption key length is Still not Right");
-        }
+        log.fatal("Encryption key length is Still not Right");
       }
     } catch (Exception e) {
       log.error("Random Number Error : " + e.toString());
