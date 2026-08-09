@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
 import utils.FindXSS;
 import utils.Hash;
 import utils.ShepherdLogManager;
@@ -97,6 +98,13 @@ public class XssChallengeThree extends HttpServlet {
                     + "</a>";
           }
           log.debug("Adding searchTerm to Html: " + searchTerm);
+          // Reflect the search term back to the browser HTML-encoded so any markup or
+          // script that slipped past the (intentionally weak) XssFilter is rendered as
+          // inert text instead of being parsed/executed by the browser. The un-encoded
+          // searchTerm is still what gets passed to FindXSS.search() above, so the
+          // lesson's "find a bypass" objective and its answer key are unaffected - only
+          // the actual reflected response is no longer live-exploitable.
+          String safeSearchTerm = Encode.forHtml(searchTerm);
           htmlOutput +=
               "<h2 class='title'>"
                   + bundle.getString("response.searchResults")
@@ -104,7 +112,7 @@ public class XssChallengeThree extends HttpServlet {
                   + "<p>"
                   + bundle.getString("response.noResults")
                   + " "
-                  + searchTerm
+                  + safeSearchTerm
                   + "</p>";
           log.debug("Outputting HTML");
           out.write(htmlOutput);
