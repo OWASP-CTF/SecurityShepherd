@@ -161,7 +161,12 @@ public class ModuleServletTemplate extends HttpServlet {
   public static String doLevelSqlStuff(
       String applicationRoot, String username, ResourceBundle bundle) {
 
-    String result = new String();
+    String result = null;
+    if (username == null || username.trim().isEmpty()) {
+      // Nothing was asked for, so there is nothing to report. Returning an empty string here read
+      // as a successful lookup to the caller.
+      return null;
+    }
     try {
       // You will need to make a schema in the database/moduleSchemas.sql file, and define a user
       // which can access it.
@@ -169,10 +174,13 @@ public class ModuleServletTemplate extends HttpServlet {
       // The Name of that user need to be entered in the following funciton;
       Connection conn =
           Database.getChallengeConnection(applicationRoot, "nameOfPropertiesFile.properties");
-      Statement stmt;
-      stmt = conn.createStatement();
-      ResultSet resultSet =
-          stmt.executeQuery("SELECT * FROM tb_users WHERE username = '" + username + "'");
+      // The name the player typed is data, never statement text. Built by concatenation it was
+      // the whole query's grammar, so a quote in the parameter rewrote the search into anything
+      // the caller wanted.
+      final String query = "SELECT * FROM tb_users WHERE username = ?";
+      PreparedStatement prepstmt = conn.prepareStatement(query);
+      prepstmt.setString(1, username);
+      ResultSet resultSet = prepstmt.executeQuery();
       log.debug("Opening Result Set from query");
       for (int i = 0; resultSet.next(); i++) {
         log.debug("Row " + i + ": User ID = " + resultSet.getString(1));
@@ -180,16 +188,15 @@ public class ModuleServletTemplate extends HttpServlet {
       }
       log.debug("That's All");
     } catch (SQLException e) {
-      log.debug("SQL Error caught - " + e.toString());
-      result =
-          bundle.getString("example.error")
-              + ": "
-              + Encode.forHtml(e.toString()); // Html Encode Error to prevent XSS
+      // A failed statement is not a found user. Handing the error text back made every broken
+      // query look like a successful lookup to the caller, which then minted the key - and the
+      // database's own complaint names tables and columns, which is how the next query is built.
+      log.error("SQL Error caught - " + e.toString());
+      result = null;
     } catch (Exception e) {
-      log.fatal(
-          bundle.getString("example.error")
-              + ": "
-              + Encode.forHtml(e.toString())); // Html Encode Error to prevent XSS
+      // Same reasoning: a lookup that could not run reports nothing found, not something found.
+      log.fatal("Error caught - " + e.toString());
+      result = null;
     }
     return result;
   }
