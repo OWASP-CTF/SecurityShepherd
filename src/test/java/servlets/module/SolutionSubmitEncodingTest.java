@@ -15,7 +15,8 @@ class SolutionSubmitEncodingTest {
             "generateFeedbackForm", String.class, String.class, String.class);
     generateFeedbackForm.setAccessible(true);
 
-    String form = (String) generateFeedbackForm.invoke(null, injection, injection, injection);
+    String form =
+        (String) generateFeedbackForm.invoke(null, injection, injection, injection);
 
     assertFalse(form.contains(injection));
     assertFalse(form.contains("</script><script>alert(2)</script>"));
