@@ -128,10 +128,10 @@ public class SqlInjection5 extends HttpServlet {
         conn.close();
 
         // Work Out Final Cost
-        pineappleCost = pineappleCost - (pineappleCost * (perCentOffPineapple / 100));
-        appleCost = appleCost - (appleCost * (perCentOffApple / 100));
-        bananaCost = bananaCost - (bananaCost * (perCentOffBanana / 100));
-        orangeCost = orangeCost - (orangeCost * (perCentOffOrange / 100));
+        pineappleCost = applyDiscount(pineappleCost, perCentOffPineapple);
+        appleCost = applyDiscount(appleCost, perCentOffApple);
+        bananaCost = applyDiscount(bananaCost, perCentOffBanana);
+        orangeCost = applyDiscount(orangeCost, perCentOffOrange);
         int finalCost = pineappleCost + appleCost + bananaCost + orangeCost;
 
         // Output Order
@@ -166,6 +166,10 @@ public class SqlInjection5 extends HttpServlet {
     } else {
       log.error(levelName + " servlet accessed with no session");
     }
+  }
+
+  private static int applyDiscount(int cost, int perCentOff) {
+    return (int) (cost - (((long) cost * perCentOff) / 100));
   }
 
   private static int validateAmount(int amount) throws IllegalArgumentException {

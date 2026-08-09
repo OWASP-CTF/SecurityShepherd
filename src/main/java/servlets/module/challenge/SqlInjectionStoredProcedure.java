@@ -8,6 +8,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -79,15 +80,9 @@ public class SqlInjectionStoredProcedure extends HttpServlet {
         log.debug("Getting Connection to Database");
         Connection conn =
             Database.getChallengeConnection(ApplicationRoot, "SqlChallengeStoredProc");
-        // Prepared rather than a CallableStatement: the driver would have to read the routine
-        // definition out of the server to describe a callable's parameters, and this challenge's
-        // database user is only granted EXECUTE on the procedure.
-        // The procedure is invoked through the call escape rather than as a statement whose text
-        // happens to start with CALL, so the driver binds the argument as a procedure parameter
-        // and there is no point at which the submitted value becomes part of the statement.
-        CallableStatement prepstmt = conn.prepareCall("{call findUser(?)}");
-        prepstmt.setString(1, userIdentity);
-        ResultSet resultSet = prepstmt.executeQuery();
+        CallableStatement callstmt = conn.prepareCall("CALL findUser(?)");
+        callstmt.setString(1, userIdentity);
+        ResultSet resultSet = callstmt.executeQuery();
 
         int i = 0;
         htmlOutput = "<h2 class='title'>" + bundle.getString("response.searchResults") + "</h2>";
@@ -118,7 +113,7 @@ public class SqlInjectionStoredProcedure extends HttpServlet {
                   + "</td><td>"
                   + Encode.forHtml(resultSet.getString(3))
                   + "</td><td>"
-                  + Encode.forHtml(resultSet.getString(4))
+                  + Encode.forHtml(Objects.toString(resultSet.getString(4), ""))
                   + "</td></tr>";
           i++;
         }
