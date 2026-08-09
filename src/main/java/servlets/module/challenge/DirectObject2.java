@@ -6,8 +6,11 @@ import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.Set;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -47,9 +50,22 @@ public class DirectObject2 extends HttpServlet {
       "vc9b78627df2c032ceaf7375df1d847e47ed7abac2a4ce4cb6086646e0f313a4";
 
   /**
-   * The user must abuse this functionality to reveal a hidden user. The result key is hidden in
-   * this users profile.
-   *
+   * The set of profile identifiers this challenge actually publishes to the player (the options
+   * rendered in the "userId" select box on the challenge page). The backing table also contains a
+   * profile that is never offered to the player; that row must not be reachable just because its
+   * identifier can be guessed or computed, so any identifier outside this set is refused before a
+   * query is even built.
+   */
+  private static final Set<String> PUBLISHED_USER_IDS =
+      new HashSet<String>(
+          Arrays.asList(
+              "c81e728d9d4c2f636f067f89cc14862c",
+              "eccbc87e4b5ce2fe28308fd9f2a7baf3",
+              "e4da3b7fbbce2345d7772b0674a318d5",
+              "8f14e45fceea167a5a36dedd4bea2543",
+              "6512bd43d9caa6e02c990b0a82652dca"));
+
+  /**
    * @param userId To be used in generating the HTML output
    */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
@@ -81,11 +97,17 @@ public class DirectObject2 extends HttpServlet {
 
         Connection conn =
             Database.getChallengeConnection(ApplicationRoot, "directObjectRefChalTwo");
-        PreparedStatement prepstmt =
-            conn.prepareStatement("SELECT userName, privateMessage FROM users WHERE userId = ?");
-        prepstmt.setString(1, userId);
-        ResultSet resultSet = prepstmt.executeQuery();
-        if (resultSet.next()) {
+        ResultSet resultSet = null;
+        if (userId != null && PUBLISHED_USER_IDS.contains(userId)) {
+          PreparedStatement prepstmt =
+              conn.prepareStatement("SELECT userName, privateMessage FROM users WHERE userId = ?");
+          prepstmt.setString(1, userId);
+          resultSet = prepstmt.executeQuery();
+        } else {
+          log.warn(
+              "Refused lookup of a userId that was never offered to the player: " + userId);
+        }
+        if (resultSet != null && resultSet.next()) {
           log.debug("Found user: " + resultSet.getString(1));
           String userName = resultSet.getString(1);
           String privateMessage = resultSet.getString(2);
