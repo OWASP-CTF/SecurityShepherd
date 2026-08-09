@@ -17,6 +17,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
+import utils.ResultLeakGuard;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -99,7 +100,14 @@ public class SqlInjectionEscaping extends HttpServlet {
                 + "</th></tr>";
 
         log.debug("Opening Result Set from query");
+        String levelAnswer = ResultLeakGuard.lookupAnswer(ApplicationRoot, levelHash);
         while (resultSet.next()) {
+          // Escaping the search term stops the statement being rewritten, but the row holding this
+          // module's own answer still sits in the searched table and can be requested by name.
+          if (ResultLeakGuard.leaksAnswer(
+              levelAnswer, resultSet.getString(2), resultSet.getString(3), resultSet.getString(4))) {
+            continue;
+          }
           log.debug("Adding Customer " + resultSet.getString(2));
           htmlOutput +=
               "<tr><td>"

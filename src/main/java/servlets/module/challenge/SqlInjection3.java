@@ -17,6 +17,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
+import utils.ResultLeakGuard;
 import utils.ShepherdLogManager;
 import utils.SqlFilter;
 import utils.Validate;
@@ -101,7 +102,13 @@ public class SqlInjection3 extends HttpServlet {
         htmlOutput += "<table><tr><th>" + bundle.getString("response.table.name") + "</th></tr>";
 
         log.debug("Opening Result Set from query");
+        String levelAnswer = ResultLeakGuard.lookupAnswer(ApplicationRoot, levelHash);
         while (resultSet.next()) {
+          // The row holding this module's own answer lives in the table being searched and can be
+          // reached by asking for it plainly, whatever the query is bound with. Withhold it.
+          if (ResultLeakGuard.leaksAnswer(levelAnswer, resultSet.getString(1))) {
+            continue;
+          }
           log.debug("Adding Customer " + resultSet.getString(1));
           htmlOutput += "<tr><td>" + Encode.forHtml(resultSet.getString(1)) + "</td></tr>";
           i++;
