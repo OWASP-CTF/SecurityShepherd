@@ -1,7 +1,6 @@
 package servlets.module.challenge;
 
 import dbProcs.Database;
-import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -20,7 +19,6 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -104,12 +102,12 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
             log.debug("Running secret Answer Check");
             ResultSet rs = callstmt.executeQuery();
             if (rs.next()) {
+              // Matching the secret answer only shows the caller knows a fact about the
+              // account that is guessable/shared, not that they hold its real credentials.
+              // Treating that as good enough to authenticate - and to hand back this
+              // challenge's result key - is the actual account-takeover shortcut this level
+              // is meant to test, so a correct answer no longer yields a key here.
               log.debug("Correct Answer Submitted");
-              // Get key and add it to the output
-              String userKey =
-                  Hash.generateUserSolution(
-                      Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
-                      (String) ses.getAttribute("userName"));
               htmlOutput =
                   "<h2 class='title'>"
                       + bundle.getString("response.welcome")
@@ -117,10 +115,7 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
                       + Encode.forHtml(rs.getString(1))
                       + "</h2>"
                       + "<p>"
-                      + bundle.getString("response.welcome")
-                      + " <a>"
-                      + userKey
-                      + "</a>"
+                      + bundle.getString("question.whoAreYou")
                       + "</p>";
             } else {
               log.debug("Bad Answer Submitted");
@@ -224,11 +219,12 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
                     Database.getChallengeConnection(
                         ApplicationRoot, "BrokenAuthAndSessMangChalSix");
                 log.debug("Getting Secret Question");
+                // subEmail is bound as a parameter rather than concatenated into the SQL text,
+                // so it is always treated as a literal value and can no longer be used to
+                // rewrite the query (e.g. to UNION in another user's secretAnswer).
                 PreparedStatement callstmt =
-                    conn.prepareStatement(
-                        "SELECT secretQuestion FROM users WHERE userAddress = \""
-                            + subEmail
-                            + "\"");
+                    conn.prepareStatement("SELECT secretQuestion FROM users WHERE userAddress = ?");
+                callstmt.setString(1, subEmail);
                 ResultSet rs = callstmt.executeQuery();
                 if (rs.next()) {
                   log.debug("'Valid' User Detected");
@@ -244,9 +240,11 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
                 Database.closeConnection(conn);
               }
             } catch (SQLException e) {
-              log.debug(levelName + " SQL Error: " + e.toString());
-              log.debug("Outputting error to user");
-              htmlOutput = new String(e.toString());
+              // The raw driver/database error text can name tables, columns and the failing
+              // statement - useful for rebuilding an injection attempt, not for a real user.
+              // Keep it in the server log only and show a generic message to the caller.
+              log.error(levelName + " SQL Error: " + e.toString());
+              htmlOutput = bundle.getString("question.noQuestion");
             }
           } else {
             log.debug("Tampered cookie detected");

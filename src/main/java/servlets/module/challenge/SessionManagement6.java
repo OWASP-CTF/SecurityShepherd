@@ -158,22 +158,13 @@ public class SessionManagement6 extends HttpServlet {
                       + "</a>"
                       + "</p>";
             } else {
-              log.debug("Incorrect credentials, checking if user name correct");
-              callstmt = conn.prepareStatement("SELECT userAddress FROM users WHERE userName = ?");
-              callstmt.setString(1, subName);
-              log.debug("Executing getAddress");
-              resultSet = callstmt.executeQuery();
-              if (resultSet.next()) {
-                log.debug("User Found");
-                userAddress =
-                    ""
-                        + bundle.getString("response.badPass")
-                        + " <a>"
-                        + Encode.forHtml(resultSet.getString(1))
-                        + "</a><br/>";
-              } else {
-                userAddress = "" + bundle.getString("response.badUser") + "<br/>";
-              }
+              // A failed sign-in must give a single, uniform answer. Looking up and echoing
+              // back the account's real address here let anyone probe arbitrary user names to
+              // learn (a) whether the account exists and (b) the email that this challenge's
+              // secret-question recovery flow is keyed on - exactly the two facts an attacker
+              // needs to go target that flow next. Neither is answered anymore.
+              log.debug("Incorrect credentials submitted");
+              userAddress = "" + bundle.getString("response.badUser") + "<br/>";
               htmlOutput = makeTable(userAddress, bundle);
             }
             Database.closeConnection(conn);
