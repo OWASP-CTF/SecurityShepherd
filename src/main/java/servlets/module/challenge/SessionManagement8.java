@@ -1,8 +1,9 @@
 package servlets.module.challenge;
 
-import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -40,6 +41,49 @@ public class SessionManagement8 extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(SessionManagement8.class);
   private static String levelName = "Session Management Challenge Eight";
+
+  /** Name of the server side attribute holding the role this sub application serves a session. */
+  private static final String roleAttribute = "sessionManagement8Role";
+
+  /** Name of the server side attribute holding the marker written into the role cookie. */
+  private static final String roleCookieAttribute = "sessionManagement8RoleCookie";
+
+  /** The only role this sub application ever puts a session in. It never comes from a request. */
+  private static final String defaultRole = "user";
+
+  /**
+   * Reads the role held for this session on the server, establishing it on first use.
+   *
+   * @param ses Session the request was authenticated against
+   * @return The role this application has put the session in
+   */
+  public static String currentRole(HttpSession ses) {
+    Object role = ses.getAttribute(roleAttribute);
+    if (role == null) {
+      role = defaultRole;
+      ses.setAttribute(roleAttribute, role);
+    }
+    return role.toString();
+  }
+
+  /**
+   * Issues the marker the page writes into the role cookie.
+   *
+   * <p>The cookie used to carry a constant string that was the same in every deployment and for
+   * every visitor, and matching it was the whole of the check. A value that is fixed and unsigned
+   * is a value anybody can produce, so the marker is now drawn from a CSPRNG per session and is
+   * only ever compared against the copy kept here. The role itself is not in the cookie at all.
+   *
+   * @param ses Session the marker is being issued to
+   * @return The value to place in the challengeRole cookie
+   */
+  public static String issueRoleCookieValue(HttpSession ses) {
+    currentRole(ses);
+    String marker = Hash.randomString();
+    ses.setAttribute(roleCookieAttribute, marker);
+    return marker;
+  }
+
   private static String levelHash =
       "714d8601c303bbef8b5cabab60b1060ac41f0d96f53b6ea54705bb1ea4316334";
 
@@ -79,45 +123,46 @@ public class SessionManagement8 extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+        // What this request may see is decided by the role held on the server. The cookie
+        // carries an opaque per session marker and is compared only against the copy kept here,
+        // in constant time, so that tampering can be noticed; no value in it grants anything.
+        String userRole = currentRole(ses);
+        log.debug("Role held server side for this session: " + userRole);
+
         Cookie userCookies[] = request.getCookies();
-        int i = 0;
         Cookie theCookie = null;
-        for (i = 0; i < userCookies.length; i++) {
-          if (userCookies[i].getName().compareTo("challengeRole") == 0) {
-            theCookie = userCookies[i];
-            break; // End Loop, because we found the token
+        if (userCookies != null) {
+          for (int i = 0; i < userCookies.length; i++) {
+            if (userCookies[i].getName().compareTo("challengeRole") == 0) {
+              theCookie = userCookies[i];
+              break; // End Loop, because we found the token
+            }
           }
         }
         String htmlOutput = new String();
         if (theCookie != null) {
-          log.debug("Cookie value: " + theCookie.getValue());
-
-          if (theCookie.getValue().equals("nmHqLjQknlHs")) {
-            log.debug("Super User Cookie detected");
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(
-                    Getter.getModuleResultFromHash(getServletContext().getRealPath(""), levelHash),
-                    (String) ses.getAttribute("userName"));
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("response.superUserClub")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("response.welcomeSuperUser")
-                    + " "
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
-          } else if (!theCookie.getValue().equals("LmH6nmbC")) {
-            log.debug("Tampered role cookie detected: " + theCookie.getValue());
+          Object issuedMarker = ses.getAttribute(roleCookieAttribute);
+          boolean untampered =
+              issuedMarker != null
+                  && MessageDigest.isEqual(
+                      issuedMarker.toString().getBytes(StandardCharsets.UTF_8),
+                      theCookie.getValue().getBytes(StandardCharsets.UTF_8));
+          if (!untampered) {
+            log.debug("Tampered role cookie detected");
             htmlOutput += "<!-- " + bundle.getString("response.invalidRole") + " -->";
           } else {
             log.debug("No change to role cookie submitted");
           }
         } else {
           log.debug("No Role Cookie Submitted");
+        }
+
+        if (!defaultRole.equals(userRole)) {
+          // Nothing in this sub application puts a session in any other role, so a session
+          // claiming one is not a session this application issued.
+          log.error(levelName + " refused a request for a role it does not serve");
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
         }
         if (htmlOutput.isEmpty()) {
           log.debug("Challenge Not Complete");

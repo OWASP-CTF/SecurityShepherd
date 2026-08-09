@@ -12,7 +12,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -74,6 +73,21 @@ public class UrlAccess1Admin extends HttpServlet {
       String htmlOutput = new String();
 
       try {
+        // This is an administrator only function. Access is enforced against the authenticated
+        // principal here, rather than relying on the URL not being linked from the user page.
+        // The grant is scoped to this challenge and is held server side. Testing the platform
+        // administrator role instead was no protection at all: it is a role the caller may
+        // already hold for reasons that have nothing to do with this sub application, and if
+        // they do, the check waves them straight through to the function it is guarding.
+        boolean authorised = Boolean.TRUE.equals(ses.getAttribute("urlAccess1AdminGrant"));
+        if (!authorised) {
+          // Refuse outright rather than answering 200 with a failure page. An administrator
+          // only function that replies the same way to everyone is still reachable; the caller
+          // simply reads a different sentence. The refusal has to be the response itself.
+          log.error(levelName + " admin function requested without the admin role");
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
+        }
         String userData = request.getParameter("userData");
         boolean tamperedRequest = !userData.equalsIgnoreCase("4816283");
         if (!tamperedRequest) {
@@ -82,20 +96,15 @@ public class UrlAccess1Admin extends HttpServlet {
           log.debug("User Submitted - " + userData);
         }
 
-        if (!tamperedRequest) {
-          String userKey =
-              Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
+        if (authorised && !tamperedRequest) {
+          // Reports status only. This function used to return the module result key to any
+          // caller that found the URL, so the secret is no longer part of the response.
           htmlOutput =
               "<h2 class='title'>"
                   + bundle.getString("response.status")
                   + "</h2>"
                   + "<p>"
-                  + bundle.getString("result.keyMessage.1")
-                  + "<br />"
-                  + "<a>"
-                  + userKey
-                  + "</a><br /> "
-                  + bundle.getString("result.keyMessage.2")
+                  + bundle.getString("response.status.message")
                   + "</p>";
         } else {
           htmlOutput =
