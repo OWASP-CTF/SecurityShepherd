@@ -80,12 +80,6 @@ public class SessionManagement6 extends HttpServlet {
       String htmlOutput = new String();
       log.debug(levelName + " Servlet Accessed");
       Connection conn = null;
-      out.write(
-          "<a>"
-              + Hash.generateUserSolution(
-                  Getter.getModuleResultFromHash(getServletContext().getRealPath(""), levelHash),
-                  (String) ses.getAttribute("userName"))
-              + "</a>");
       try {
         log.debug("Getting Cookies");
         Cookie userCookies[] = request.getCookies();
