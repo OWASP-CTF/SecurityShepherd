@@ -1,6 +1,5 @@
 package servlets.module.challenge;
 
-import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;
@@ -13,8 +12,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.FindXSS;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 import utils.XssFilter;
@@ -41,8 +38,6 @@ public class XssChallengeFour extends HttpServlet {
 
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(XssChallengeFour.class);
-  private static final String levelHash =
-      "06f81ca93f26236112f8e31f32939bd496ffe8c9f7b564bce32bd5e3a8c2f751";
   private static String levelName = "XSS Challenge 4";
 
   /**
@@ -88,27 +83,10 @@ public class XssChallengeFour extends HttpServlet {
                     + searchTerm
                     + "</a>";
           } else {
-
             searchTerm = XssFilter.encodeForHtml(searchTerm);
             userPost =
                 "<a href=\"" + searchTerm + "\" alt=\"" + searchTerm + "\">" + searchTerm + "</a>";
             log.debug("After Encoding - " + searchTerm);
-            if (FindXSS.search(userPost)) {
-              htmlOutput =
-                  "<h2 class='title'>"
-                      + bundle.getString("result.wellDone")
-                      + "</h2>"
-                      + "<p>"
-                      + bundle.getString("result.youDidIt")
-                      + "<br />"
-                      + bundle.getString("result.resultKey")
-                      + " <a>"
-                      + Hash.generateUserSolution(
-                          Getter.getModuleResultFromHash(
-                              getServletContext().getRealPath(""), levelHash),
-                          (String) ses.getAttribute("userName"))
-                      + "</a>";
-            }
           }
           log.debug("Adding searchTerm to Html: " + searchTerm);
           htmlOutput +=
