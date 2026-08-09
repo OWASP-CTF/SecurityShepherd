@@ -3,7 +3,6 @@
 	import="java.sql.*,java.io.*,java.net.*,org.owasp.encoder.Encode, dbProcs.*, utils.*"
 	errorPage=""%>
 <%@ page import="java.util.Locale, java.util.ResourceBundle"%>
-<%@ page import="servlets.module.challenge.DirectObject1"%>
 <%
 /**
  * Insecure Direct Object References Challenge One
@@ -83,11 +82,11 @@ String i18nChallengeName = bundle.getString("challenge.challengeName");
 					<tr>
 						</td>
 						<select id='userId' style='width: 300px;' multiple>
-							<option value="<%= IndirectReferenceMap.handleFor(ses, DirectObject1.referenceNamespace, "1") %>">Paul Bourke</option>
-							<option value="<%= IndirectReferenceMap.handleFor(ses, DirectObject1.referenceNamespace, "3") %>">Will Bailey</option>
-							<option value="<%= IndirectReferenceMap.handleFor(ses, DirectObject1.referenceNamespace, "5") %>">Orla Cleary</option>
-							<option value="<%= IndirectReferenceMap.handleFor(ses, DirectObject1.referenceNamespace, "7") %>">Ronan Fitzpatrick</option>
-							<option value="<%= IndirectReferenceMap.handleFor(ses, DirectObject1.referenceNamespace, "9") %>">Pat McKenana</option>
+							<option value="1">Paul Bourke</option>
+							<option value="3">Will Bailey</option>
+							<option value="5">Orla Cleary</option>
+							<option value="7">Ronan Fitzpatrick</option>
+							<option value="9">Pat McKenana</option>
 						</select>
 						</td>
 					</tr>
