@@ -7,13 +7,13 @@ import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -75,12 +75,20 @@ public class CsrfChallengeTargetOne extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+        String nonceKey = "csrfTargetOneNonce";
+        String expectedNonce = (String) ses.getAttribute(nonceKey);
+        if (expectedNonce == null || expectedNonce.isEmpty()) {
+          expectedNonce = Hash.randomString();
+          ses.setAttribute(nonceKey, expectedNonce);
+          out.write(csrfGenerics.getString("target.noTokenNewToken") + " " + expectedNonce + "<br><br>");
+        }
         String plusId = request.getParameter("userid");
         log.debug("User Submitted - " + plusId);
-        Cookie tokenCookie = Validate.getToken(request.getCookies());
-        Object tokenParameter = request.getParameter("csrfToken");
+        String submittedNonce = request.getParameter("csrfToken");
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId) || !Validate.validateTokens(tokenCookie, tokenParameter)) {
+        if (!userId.equals(plusId)
+            || submittedNonce == null
+            || !expectedNonce.equals(submittedNonce)) {
           response.sendError(HttpServletResponse.SC_FORBIDDEN);
           return;
         }
