@@ -9,7 +9,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Locale;
 import java.util.ResourceBundle;
-import java.util.concurrent.ConcurrentHashMap;
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
@@ -48,44 +47,8 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
   private static String levelHash =
       "269d55bc0e0ff635dcaeec8533085e5eae5d25e8646dcd4b05009353c9cf9c80";
   // The answer space for the secret question is tiny, so wrong answers are capped per session
+  private static final String ANSWER_ATTEMPTS = "sessionManagement7AnswerAttempts";
   private static final int MAX_ANSWER_ATTEMPTS = 3;
-
-  /**
-   * Counts the answers that have been guessed wrong against each account. The count is held against
-   * the account under attack rather than against the caller's session, because a session is under
-   * the attacker's control: dropping the cookie and signing in again resets a session keyed
-   * counter, and the whole answer space here is a handful of flowers. Keying it to the account is
-   * what actually throttles the guessing.
-   */
-  private static final ConcurrentHashMap<String, Integer> failedAnswers = new ConcurrentHashMap<>();
-
-  // A cap on the number of distinct accounts tracked, so that guesses against addresses that do
-  // not exist cannot grow the map without bound
-  private static final int MAX_TRACKED_ACCOUNTS = 10000;
-
-  /**
-   * Returns how many answers have already been guessed wrong against an account.
-   *
-   * @param account The address of the account being answered for
-   * @return The number of wrong answers recorded against that account
-   */
-  private static int wrongAnswers(String account) {
-    Integer wrong = failedAnswers.get(account);
-    return wrong == null ? 0 : wrong;
-  }
-
-  /**
-   * Records a wrong answer against an account.
-   *
-   * @param account The address of the account being answered for
-   */
-  private static void recordWrongAnswer(String account) {
-    if (failedAnswers.size() >= MAX_TRACKED_ACCOUNTS && !failedAnswers.containsKey(account)) {
-      failedAnswers.clear();
-    }
-    failedAnswers.merge(account, 1, Integer::sum);
-  }
-
   // To catch most requests before calling the DB, the in comming Answers must be one of the
   // following flowers
   private static String possibleAnswers[] = {
@@ -138,7 +101,11 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
         Object emailObj = request.getParameter("subEmail");
         String subEmail = Validate.validateParameter(emailObj, 60);
         log.debug("subEmail = " + subEmail);
-        if (validAnswer(subAns) && wrongAnswers(subEmail) < MAX_ANSWER_ATTEMPTS) {
+        Integer failedAnswers = (Integer) ses.getAttribute(ANSWER_ATTEMPTS);
+        if (failedAnswers == null) {
+          failedAnswers = 0;
+        }
+        if (validAnswer(subAns) && failedAnswers < MAX_ANSWER_ATTEMPTS) {
           log.debug("Submitted answer is a possible valid answer");
           String ApplicationRoot = getServletContext().getRealPath("");
           Connection conn = null;
@@ -159,7 +126,7 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
               // The answer set is seven known flowers, so it never signs the account in. The
               // response is identical either way so it cannot be used as an oracle.
               rs.close();
-              recordWrongAnswer(subEmail);
+              ses.setAttribute(ANSWER_ATTEMPTS, failedAnswers + 1);
               htmlOutput =
                   new String(
                       "<h2 class='title'>"
@@ -183,7 +150,7 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
           }
         } else {
           log.debug("Invalid answer, or attempt limit reached, skipping rest of function");
-          recordWrongAnswer(subEmail);
+          ses.setAttribute(ANSWER_ATTEMPTS, failedAnswers + 1);
           htmlOutput =
               new String(
                   "<h2 class='title'>"

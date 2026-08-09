@@ -48,12 +48,6 @@ public class SqlInjection7 extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(SqlInjection7.class);
 
-  // The sign in form offered an unlimited number of password guesses against a fixed set of
-  // accounts, so the number of failures one session may accumulate is capped
-  private static final String FAILED_SIGN_INS = "sqlInjection7FailedSignIns";
-
-  private static final int MAX_FAILED_SIGN_INS = 10;
-
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
     // Setting IpAddress To Log and taking header for original IP if forwarded from proxy
@@ -82,14 +76,7 @@ public class SqlInjection7 extends HttpServlet {
         log.debug("subPassword - " + subPassword);
         boolean validEmail =
             Validate.isValidEmailAddress(subEmail.replaceAll("\n", "")); // Ignore \n 's
-        Integer failedSignIns = (Integer) ses.getAttribute(FAILED_SIGN_INS);
-        if (failedSignIns == null) {
-          failedSignIns = 0;
-        }
-        if (!subEmail.isEmpty()
-            && !subPassword.isEmpty()
-            && validEmail
-            && failedSignIns < MAX_FAILED_SIGN_INS) {
+        if (!subEmail.isEmpty() && !subPassword.isEmpty() && validEmail) {
           conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSeven");
           try {
             log.debug("Signing in with subitted details");
@@ -100,7 +87,6 @@ public class SqlInjection7 extends HttpServlet {
             prepstmt.setString(2, subPassword);
             ResultSet users = prepstmt.executeQuery();
             if (users.next()) {
-              ses.removeAttribute(FAILED_SIGN_INS);
               htmlOutput =
                   "<h3>"
                       + bundle.getString("response.welcome")
@@ -115,7 +101,6 @@ public class SqlInjection7 extends HttpServlet {
                           (String) ses.getAttribute("userName"))
                       + "</p>";
             } else {
-              ses.setAttribute(FAILED_SIGN_INS, failedSignIns + 1);
               htmlOutput =
                   "<h3>"
                       + bundle.getString("response.incorrectCreds")

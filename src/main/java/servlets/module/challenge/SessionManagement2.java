@@ -43,12 +43,6 @@ public class SessionManagement2 extends HttpServlet {
 
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(SessionManagement2.class);
-
-  // The sign in form offered an unlimited number of password guesses against a small, fixed
-  // set of accounts, so the number of failures one session may accumulate is capped
-  private static final String FAILED_SIGN_INS = "sessionManagement2FailedSignIns";
-
-  private static final int MAX_FAILED_SIGN_INS = 10;
   private static String levelName = "Session Management Challenge Two";
   private static String levelHash =
       "d779e34a54172cbc245300d3bc22937090ebd3769466a501a5e7ac605b9f34b7";
@@ -123,14 +117,9 @@ public class SessionManagement2 extends HttpServlet {
         callstmt.setString(1, subName);
         callstmt.setString(2, subPass);
         log.debug("Executing authUser");
-        Integer failedSignIns = (Integer) ses.getAttribute(FAILED_SIGN_INS);
-        if (failedSignIns == null) {
-          failedSignIns = 0;
-        }
         ResultSet resultSet = callstmt.executeQuery();
-        if (failedSignIns < MAX_FAILED_SIGN_INS && resultSet.next()) {
+        if (resultSet.next()) {
           log.debug("Successful Login");
-          ses.removeAttribute(FAILED_SIGN_INS);
           ses.setAttribute("sessionManagement2User", resultSet.getString(1));
           ses.setAttribute("sessionManagement2Address", resultSet.getString(2));
           // Get key and add it to the output
@@ -152,7 +141,6 @@ public class SessionManagement2 extends HttpServlet {
                   + "</p>";
         } else {
           log.debug("Incorrect credentials");
-          ses.setAttribute(FAILED_SIGN_INS, failedSignIns + 1);
           // The same message for a bad user name and a bad password, so accounts and their
           // email addresses cannot be enumerated with the sign in form
           userAddress = bundle.getString("response.badUser") + "<br/>";

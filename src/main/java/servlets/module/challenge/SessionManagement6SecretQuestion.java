@@ -9,7 +9,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Locale;
 import java.util.ResourceBundle;
-import java.util.concurrent.ConcurrentHashMap;
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
@@ -51,44 +50,9 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
 
   // The secret answer is a single low entropy factor that is stored in the clear, so the number
   // of guesses one session may make against it is capped
+  private static final String ANSWER_ATTEMPTS = "sessionManagement6AnswerAttempts";
 
   private static final int MAX_ANSWER_ATTEMPTS = 3;
-
-  /**
-   * Counts the answers that have been guessed wrong against each account. The count is held against
-   * the account under attack rather than against the caller's session, because a session is under
-   * the attacker's control: dropping the cookie and signing in again resets a session keyed
-   * counter, and the whole answer space here is a handful of flowers. Keying it to the account is
-   * what actually throttles the guessing.
-   */
-  private static final ConcurrentHashMap<String, Integer> failedAnswers = new ConcurrentHashMap<>();
-
-  // A cap on the number of distinct accounts tracked, so that guesses against addresses that do
-  // not exist cannot grow the map without bound
-  private static final int MAX_TRACKED_ACCOUNTS = 10000;
-
-  /**
-   * Returns how many answers have already been guessed wrong against an account.
-   *
-   * @param account The address of the account being answered for
-   * @return The number of wrong answers recorded against that account
-   */
-  private static int wrongAnswers(String account) {
-    Integer wrong = failedAnswers.get(account);
-    return wrong == null ? 0 : wrong;
-  }
-
-  /**
-   * Records a wrong answer against an account.
-   *
-   * @param account The address of the account being answered for
-   */
-  private static void recordWrongAnswer(String account) {
-    if (failedAnswers.size() >= MAX_TRACKED_ACCOUNTS && !failedAnswers.containsKey(account)) {
-      failedAnswers.clear();
-    }
-    failedAnswers.merge(account, 1, Integer::sum);
-  }
 
   /**
    * A user submits a username and answer, these values are checked against the DB to see if they
@@ -133,9 +97,13 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
         String ApplicationRoot = getServletContext().getRealPath("");
         Connection conn = null;
         try {
+          Integer failedAnswers = (Integer) ses.getAttribute(ANSWER_ATTEMPTS);
+          if (failedAnswers == null) {
+            failedAnswers = 0;
+          }
           if (Validate.isValidEmailAddress(subEmail)
               && subAns.length() > 5
-              && wrongAnswers(subEmail) < MAX_ANSWER_ATTEMPTS) {
+              && failedAnswers < MAX_ANSWER_ATTEMPTS) {
             conn = Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalSix");
             log.debug("Checking Secret Answer");
             PreparedStatement callstmt =
@@ -150,7 +118,7 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
             // matching answer is not proof of ownership and never recovers the account. The
             // response is identical either way so it cannot be used as an oracle.
             rs.close();
-            recordWrongAnswer(subEmail);
+            ses.setAttribute(ANSWER_ATTEMPTS, failedAnswers + 1);
             htmlOutput =
                 new String(
                     "<h2 class='title'>"
