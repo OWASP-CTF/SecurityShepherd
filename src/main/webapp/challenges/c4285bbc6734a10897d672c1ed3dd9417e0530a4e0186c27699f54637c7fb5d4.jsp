@@ -71,6 +71,12 @@ String i18nLevelName = bundle.getString("securityMisconfig.stealTokens.challenge
 		try
 		{
 			Cookie userCookie = new Cookie("securityMisconfigLesson", SecurityMisconfigStealTokens.getUserToken(userId, applicationRoot));
+			// Sensitive session token: must not be readable by client-side script (mitigates
+			// theft via XSS) and must never be sent over an unencrypted connection (mitigates
+			// theft via network sniffing/MITM) - this is the "Cookie Flag" fix for this level.
+			userCookie.setHttpOnly(true);
+			userCookie.setSecure(true);
+			userCookie.setPath("/");
 	        response.addCookie(userCookie);
 		}
 		catch(Exception e)
