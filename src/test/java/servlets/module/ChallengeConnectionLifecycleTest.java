@@ -41,7 +41,7 @@ class ChallengeConnectionLifecycleTest {
       }
     }
 
-    assertEquals(37, acquisitions, "update the lifecycle census when adding connection sites");
+    assertEquals(36, acquisitions, "update the lifecycle census when adding connection sites");
   }
 
   private static int occurrences(String source, String target) {

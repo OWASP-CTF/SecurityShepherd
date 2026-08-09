@@ -1,6 +1,7 @@
 package servlets.module.challenge;
 
 import dbProcs.Database;
+import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -19,6 +20,7 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -101,16 +103,34 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
             callstmt.setString(2, subAns);
             log.debug("Running secret Answer Check");
             ResultSet rs = callstmt.executeQuery();
-            log.debug("Answer checked, account recovery is never granted on an answer alone");
-            // A secret answer is a guessable factor, so it never signs the account in. The
-            // response is identical either way so it cannot be used as an oracle.
-            rs.close();
-            htmlOutput =
-                new String(
-                    "<h2 class='title'>"
-                        + bundle.getString("question.badAnswer")
-                        + "</h2><p>"
-                        + bundle.getString("question.whoAreYou"));
+            if (rs.next()) {
+              log.debug("Correct Answer Submitted");
+              // Get key and add it to the output
+              String userKey =
+                  Hash.generateUserSolution(
+                      Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
+                      (String) ses.getAttribute("userName"));
+              htmlOutput =
+                  "<h2 class='title'>"
+                      + bundle.getString("response.welcome")
+                      + " "
+                      + Encode.forHtml(rs.getString(1))
+                      + "</h2>"
+                      + "<p>"
+                      + bundle.getString("response.welcome")
+                      + " <a>"
+                      + userKey
+                      + "</a>"
+                      + "</p>";
+            } else {
+              log.debug("Bad Answer Submitted");
+              htmlOutput =
+                  new String(
+                      "<h2 class='title'>"
+                          + bundle.getString("question.badAnswer")
+                          + "</h2><p>"
+                          + bundle.getString("question.whoAreYou"));
+            }
           } else {
             log.debug("Invalid data submitted");
             htmlOutput = new String("<b>" + bundle.getString("question.invalidData") + ": </b>");
