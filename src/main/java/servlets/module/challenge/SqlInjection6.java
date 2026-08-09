@@ -16,7 +16,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
-import utils.ChallengeAnswer;
 import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
@@ -78,15 +77,20 @@ public class SqlInjection6 extends HttpServlet {
       try {
         String userPin = (String) request.getParameter("pinNumber");
         log.debug("userPin - " + userPin);
+        // A pin is four digits. Checking that up front is what makes the value safe; the two
+        // steps that stood here scrubbed the quotes out and then ran a decode that turned an
+        // encoded quote back into a real one, handing back what the scrub had just removed.
+        if (userPin == null || !userPin.matches("[0-9]{4}")) {
+          throw new IllegalArgumentException("Submitted pin is not a pin");
+        }
         Connection conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSix");
         log.debug("Looking for users");
         PreparedStatement prepstmt =
             conn.prepareStatement("SELECT userName FROM users WHERE userPin = ?");
         prepstmt.setString(1, userPin);
         ResultSet users = prepstmt.executeQuery();
-        String levelAnswer = ChallengeAnswer.forLevel(applicationRoot, levelHash);
         try {
-          if (users.next() && !ChallengeAnswer.rowRevealsAnswer(levelAnswer, users.getString(1))) {
+          if (users.next()) {
             htmlOutput =
                 "<h3>"
                     + bundle.getString("response.welcomeBack")
