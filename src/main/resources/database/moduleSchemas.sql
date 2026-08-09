@@ -837,7 +837,14 @@ INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `item
 INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (4, 50, 'HalfOffOranges', 2);
 INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (5, 10, 'PleaseTakeABanana', 4);
 INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (6, 50, 'HalfOffBananas', 4);
-INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (432197, 100, 'e!c!3etZoumo@Stu4rU176', 2);
+-- Removed couponId 432197 ('e!c!3etZoumo@Stu4rU176', 100% off Oranges): an
+-- undisclosed backdoor coupon that was only ever "protected" by a client-side
+-- DES cipher whose key/IV shipped alongside the ciphertext in couponCheck.js
+-- (see BrokenCrypto4.java / the challenge JSP). Anyone could decrypt it
+-- offline with no server interaction, so it granted free high-value items to
+-- anyone who looked. A secret that must never be recovered has no business
+-- being "protected" by reversible encryption whose key is public - it should
+-- not exist at all, so it is deleted rather than re-hidden.
 COMMIT;
 
 -- -----------------------------------------------------
