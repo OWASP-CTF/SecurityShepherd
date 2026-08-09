@@ -157,12 +157,21 @@ public class SessionManagement7 extends HttpServlet {
                       + "</a>"
                       + "</p>";
             } else {
-              // One reply for every failed sign in. Telling the caller that the name was right
-              // but the password wrong separates real accounts from invented ones, and handing
-              // back the address names the mailbox the account recovery in this challenge aims
-              // at. Neither is something a failed sign in has any reason to disclose.
-              log.debug("Incorrect credentials");
-              userAddress = bundle.getString("response.badUser") + "<br/>";
+              log.debug("Incorrect credentials, checking if user name correct");
+              callstmt = conn.prepareStatement("SELECT userAddress FROM users WHERE userName = ?");
+              callstmt.setString(1, subName);
+              log.debug("Executing getAddress");
+              resultSet = callstmt.executeQuery();
+              if (resultSet.next()) {
+                log.debug("User Found");
+                userAddress =
+                    bundle.getString("response.badPass")
+                        + " <a>"
+                        + Encode.forHtml(resultSet.getString(1))
+                        + "</a><br/>";
+              } else {
+                userAddress = bundle.getString("response.badUser") + "<br/>";
+              }
               htmlOutput = makeTable(userAddress, bundle);
             }
             Database.closeConnection(conn);

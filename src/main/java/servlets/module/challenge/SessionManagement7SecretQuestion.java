@@ -1,6 +1,7 @@
 package servlets.module.challenge;
 
 import dbProcs.Database;
+import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -19,6 +20,7 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -116,18 +118,23 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
               log.debug("Running secret Answer Check");
               ResultSet rs = callstmt.executeQuery();
               if (rs.next()) {
-                // Answering the secret question confirms who the caller claims to be and nothing
-                // more. It is a shared, guessable fact, not a credential, so it cannot stand in
-                // for signing in to the account - and it certainly cannot earn the key that is
-                // only given for holding the account's real authentication.
                 log.debug("Correct Answer Submitted");
+                // Get key and add it to the output
+                String userKey =
+                    Hash.generateUserSolution(
+                        Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
+                        (String) ses.getAttribute("userName"));
                 htmlOutput =
                     "<h2 class='title'>"
                         + bundle.getString("response.welcome")
                         + " "
                         + Encode.forHtml(rs.getString(1))
-                        + "</h2><p>"
-                        + bundle.getString("question.whoAreYou")
+                        + "</h2>"
+                        + "<p>"
+                        + bundle.getString("response.resultKey")
+                        + " <a>"
+                        + userKey
+                        + "</a>"
                         + "</p>";
               } else {
                 log.debug("Bad Answer Submitted");

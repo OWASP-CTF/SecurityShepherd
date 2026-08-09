@@ -79,8 +79,9 @@ public class SqlInjection5CouponCheck extends HttpServlet {
         PreparedStatement prepstmt =
             conn.prepareStatement(
                 "SELECT itemId, perCentOff, itemName FROM coupons JOIN items USING (itemId) WHERE"
-                    + " couponCode = ?;");
-        prepstmt.setString(1, couponCode);
+                    + " couponCode = '"
+                    + couponCode
+                    + "';");
         ResultSet coupons = prepstmt.executeQuery();
         try {
           if (coupons.next()) {
@@ -104,15 +105,11 @@ public class SqlInjection5CouponCheck extends HttpServlet {
           }
         } catch (Exception e) {
           log.debug("Could Not Find Coupon: " + e.toString());
-          htmlOutput += "<p> " + bundle.getString("response.checkFailed") + "</p>";
         }
         conn.close();
       } catch (Exception e) {
-        // The bundle has no "errors.Occurred", so building the old message threw out of this
-        // handler. Report the same thing an unrecognised code reports, and keep the exception in
-        // the log instead of echoing it to the caller.
-        log.error("Could not complete coupon check: " + e.toString());
-        htmlOutput = "" + bundle.getString("response.noCoupon") + "";
+        log.debug("Did complete Check: " + e.toString());
+        htmlOutput = "" + bundle.getString("errors.Occurred") + "" + Encode.forHtml(e.toString());
       }
       try {
         Thread.sleep(1000);
