@@ -3,15 +3,18 @@ package servlets.module.challenge;
 import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import utils.ShepherdLogManager;
@@ -43,9 +46,6 @@ public class SessionManagement3ChangePassword extends HttpServlet {
   private static String levelName = "Session Management Challenge Three (Change Password)";
   public static String levelHash =
       "b467dbe3cd61babc0ec599fd0c67e359e6fe04e8cdc618d537808cbb693fee8a";
-
-  /** The unprivileged account this page has always reset. It is not selectable by the caller. */
-  private static final String GUEST_ACCOUNT = "guest12";
 
   // private static String levelResult = ""; //This Servlet does not return a result
 
@@ -81,21 +81,39 @@ public class SessionManagement3ChangePassword extends HttpServlet {
       log.debug(levelName + " - Change Password - Servlet");
       try {
         log.debug("Getting Challenge Parameters");
+        Cookie userCookies[] = request.getCookies();
+        int i = 0;
+        Cookie theCookie = null;
+        for (i = 0; i < userCookies.length; i++) {
+          if (userCookies[i].getName().compareTo("current") == 0) {
+            theCookie = userCookies[i];
+            break; // End Loop, because we found the token
+          }
+        }
         Object passNewObj = request.getParameter("newPassword");
+        String subName = new String();
         String subNewPass = new String();
+        if (theCookie != null) {
+          subName = theCookie.getValue();
+        }
         if (passNewObj != null) {
           subNewPass = (String) passNewObj;
         }
-        // Which account this resets is settled here, not by the caller. It used to be read out
-        // of the "current" cookie, and the page itself only ever set that cookie to the guest
-        // account, so the cookie carried no information the server did not already have - it
-        // only offered a way to name a different account, which is the whole attack. The reset
-        // still runs, and it runs against the account whose page this is.
-        Object sessionUser = ses.getAttribute("sessionManagement3User");
-        String subName = sessionUser == null ? GUEST_ACCOUNT : sessionUser.toString();
         log.debug("subName = " + subName);
+        // Base 64 Decode
+        try {
+          byte[] decodedName = Base64.decodeBase64(subName);
+          subName = new String(decodedName, "UTF-8");
+          decodedName = Base64.decodeBase64(subName);
+          subName = new String(decodedName, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+          log.debug("Could not decode username");
+          subName = new String();
+        }
+        log.debug("subName Decoded = " + subName);
+        log.debug("subPass = " + subNewPass);
 
-        if (!subName.isEmpty() && subNewPass.length() >= 6) {
+        if (subNewPass.length() >= 6) {
           log.debug("Getting ApplicationRoot");
           String ApplicationRoot = getServletContext().getRealPath("");
 
