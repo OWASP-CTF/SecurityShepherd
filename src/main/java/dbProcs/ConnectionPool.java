@@ -51,7 +51,17 @@ public class ConnectionPool {
   private static final long DEFAULT_LEAK_DETECTION_THRESHOLD = 60000; // 60 seconds
 
   // Challenge pool configuration values (smaller footprint per schema)
-  private static final int CHALLENGE_MAX_POOL_SIZE = 3;
+  // A pool of three is exhausted by the fourth concurrent request to any challenge whose handler
+  // does not return its connection, at which point every later request to that schema blocks for
+  // the connection timeout and then fails. Widening it a little keeps a leaking handler from
+  // taking the whole challenge offline; handlers still have to return what they borrow.
+  //
+  // It cannot be widened much. There are two dozen challenge schemas and the server allows 151
+  // connections in total, so a per schema ceiling of twenty lets a run that exercises every
+  // challenge ask for several times what the server will give - and the connection the next
+  // request needs is refused by the database rather than queued by the pool. Six per schema
+  // keeps the worst case inside the server's limit with room for the core pool.
+  private static final int CHALLENGE_MAX_POOL_SIZE = 6;
   private static final int CHALLENGE_MIN_IDLE = 0;
   private static final long CHALLENGE_IDLE_TIMEOUT = 120000; // 2 minutes
 

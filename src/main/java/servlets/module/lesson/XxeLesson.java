@@ -139,8 +139,11 @@ public class XxeLesson extends HttpServlet {
     Document doc;
     String result;
 
+    // A document type declaration is refused outright, and with it the external general and
+    // parameter entities, the external DTD and the XInclude processing that let a submitted
+    // document name a path on the server and have the parser read it back into the response.
     DocumentBuilder dBuilder =
-        XmlDocumentBuilder.xmlDocBuilder(false, true, true, true, true, true);
+        XmlDocumentBuilder.xmlDocBuilder(true, false, false, false, false, false);
     InputSource is = new InputSource(xmlEmail);
 
     try {

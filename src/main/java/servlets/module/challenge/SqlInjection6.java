@@ -16,6 +16,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
+import utils.ChallengeAnswer;
 import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
@@ -77,20 +78,17 @@ public class SqlInjection6 extends HttpServlet {
       try {
         String userPin = (String) request.getParameter("pinNumber");
         log.debug("userPin - " + userPin);
-        userPin =
-            userPin.replaceAll("\\\\", "\\\\\\\\").replaceAll("'", ""); // Escape single quotes
-        log.debug("userPin scrubbed - " + userPin);
-        userPin =
-            java.net.URLDecoder.decode(
-                userPin.replaceAll("\\\\\\\\x", "%"), "UTF-8"); // Decode \x encoding
-        log.debug("searchTerm decoded to - " + userPin);
         Connection conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSix");
         log.debug("Looking for users");
         PreparedStatement prepstmt =
-            conn.prepareStatement("SELECT userName FROM users WHERE userPin = '" + userPin + "'");
+            // The pin is the credential for this sub application, so it is stored as a digest
+            // rather than in clear and compared in that form.
+            conn.prepareStatement("SELECT userName FROM users WHERE userPin = SHA2(?, 256)");
+        prepstmt.setString(1, userPin);
         ResultSet users = prepstmt.executeQuery();
+        String levelAnswer = ChallengeAnswer.forLevel(applicationRoot, levelHash);
         try {
-          if (users.next()) {
+          if (users.next() && !ChallengeAnswer.rowRevealsAnswer(levelAnswer, users.getString(1))) {
             htmlOutput =
                 "<h3>"
                     + bundle.getString("response.welcomeBack")
