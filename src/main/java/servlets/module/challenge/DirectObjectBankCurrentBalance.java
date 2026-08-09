@@ -67,7 +67,10 @@ public class DirectObjectBankCurrentBalance extends HttpServlet {
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
       try {
-        String accountNumber = request.getParameter("accountNumber");
+        // The account to check must be the one the user actually authenticated into (set in
+        // session by DirectObjectBankLogin), not a client-supplied parameter - otherwise any
+        // logged-in user could read any other account's balance just by guessing its number.
+        String accountNumber = (String) ses.getAttribute("directObjectBankAccount");
         log.debug("Account Number - " + accountNumber);
         String applicationRoot = getServletContext().getRealPath("");
         String htmlOutput = new String();

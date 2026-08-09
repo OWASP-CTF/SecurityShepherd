@@ -73,7 +73,10 @@ public class DirectObjectBankTransfer extends HttpServlet {
       String errorMessage = new String();
       String applicationRoot = getServletContext().getRealPath("");
       try {
-        String senderAccountNumber = request.getParameter("senderAccountNumber");
+        // The sender must be the account the user actually authenticated into (set in session by
+        // DirectObjectBankLogin), not a client-supplied parameter - otherwise any logged-in user
+        // could drain funds out of any other account just by guessing its number.
+        String senderAccountNumber = (String) ses.getAttribute("directObjectBankAccount");
         log.debug("Sender Account Number - " + senderAccountNumber);
         String receiverAccountNumber = request.getParameter("receiverAccountNumber");
         log.debug("Receiver Account Number - " + receiverAccountNumber);
