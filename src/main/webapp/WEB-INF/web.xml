@@ -1328,14 +1328,4 @@
 		<dispatcher>REQUEST</dispatcher>
 	</filter-mapping>
 
-	<filter>
-		<filter-name>ModuleStatusFilter</filter-name>
-		<filter-class>servlets.ModuleStatusFilter</filter-class>
-	</filter>
-	<filter-mapping>
-		<filter-name>ModuleStatusFilter</filter-name>
-		<url-pattern>/challenges/*</url-pattern>
-		<dispatcher>REQUEST</dispatcher>
-	</filter-mapping>
-
 </web-app>
