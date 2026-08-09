@@ -12,7 +12,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -70,36 +69,24 @@ public class SecurityMisconfigLesson extends HttpServlet {
         log.debug("User Name - " + userName);
         String userPass = request.getParameter("userPass");
         log.debug("User Pass - " + userName);
-        boolean loggedIn = userName.contentEquals("admin") && userPass.contentEquals("password");
+        // A name and password typed into this form identify nobody, because anybody can send any
+        // pair. Signing in is the application's own login, and the role it establishes lives in
+        // the session, so a shipped default credential no longer grants an administrator view.
+        // The same reply comes back whatever password is sent, so the form cannot test one.
+        log.error(levelName + " refused credentials submitted to a lesson form");
         String htmlOutput = new String();
-        if (!loggedIn) {
-          if (userName.contentEquals("admin")) {
-            htmlOutput = bundle.getString("response.incorrectPassword");
-          } else {
-
-            htmlOutput =
-                bundle.getString("response.noUserFound") + " \"" + Encode.forHtml(userName) + "\"";
-          }
-          htmlOutput =
-              "<h2 class='title'>"
-                  + bundle.getString("response.authError")
-                  + "</h2><p>"
-                  + htmlOutput
-                  + "</p>";
+        if (userName.contentEquals("admin")) {
+          htmlOutput = bundle.getString("response.incorrectPassword");
         } else {
-          // Default username and password were used
-          log.debug("User has signed in as admin");
           htmlOutput =
-              "<h2 class='title'>"
-                  + bundle.getString("response.authSuccess")
-                  + "</h2><p>"
-                  + bundle.getString("result.youDidIt")
-                  + "<br><br>"
-                  + bundle.getString("result.key")
-                  + ": <a>"
-                  + Hash.generateUserSolution(levelResult, ses.getAttribute("userName").toString())
-                  + "</a>";
+              bundle.getString("response.noUserFound") + " \"" + Encode.forHtml(userName) + "\"";
         }
+        htmlOutput =
+            "<h2 class='title'>"
+                + bundle.getString("response.authError")
+                + "</h2><p>"
+                + htmlOutput
+                + "</p>";
         log.debug("Outputting HTML");
         out.write(htmlOutput);
       } catch (Exception e) {
