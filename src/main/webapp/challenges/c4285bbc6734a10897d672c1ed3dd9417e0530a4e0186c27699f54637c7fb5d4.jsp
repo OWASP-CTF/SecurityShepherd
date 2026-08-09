@@ -68,11 +68,11 @@ String i18nLevelName = bundle.getString("securityMisconfig.stealTokens.challenge
 		//Set User  Cookie
 		try
 		{
-			Cookie userCookie = new Cookie("securityMisconfigLesson", SecurityMisconfigStealTokens.getUserToken(userId, applicationRoot));
-			//Session token: not readable from script and never sent over a cleartext connection
-			userCookie.setHttpOnly(true);
-			userCookie.setSecure(true);
-	        response.addCookie(userCookie);
+			String userToken = SecurityMisconfigStealTokens.getUserToken(userId, applicationRoot);
+			// Servlet 4 has no Cookie API for SameSite, so emit the complete cookie header.
+			// The token is server-generated and contains no user-controlled header characters.
+			response.addHeader("Set-Cookie", "securityMisconfigLesson=" + userToken
+					+ "; HttpOnly; Secure; SameSite=Strict");
 		}
 		catch(Exception e)
 		{
