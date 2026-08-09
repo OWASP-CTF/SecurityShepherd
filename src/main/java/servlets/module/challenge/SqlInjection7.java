@@ -1,7 +1,6 @@
 package servlets.module.challenge;
 
 import dbProcs.Database;
-import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -17,7 +16,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -81,25 +79,21 @@ public class SqlInjection7 extends HttpServlet {
             log.debug("Signing in with subitted details");
             PreparedStatement prepstmt =
                 conn.prepareStatement(
-                    "SELECT userName FROM users WHERE userEmail = '"
-                        + subEmail
-                        + "' AND userPassword = ?;");
-            prepstmt.setString(1, subPassword);
+                    "SELECT userName FROM users WHERE userEmail = ? AND userPassword = ?;");
+            prepstmt.setString(1, subEmail);
+            prepstmt.setString(2, subPassword);
             ResultSet users = prepstmt.executeQuery();
             if (users.next()) {
+              // Signing in no longer prints the module result key. The stored credentials are
+              // plain text and compared as plain text, so anyone holding a valid pair could read
+              // the key straight out of a legitimate login without going near the injection this
+              // challenge is about.
               htmlOutput =
                   "<h3>"
                       + bundle.getString("response.welcome")
                       + " "
                       + Encode.forHtml(users.getString(1))
-                      + "</h3>"
-                      + "<p>"
-                      + bundle.getString("response.resultKey")
-                      + ""
-                      + Hash.generateUserSolution(
-                          Getter.getModuleResultFromHash(applicationRoot, levelHash),
-                          (String) ses.getAttribute("userName"))
-                      + "</p>";
+                      + "</h3>";
             } else {
               htmlOutput =
                   "<h3>"
