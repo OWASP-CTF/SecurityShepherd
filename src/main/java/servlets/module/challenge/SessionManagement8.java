@@ -1,5 +1,6 @@
 package servlets.module.challenge;
 
+import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
@@ -16,7 +17,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import dbProcs.Getter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import utils.Hash;
@@ -71,6 +71,7 @@ public class SessionManagement8 extends HttpServlet {
       return false;
     }
   }
+
   /**
    * Users must take advance of the broken session management in this application by modifying the
    * tracking cookie "challengeRole" which is encoded in ATOM-128. They must modify this cookie to
@@ -123,8 +124,7 @@ public class SessionManagement8 extends HttpServlet {
           if (hasAuthenticatedRole(theCookie.getValue(), "nmHqLjQknlHs")) {
             htmlOutput =
                 Hash.generateUserSolution(
-                    Getter.getModuleResultFromHash(
-                        getServletContext().getRealPath(""), levelHash),
+                    Getter.getModuleResultFromHash(getServletContext().getRealPath(""), levelHash),
                     (String) ses.getAttribute("userName"));
           } else if (!theCookie.getValue().equals("LmH6nmbC")) {
             log.debug("Tampered role cookie detected: " + theCookie.getValue());
