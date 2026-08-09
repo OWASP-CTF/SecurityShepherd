@@ -69,7 +69,11 @@ public class CsrfChallengeSixGetToken extends HttpServlet {
       if (Validate.validateSession(ses)) {
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
         String htmlOutput = new String("Your csrf Token for this Challenge is: ");
-        String userId = request.getParameter("userId").toString();
+        // This endpoint only ever hands back the caller's OWN token. The submitted userId is
+        // ignored for lookup purposes - a request has no business fetching a token that was
+        // minted for somebody else's session, and a LIKE-based match on caller-controlled input
+        // let a wildcard pattern enumerate everyone's tokens regardless of the id supplied.
+        String userId = (String) ses.getAttribute("userStamp");
 
         Connection conn =
             Database.getChallengeConnection(
@@ -78,7 +82,7 @@ public class CsrfChallengeSixGetToken extends HttpServlet {
           log.debug("Preparing setCsrfChallengeSixToken call");
           PreparedStatement callstmnt =
               conn.prepareStatement(
-                  "SELECT csrfTokenscol FROM csrfchallengesix.csrfTokens WHERE userId LIKE ?");
+                  "SELECT csrfTokenscol FROM csrfchallengesix.csrfTokens WHERE userId = ?");
           callstmnt.setString(1, userId);
           log.debug("Executing setCsrfChallengeSixTokenQuery");
           ResultSet rs = callstmnt.executeQuery();
