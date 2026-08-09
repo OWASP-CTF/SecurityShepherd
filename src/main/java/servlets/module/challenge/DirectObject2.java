@@ -47,8 +47,8 @@ public class DirectObject2 extends HttpServlet {
 
   /**
    * Names this challenge's set of indirect references. Digesting a small number does not make it
-   * unguessable, so the page publishes a per session handle for each profile it offers and the
-   * row identifier is never client supplied.
+   * unguessable, so the page publishes a per session handle for each profile it offers and the row
+   * identifier is never client supplied.
    */
   public static final String referenceNamespace = "directObjectRefChalTwo";
 
