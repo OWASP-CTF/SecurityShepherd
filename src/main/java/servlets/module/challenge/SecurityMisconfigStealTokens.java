@@ -17,7 +17,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -110,37 +109,27 @@ public class SecurityMisconfigStealTokens extends HttpServlet {
                       + "<p>");
         } else {
           // User submitted something different from their cookie
-          boolean notUsersTokenButValid = validToken(userId, cookieValue, applicationRoot);
-          if (notUsersTokenButValid) {
-            log.debug("Valid Cookie of another User Dectected");
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("securityMisconfig.servlet.stealTokens.complete")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("securityMisconfig.servlet.stealTokens.youDidIt")
-                    + " "
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
-          } else {
-            htmlOutput =
-                new String(
-                    "<h2 class='title'>"
-                        + bundle.getString("securityMisconfig.servlet.stealTokens.notComplete")
-                        + "</h2>"
-                        + "<p>"
-                        + bundle.getString(
-                            "securityMisconfig.servlet.stealTokens.notComplete.yourToken")
-                        + "<p>");
+          // Presenting a token that belongs to another account is an attempt to use somebody
+          // else's session, so it is refused rather than rewarded. The same reply is given
+          // either way so this cannot be used to test whether a token is live.
+          if (validToken(userId, cookieValue, applicationRoot)) {
+            log.error("Session token belonging to another account was presented; refused");
           }
+          htmlOutput =
+              new String(
+                  "<h2 class='title'>"
+                      + bundle.getString("securityMisconfig.servlet.stealTokens.notComplete")
+                      + "</h2>"
+                      + "<p>"
+                      + bundle.getString(
+                          "securityMisconfig.servlet.stealTokens.notComplete.yourToken")
+                      + "<p>");
         }
       } catch (Exception e) {
-        out.write(errors.getString("securityMisconfig.servlet.stealTokens.notComplete.yourToken"));
+        // This key lives in the challenge bundle, not the error bundle. Looking it up in the
+        // error bundle threw out of the handler, so any request that reached here (one without
+        // the challenge cookie, for instance) failed with a server error instead of a message.
+        out.write(bundle.getString("securityMisconfig.servlet.stealTokens.notComplete.yourToken"));
         log.fatal(levelName + " - " + e.toString());
       }
       log.debug("Outputting HTML");
