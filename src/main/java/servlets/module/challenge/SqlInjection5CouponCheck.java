@@ -107,8 +107,8 @@ public class SqlInjection5CouponCheck extends HttpServlet {
           htmlOutput += "<p> " + bundle.getString("response.checkFailed") + "</p>";
         }
       } catch (Exception e) {
-        log.debug("Did complete Check: " + e.toString());
-        htmlOutput = "" + bundle.getString("errors.Occurred") + "" + Encode.forHtml(e.toString());
+        log.error("Did complete Check: " + e.toString());
+        htmlOutput = "" + bundle.getString("errors.Occurred");
       } finally {
         Database.closeConnection(conn);
       }

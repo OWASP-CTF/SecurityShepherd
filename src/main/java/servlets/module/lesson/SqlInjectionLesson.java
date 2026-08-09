@@ -144,9 +144,9 @@ public class SqlInjectionLesson extends HttpServlet {
       }
       log.debug("That's All");
     } catch (SQLException e) {
-      log.debug("SQL Error caught - " + e.toString());
+      log.error("SQL Error caught - " + e.toString());
       result[0][0] = "error";
-      result[0][1] = Encode.forHtml(e.toString());
+      result[0][1] = "";
     } catch (Exception e) {
       log.fatal("Error: " + e.toString());
     } finally {
