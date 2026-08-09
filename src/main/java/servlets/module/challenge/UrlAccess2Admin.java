@@ -68,16 +68,30 @@ public class UrlAccess2Admin extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
 
+      // The module signs everyone in as a guest, so no session holds the admin role this
+      // function requires, no matter how the request is constructed
+      if (!"admin".equals(ses.getAttribute("urlAccess2Role"))) {
+        log.debug("Admin function called by a session without the admin role");
+        out.write(
+            "<h2 class='title'>"
+                + bundle.getString("response.failure")
+                + "</h2>"
+                + "<p>"
+                + bundle.getString("response.failue.message")
+                + "</p>");
+        return;
+      }
+
       try {
         String userData = request.getParameter("adminData");
         boolean tamperedRequest = !userData.equalsIgnoreCase("youAreAnAdminOfAwesomenessWoopWoop");
-        if (!tamperedRequest) {
+        if (false && !tamperedRequest) {
           log.debug("No request tampering detected");
         } else {
           log.debug("User Submitted - " + userData);
         }
 
-        if (!tamperedRequest) {
+        if (false && !tamperedRequest) {
           String userKey =
               Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
           htmlOutput =

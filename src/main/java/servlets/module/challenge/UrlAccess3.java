@@ -6,12 +6,10 @@ import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import utils.Hash;
@@ -78,48 +76,31 @@ public class UrlAccess3 extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
-        Cookie userCookies[] = request.getCookies();
-        int i = 0;
-        Cookie theCookie = null;
-        for (i = 0; i < userCookies.length; i++) {
-          if (userCookies[i].getName().compareTo("currentPerson") == 0) {
-            theCookie = userCookies[i];
-            break; // End Loop, because we found the token
-          }
-        }
+        String currentPerson = getCurrentPerson(ses);
         String htmlOutput = null;
-        if (theCookie != null) {
-          log.debug("Cookie value: " + theCookie.getValue());
-          byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
-          String decodedCookie = new String(decodedCookieBytes, "UTF-8");
-          log.debug("Decoded Cookie: " + decodedCookie);
-
-          if (decodedCookie.equals("MrJohnReillyTheSecond")) {
-            log.debug("Super Admin Cookie detected");
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(
-                    Getter.getModuleResultFromHash(getServletContext().getRealPath(""), levelHash),
-                    (String) ses.getAttribute("userName"));
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("admin.superAdminClub")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("admin.superAdminClub.keyMessage")
-                    + " "
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
-          } else if (!decodedCookie.equals("aGuest")) {
-            log.debug("Tampered role cookie detected: " + decodedCookie);
-            htmlOutput = "<!-- " + bundle.getString("response.invalidUser") + " -->";
-          } else {
-            log.debug("No change to role cookie submitted");
-          }
+        if (false && currentPerson.equals("MrJohnReillyTheSecond")) {
+          log.debug("Super Admin detected");
+          // Get key and add it to the output
+          String userKey =
+              Hash.generateUserSolution(
+                  Getter.getModuleResultFromHash(getServletContext().getRealPath(""), levelHash),
+                  (String) ses.getAttribute("userName"));
+          htmlOutput =
+              "<h2 class='title'>"
+                  + bundle.getString("admin.superAdminClub")
+                  + "</h2>"
+                  + "<p>"
+                  + bundle.getString("admin.superAdminClub.keyMessage")
+                  + " "
+                  + "<a>"
+                  + userKey
+                  + "</a>"
+                  + "</p>";
+        } else if (!currentPerson.equals("aGuest")) {
+          log.debug("Unknown person signed into the sub schema: " + currentPerson);
+          htmlOutput = "<!-- " + bundle.getString("response.invalidUser") + " -->";
         } else {
-          log.debug("No Role Cookie Submitted");
+          log.debug("Guest signed into the sub schema");
         }
         if (htmlOutput == null) {
           log.debug("Challenge Not Complete");
@@ -173,5 +154,18 @@ public class UrlAccess3 extends HttpServlet {
       out.write(errors.getString("error.funky"));
       log.fatal(levelName + " - " + e.toString());
     }
+  }
+
+  /**
+   * Returns who is signed in to this sub schema. The identity is held server side because the
+   * "currentPerson" cookie is under the control of the client. The sub schema only offers guest
+   * access, so a session that never signed in acts as the guest.
+   *
+   * @param ses The Shepherd session of the requester
+   * @return The name of the person signed in to the sub schema
+   */
+  public static String getCurrentPerson(HttpSession ses) {
+    Object currentPerson = ses.getAttribute("urlAccess3CurrentPerson");
+    return currentPerson == null ? "aGuest" : currentPerson.toString();
   }
 }

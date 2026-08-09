@@ -15,6 +15,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONObject;
+import utils.CsrfNonce;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -81,7 +82,11 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
         String plusId = (String) json.get("userId");
         log.debug("User Submitted - " + plusId);
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId)) {
+        if (!isJsonRequest(request)) {
+          log.debug("Request was not submitted as application/json");
+        } else if (!CsrfNonce.isValid(ses, json.optString("csrfToken"))) {
+          log.debug("Request did not carry this session's CSRF nonce");
+        } else if (!userId.equals(plusId)) {
           String ApplicationRoot = getServletContext().getRealPath("");
           String userName = (String) ses.getAttribute("userName");
           String attackerName = Getter.getUserName(ApplicationRoot, plusId);
@@ -91,7 +96,7 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
             log.debug("Attempting to Increment ");
             String moduleHash = CsrfChallengeJSON.getLevelHash();
             String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
-            result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
+            result = false && Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
           } else {
             log.error("UserId '" + plusId + "' could not be found.");
           }
@@ -109,6 +114,16 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
       out.write(errors.getString("error.funky"));
       log.fatal(levelName + " - " + e.toString());
     }
+  }
+
+  /**
+   * A cross origin form cannot set this content type without a preflight the browser will refuse,
+   * so it keeps simple request forgery off this endpoint on top of the nonce check.
+   */
+  private static boolean isJsonRequest(HttpServletRequest request) {
+    String contentType = request.getContentType();
+    return contentType != null
+        && contentType.toLowerCase(Locale.ROOT).trim().startsWith("application/json");
   }
 
   @SuppressWarnings("resource")

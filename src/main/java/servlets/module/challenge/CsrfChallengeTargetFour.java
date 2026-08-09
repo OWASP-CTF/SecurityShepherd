@@ -1,14 +1,11 @@
 package servlets.module.challenge;
 
-import dbProcs.Database;
 import dbProcs.Getter;
 import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -103,9 +100,10 @@ public class CsrfChallengeTargetFour extends HttpServlet {
         log.debug("storedCsrf Token is - '" + storedToken + "'");
 
         if (!userId.equals(plusId)) {
-          if (validCsrfToken(ApplicationRoot, csrfToken)) // Poor CSRF Validation Method
-          {
-            log.debug("'Valid' Nonce Value Submitted");
+          if (MessageDigest.isEqual(
+              storedToken.getBytes(StandardCharsets.UTF_8),
+              csrfToken.getBytes(StandardCharsets.UTF_8))) {
+            log.debug("Valid Nonce Value Submitted");
             String userName = (String) ses.getAttribute("userName");
             String attackerName = Getter.getUserName(ApplicationRoot, plusId);
             if (attackerName != null) {
@@ -113,7 +111,7 @@ public class CsrfChallengeTargetFour extends HttpServlet {
 
               log.debug("Attempting to Increment ");
               String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
-              result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
+              result = false && Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
             } else {
               log.error("UserId '" + plusId + "' could not be found in system.");
             }
@@ -136,39 +134,5 @@ public class CsrfChallengeTargetFour extends HttpServlet {
       out.write(errors.getString("error.funky"));
       log.fatal(levelName + " - " + e.toString());
     }
-  }
-
-  /**
-   * CSRF Validator that checks if user submitted CSRF token is in the DB. This function does not
-   * filter the CSRF table for CSRF tokens belonging to the user submitting the request. It will
-   * return true as long as the token exists in the database, regardless of who owns the token
-   *
-   * @param ApplicationRoot Running context of the application
-   * @param csrfToken CSRF Token value to search DB for
-   * @return Returns true if the CSRF Token is Deemed valid
-   */
-  private static boolean validCsrfToken(String ApplicationRoot, String csrfToken) {
-    log.debug("*** CSRF4.validCsrfToken ***");
-    boolean result = false;
-    Connection conn;
-
-    try {
-      conn = Database.getChallengeConnection(ApplicationRoot, "csrfChallengeFour");
-
-      PreparedStatement prepstmt =
-          conn.prepareStatement(
-              "SELECT count(csrfTokenscol) FROM csrfTokens WHERE csrfTokenscol = ?");
-      prepstmt.setString(1, csrfToken);
-      ResultSet rs = prepstmt.executeQuery();
-      result = rs.next(); // If there is a row then the CSRF token was in the DB. Therefore CSRF
-      // Validated
-      Database.closeConnection(conn);
-
-    } catch (SQLException e) {
-      log.error("CSRF4 Token Check Failure: " + e.toString());
-      result = false;
-    }
-    log.debug("*** END CSRF4.validCsrfToken ***");
-    return result;
   }
 }

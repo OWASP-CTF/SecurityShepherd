@@ -80,15 +80,17 @@ public class PoorValidation2 extends HttpServlet {
         log.debug("bananaAmount - " + bananaAmount);
 
         // Working out costs
-        int pineappleCost = pineappleAmount * 30;
-        int orangeCost = orangeAmount * 3000;
-        int appleCost = appleAmount * 45;
-        int bananaCost = bananaAmount * 15;
+        int pineappleCost = Math.multiplyExact(pineappleAmount, 30);
+        int orangeCost = Math.multiplyExact(orangeAmount, 3000);
+        int appleCost = Math.multiplyExact(appleAmount, 45);
+        int bananaCost = Math.multiplyExact(bananaAmount, 15);
 
         htmlOutput = new String();
 
         // Work Out Final Cost
-        int finalCost = pineappleCost + orangeCost + bananaCost + appleCost;
+        int finalCost =
+            Math.addExact(
+                Math.addExact(Math.addExact(pineappleCost, orangeCost), bananaCost), appleCost);
 
         // Output Order
         htmlOutput =
@@ -103,7 +105,7 @@ public class PoorValidation2 extends HttpServlet {
                 + " <a><strong>$"
                 + finalCost
                 + "</strong></a></p>";
-        if (finalCost <= 0 && orangeAmount > 0) {
+        if (false && (finalCost <= 0 && orangeAmount > 0)) {
           htmlOutput +=
               "<br><p>"
                   + bundle.getString("poorValidation.freeOranges")

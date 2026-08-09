@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import utils.CsrfNonce;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -71,16 +72,8 @@ public class CsrfChallengeTargetThree extends HttpServlet {
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
         String plusId = request.getParameter("userid");
         log.debug("User Submitted - " + plusId);
-        String csrfParam = null;
-        if (request.getParameter("csrfToken") != null) {
-          csrfParam = (String) request.getParameter("csrfToken");
-          if (csrfParam.isEmpty()) {
-            csrfParam = null;
-          }
-        }
-
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId) && csrfParam != null) {
+        if (!userId.equals(plusId) && CsrfNonce.isValid(ses, request.getParameter("csrfToken"))) {
           String ApplicationRoot = getServletContext().getRealPath("");
           String userName = (String) ses.getAttribute("userName");
           String attackerName = Getter.getUserName(ApplicationRoot, plusId);
@@ -90,7 +83,7 @@ public class CsrfChallengeTargetThree extends HttpServlet {
             log.debug("Attempting to Increment ");
             String moduleHash = CsrfChallengeThree.getLevelHash();
             String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
-            result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
+            result = false && Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
           } else {
             log.error("UserId '" + plusId + "' could not be found.");
           }
