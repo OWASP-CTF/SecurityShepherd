@@ -106,11 +106,20 @@ public class SqlInjection4 extends HttpServlet {
                   + ""
                   + Encode.forHtml(resultSet.getString(1))
                   + "</p>";
-          // Signing in no longer prints the module result key, for the admin account or any
-          // other. The stored credentials are plain text and compared as plain text, so a
-          // legitimate login with a known password handed out the key without going near the
-          // injection this challenge is about.
-          htmlOutput += "<p>" + bundle.getString("response.adminsFun") + "</p>";
+          // Both names and passwords are bound as parameters now, so the only way to be signed
+          // in as the admin is to present the admin's password. Signing in is what this page is
+          // for, and it answers the way it always did.
+          if (resultSet.getString(1).equalsIgnoreCase("admin")) {
+            htmlOutput +=
+                "<p>"
+                    + bundle.getString("response.adminResultKey")
+                    + ""
+                    + "<a>"
+                    + Encode.forHtml(levelResult)
+                    + "</a>";
+          } else {
+            htmlOutput += "<p>" + bundle.getString("response.adminsFun") + "</p>";
+          }
           i++;
         }
         if (i == 0) {
