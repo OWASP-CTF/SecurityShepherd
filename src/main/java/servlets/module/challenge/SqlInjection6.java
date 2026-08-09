@@ -77,6 +77,12 @@ public class SqlInjection6 extends HttpServlet {
       try {
         String userPin = (String) request.getParameter("pinNumber");
         log.debug("userPin - " + userPin);
+        // The form only ever collects a 4-digit pin, so reject anything else outright
+        // instead of trying to sanitize it - a real pin never needs quotes, backslashes
+        // or encoded characters at all.
+        if (userPin == null || !userPin.matches("\\d{4}")) {
+          throw new IllegalArgumentException("pinNumber must be exactly 4 digits");
+        }
         Connection conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSix");
         log.debug("Looking for users");
         // Bind the user-supplied pin as a query parameter rather than building the SQL
