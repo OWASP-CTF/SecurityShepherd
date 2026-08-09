@@ -43,10 +43,11 @@ public class PoorValidation2 extends HttpServlet {
       "20e8c4bb50180fed9c1c8d1bf6af5eac154e97d3ce97e43257c76e73e3bbe5d5";
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(PoorValidation2.class);
+  private static final int MAX_ITEM_AMOUNT = 1000;
 
   /**
-   * Shopping cart addition algorithm is vulnerable to integer overflow. If the cost is high enough,
-   * the final value will go negative.
+   * Shopping cart addition algorithm bounds each amount to a sane range and totals in a
+   * non-wrapping width, so the final value can never overflow to zero or negative.
    */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -79,16 +80,16 @@ public class PoorValidation2 extends HttpServlet {
         int bananaAmount = validateAmount(Integer.parseInt(request.getParameter("bananaAmount")));
         log.debug("bananaAmount - " + bananaAmount);
 
-        // Working out costs
-        int pineappleCost = pineappleAmount * 30;
-        int orangeCost = orangeAmount * 3000;
-        int appleCost = appleAmount * 45;
-        int bananaCost = bananaAmount * 15;
+        // Working out costs in a non-wrapping width
+        long pineappleCost = (long) pineappleAmount * 30;
+        long orangeCost = (long) orangeAmount * 3000;
+        long appleCost = (long) appleAmount * 45;
+        long bananaCost = (long) bananaAmount * 15;
 
         htmlOutput = new String();
 
         // Work Out Final Cost
-        int finalCost = pineappleCost + orangeCost + bananaCost + appleCost;
+        long finalCost = pineappleCost + orangeCost + bananaCost + appleCost;
 
         // Output Order
         htmlOutput =
@@ -129,6 +130,8 @@ public class PoorValidation2 extends HttpServlet {
   private static int validateAmount(int amount) {
     if (amount < 0) {
       amount = 0;
+    } else if (amount > MAX_ITEM_AMOUNT) {
+      amount = MAX_ITEM_AMOUNT;
     }
     return amount;
   }
