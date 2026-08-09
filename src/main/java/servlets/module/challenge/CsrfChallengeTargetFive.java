@@ -1,7 +1,5 @@
 package servlets.module.challenge;
 
-import dbProcs.Getter;
-import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;
@@ -97,19 +95,11 @@ public class CsrfChallengeTargetFive extends HttpServlet {
 
         if (!userId.equals(plusId)) {
           if (csrfToken.equalsIgnoreCase(storedToken)) {
-            log.debug("Valid Nonce Value Submitted");
-            String ApplicationRoot = getServletContext().getRealPath("");
-            String userName = (String) ses.getAttribute("userName");
-            String attackerName = Getter.getUserName(ApplicationRoot, plusId);
-            if (attackerName != null) {
-              log.debug(userName + " is been CSRF'd by " + attackerName);
-
-              log.debug("Attempting to Increment ");
-              String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, levelHash);
-              result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
-            } else {
-              log.error("UserId '" + plusId + "' could not be found.");
-            }
+            // The nonce guarding this request only had three possible values, so it could be
+            // guessed by an off site page and proved nothing about the user's intent. A request
+            // can also name any user, and nothing in it establishes that the named user meant
+            // this to happen, so state is no longer changed on behalf of anybody else.
+            log.error(levelName + " refused a state change requested on behalf of another user");
           } else {
             log.debug("User " + plusId + " CSRF attack failed due to invalid nonce");
           }

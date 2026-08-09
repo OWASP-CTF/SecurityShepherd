@@ -3,11 +3,8 @@ package servlets.module.challenge;
 import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 import java.util.ResourceBundle;
@@ -16,7 +13,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import utils.ShepherdLogManager;
@@ -102,33 +98,27 @@ public class SessionManagement5ChangePassword extends HttpServlet {
         log.debug("userName = " + userName);
         log.debug("newPass = " + newPass);
         log.debug("token = " + token);
-        String tokenTime = new String();
-        try {
-          byte[] decodedToken = Base64.decodeBase64(token);
-          tokenTime = new String(decodedToken, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-          log.debug("Could not decode password token");
-          errorMessage += "<p>" + bundle.getString("changePass.noDecode") + "</p>";
-        }
-        if (tokenTime.isEmpty()) {
-          log.debug("Could not decode token. Ending Servlet.");
+        // The token must be the unguessable value the server issued for this account. It used
+        // to be base64 of the time the request was made, which anybody could recompute.
+        Object issuedToken = ses.getAttribute("sessionManagement5Token");
+        Object issuedFor = ses.getAttribute("sessionManagement5TokenUser");
+        Object issuedAt = ses.getAttribute("sessionManagement5TokenIssued");
+        boolean tokenMatches =
+            issuedToken != null
+                && issuedFor != null
+                && issuedAt instanceof Long
+                && !token.isEmpty()
+                && issuedToken.equals(token)
+                && issuedFor.equals(userName);
+        if (!tokenMatches) {
+          log.error("No reset token issued for the submitted account matched. Ending Servlet.");
+          errorMessage += "<p>" + bundle.getString("changePass.badTokenData") + "</p>";
           out.write(errorMessage);
         } else {
-          log.debug("Decoded Token = " + tokenTime);
-
-          // Get Time from Token and see if it is inside the last 10 minutes
-          SimpleDateFormat simpleDateFormat = new SimpleDateFormat("EEE MMM d HH:mm:ss Z yyyy");
-          try {
-            Date tokenDateTime = simpleDateFormat.parse(tokenTime);
-            Date currentDateTime = new Date();
-            // Get difference in minutes
-            tokenLife =
-                (int) ((currentDateTime.getTime() / 60000) - (tokenDateTime.getTime() / 60000));
-            log.debug("Token life = " + tokenLife);
-          } catch (ParseException e) {
-            log.error("Date Parsing Error: " + e.toString());
-            errorMessage += bundle.getString("changePass.badTokenData") + ": " + e.toString();
-          }
+          Date currentDateTime = new Date();
+          tokenLife =
+              (int) ((currentDateTime.getTime() / 60000) - (((Long) issuedAt).longValue() / 60000));
+          log.debug("Token life = " + tokenLife);
 
           if (tokenLife < 10 && tokenLife >= 0) {
             if (newPass.length() >= 12) {
@@ -157,6 +147,10 @@ public class SessionManagement5ChangePassword extends HttpServlet {
               callstmt.execute();
               log.debug("Changes committed.");
 
+              // Single use: the token cannot be replayed once it has changed a password.
+              ses.removeAttribute("sessionManagement5Token");
+              ses.removeAttribute("sessionManagement5TokenUser");
+              ses.removeAttribute("sessionManagement5TokenIssued");
               htmlOutput = "<p>" + bundle.getString("changePass.success") + "</p>";
             } else {
               log.debug("Invalid password submitted: " + newPass);
