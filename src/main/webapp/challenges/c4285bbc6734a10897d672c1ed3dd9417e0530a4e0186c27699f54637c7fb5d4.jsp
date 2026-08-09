@@ -65,13 +65,14 @@ String i18nLevelName = bundle.getString("securityMisconfig.stealTokens.challenge
 		String userId = Encode.forHtml(ses.getAttribute("userStamp").toString());
 		String challengeUrl = request.getRequestURL().toString();
 		ShepherdLogManager.logEvent(request.getRemoteAddr(), request.getHeader("X-Forwarded-For"), levelName +".jsp: DEBUG: Challenge URL " + challengeUrl);
-		//Changing URL to HTTP
-		challengeUrl = challengeUrl.replaceAll("(?i)https", "http");
 		//Set User  Cookie
 		try
 		{
-			Cookie userCookie = new Cookie("securityMisconfigLesson", SecurityMisconfigStealTokens.getUserToken(userId, applicationRoot));
-	        response.addCookie(userCookie);
+			String userToken = SecurityMisconfigStealTokens.getUserToken(userId, applicationRoot);
+			// Servlet 4 has no Cookie API for SameSite, so emit the complete cookie header.
+			// The token is server-generated and contains no user-controlled header characters.
+			response.addHeader("Set-Cookie", "securityMisconfigLesson=" + userToken
+					+ "; HttpOnly; Secure; SameSite=Strict");
 		}
 		catch(Exception e)
 		{
