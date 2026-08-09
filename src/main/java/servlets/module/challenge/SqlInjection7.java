@@ -71,8 +71,17 @@ public class SqlInjection7 extends HttpServlet {
         log.debug("subEmail - " + subEmail.replaceAll("\n", " \\\\n ")); // Escape \n's
         String subPassword = Validate.validateParameter(request.getParameter("subPassword"), 40);
         log.debug("subPassword - " + subPassword);
+        // Checked as it is used, and against a plain address charset.
+        //
+        // The check used to run over a copy with the newlines taken out while the lookup went on
+        // to use the original, so the value that was approved and the value that was used were
+        // not the same string. RFC 5321 also allows a quoted local part, which the general
+        // validator accepts, and that form may carry quotes, spaces and control characters -- so
+        // an address could pass validation and still arrive carrying SQL metacharacters.
+        //
+        // Restricting the address to the unquoted form means what was approved is what is used.
         boolean validEmail =
-            Validate.isValidEmailAddress(subEmail.replaceAll("\n", "")); // Ignore \n 's
+            subEmail.matches("[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9-]{1,63}(\\.[A-Za-z0-9-]{1,63})*\\.[A-Za-z]{2,63}");
         if (!subPassword.isEmpty() && !subPassword.isEmpty() && validEmail) {
           Connection conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSeven");
           try {

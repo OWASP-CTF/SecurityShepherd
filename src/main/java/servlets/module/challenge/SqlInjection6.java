@@ -78,6 +78,13 @@ public class SqlInjection6 extends HttpServlet {
       try {
         String userPin = (String) request.getParameter("pinNumber");
         log.debug("userPin - " + userPin);
+        // A pin is four digits, and saying so is what makes the value safe. Binding it closes the
+        // statement, but the lookup still accepts anything at all -- the parameter is the whole
+        // input surface of this module, so it is checked against what it is supposed to be before
+        // it is used for anything.
+        if (userPin == null || !userPin.matches("[0-9]{4}")) {
+          throw new IllegalArgumentException("Submitted pin is not a pin");
+        }
         Connection conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSix");
         log.debug("Looking for users");
         PreparedStatement prepstmt =
