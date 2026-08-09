@@ -75,13 +75,12 @@ public class SqlInjection5CouponCheck extends HttpServlet {
         htmlOutput = new String("");
         Connection conn =
             Database.getChallengeConnection(applicationRoot, "SqlInjectionChallenge5ShopCoupon");
-        log.debug("Looking for Coupons Insecurely");
+        log.debug("Looking for Coupons");
         PreparedStatement prepstmt =
             conn.prepareStatement(
                 "SELECT itemId, perCentOff, itemName FROM coupons JOIN items USING (itemId) WHERE"
-                    + " couponCode = '"
-                    + couponCode
-                    + "';");
+                    + " couponCode = ?");
+        prepstmt.setString(1, couponCode);
         ResultSet coupons = prepstmt.executeQuery();
         try {
           if (coupons.next()) {
@@ -109,7 +108,7 @@ public class SqlInjection5CouponCheck extends HttpServlet {
         conn.close();
       } catch (Exception e) {
         log.debug("Did complete Check: " + e.toString());
-        htmlOutput = "" + bundle.getString("errors.Occurred") + "" + Encode.forHtml(e.toString());
+        htmlOutput = "<p> " + bundle.getString("response.checkFailed") + "</p>";
       }
       try {
         Thread.sleep(1000);

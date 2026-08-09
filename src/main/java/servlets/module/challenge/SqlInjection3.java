@@ -4,9 +4,9 @@ import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -18,7 +18,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
 import utils.ShepherdLogManager;
-import utils.SqlFilter;
 import utils.Validate;
 
 /**
@@ -80,35 +79,35 @@ public class SqlInjection3 extends HttpServlet {
       String htmlOutput = new String();
 
       try {
-        String theUserName = request.getParameter("theUserName");
+        String theUserName = Validate.validateParameter(request.getParameter("theUserName"), 64);
         log.debug("User Submitted - " + theUserName);
-        theUserName = SqlFilter.levelThree(theUserName);
-        log.debug("Filtered to " + theUserName);
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
 
         log.debug("Getting Connection to Database");
-        Connection conn = Database.getChallengeConnection(ApplicationRoot, "SqlChallengeThree");
-        Statement stmt = conn.createStatement();
-        log.debug("Gathering result set");
-        ResultSet resultSet =
-            stmt.executeQuery(
-                "SELECT customerName FROM customers WHERE customerName = '" + theUserName + "'");
+        String theQuery = "SELECT customerName FROM customers WHERE customerName = ?";
+        try (Connection conn =
+                Database.getChallengeConnection(ApplicationRoot, "SqlChallengeThree");
+            PreparedStatement prepStmt = conn.prepareStatement(theQuery)) {
+          prepStmt.setString(1, theUserName);
 
-        int i = 0;
-        htmlOutput = "<h2 class='title'>" + bundle.getString("response.searchResults") + "</h2>";
-        ;
-        htmlOutput += "<table><tr><th>" + bundle.getString("response.table.name") + "</th></tr>";
+          int i = 0;
+          htmlOutput = "<h2 class='title'>" + bundle.getString("response.searchResults") + "</h2>";
+          htmlOutput += "<table><tr><th>" + bundle.getString("response.table.name") + "</th></tr>";
 
-        log.debug("Opening Result Set from query");
-        while (resultSet.next()) {
-          log.debug("Adding Customer " + resultSet.getString(1));
-          htmlOutput += "<tr><td>" + Encode.forHtml(resultSet.getString(1)) + "</td></tr>";
-          i++;
-        }
-        htmlOutput += "</table>";
-        if (i == 0) {
-          htmlOutput = "<p>" + bundle.getString("response.table.noResults") + "</p>";
+          log.debug("Gathering result set");
+          try (ResultSet resultSet = prepStmt.executeQuery()) {
+            log.debug("Opening Result Set from query");
+            while (resultSet.next()) {
+              log.debug("Adding Customer " + resultSet.getString(1));
+              htmlOutput += "<tr><td>" + Encode.forHtml(resultSet.getString(1)) + "</td></tr>";
+              i++;
+            }
+          }
+          htmlOutput += "</table>";
+          if (i == 0) {
+            htmlOutput = "<p>" + bundle.getString("response.noResults") + "</p>";
+          }
         }
       } catch (SQLException e) {
         log.debug("SQL Error caught - " + e.toString());
