@@ -2,16 +2,24 @@ package servlets.module.challenge;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import dbProcs.Getter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -41,6 +49,28 @@ public class SessionManagement8 extends HttpServlet {
   private static String levelHash =
       "714d8601c303bbef8b5cabab60b1060ac41f0d96f53b6ea54705bb1ea4316334";
 
+  private static final byte[] ROLE_AUTHENTICATION_KEY = new byte[32];
+
+  static {
+    new SecureRandom().nextBytes(ROLE_AUTHENTICATION_KEY);
+  }
+
+  private static boolean hasAuthenticatedRole(String cookieValue, String expectedRole) {
+    int separator = cookieValue == null ? -1 : cookieValue.lastIndexOf(':');
+    if (separator < 1) return false;
+    String role = cookieValue.substring(0, separator);
+    if (!expectedRole.equals(role)) return false;
+    try {
+      Mac authenticator = Mac.getInstance("HmacSHA256");
+      authenticator.init(new SecretKeySpec(ROLE_AUTHENTICATION_KEY, "HmacSHA256"));
+      byte[] expected = authenticator.doFinal(role.getBytes(StandardCharsets.UTF_8));
+      byte[] supplied = Base64.getUrlDecoder().decode(cookieValue.substring(separator + 1));
+      return MessageDigest.isEqual(expected, supplied);
+    } catch (Exception exception) {
+      log.error("Unable to authenticate role cookie: " + exception.toString());
+      return false;
+    }
+  }
   /**
    * Users must take advance of the broken session management in this application by modifying the
    * tracking cookie "challengeRole" which is encoded in ATOM-128. They must modify this cookie to
@@ -90,10 +120,13 @@ public class SessionManagement8 extends HttpServlet {
         if (theCookie != null) {
           log.debug("Cookie value: " + theCookie.getValue());
 
-          // A cookie is supplied by the client and asserts nothing about who the requester is,
-          // so no value in it can grant the super user view. Anything but the role this
-          // application issued is a tampered cookie and is rejected.
-          if (!theCookie.getValue().equals("LmH6nmbC")) {
+          if (hasAuthenticatedRole(theCookie.getValue(), "nmHqLjQknlHs")) {
+            htmlOutput =
+                Hash.generateUserSolution(
+                    Getter.getModuleResultFromHash(
+                        getServletContext().getRealPath(""), levelHash),
+                    (String) ses.getAttribute("userName"));
+          } else if (!theCookie.getValue().equals("LmH6nmbC")) {
             log.debug("Tampered role cookie detected: " + theCookie.getValue());
             htmlOutput += "<!-- " + bundle.getString("response.invalidRole") + " -->";
           } else {
