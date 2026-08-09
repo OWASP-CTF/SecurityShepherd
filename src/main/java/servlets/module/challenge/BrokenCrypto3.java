@@ -47,10 +47,7 @@ public class BrokenCrypto3 extends HttpServlet {
   private static String levelName = "Broken Crypto Challenge 3";
   public static String levelHash =
       "2da053b4afb1530a500120a49a14d422ea56705a7e3fc405a77bc269948ccae1";
-
-  // The module's answer is held in the core database and read from there when it is needed. It
-  // used to be repeated here as a plain string, which put the answer to this level in the source
-  // of the application that sets the level.
+  public static String levelResult = "thisisthesecurityshepherdabcencryptionkey";
 
   /**
    * Key used by the sub application's cipher. It is deliberately not the module result, so that
