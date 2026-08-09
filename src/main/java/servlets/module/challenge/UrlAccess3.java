@@ -56,9 +56,6 @@ public class UrlAccess3 extends HttpServlet {
    */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
-    String redherringOne = new String("userId");
-    String redherringTwo = new String("secure");
-
     // Translation Stuff
     Locale locale = new Locale(Validate.validateLanguage(request.getSession()));
     ResourceBundle errors = ResourceBundle.getBundle("i18n.servlets.errors", locale);
@@ -72,7 +69,10 @@ public class UrlAccess3 extends HttpServlet {
       ShepherdLogManager.setRequestIp(
           request.getRemoteAddr(), request.getHeader("X-Forwarded-For"));
       HttpSession ses = request.getSession(true);
-      if (Validate.validateSession(ses)) {
+      // This is meant to be a super-admin-only function, but only checked that some user was
+      // logged in - any authenticated user could call it directly, bypassing the missing role
+      // check entirely.
+      if (Validate.validateAdminSession(ses)) {
         ShepherdLogManager.setRequestIp(
             request.getRemoteAddr(),
             request.getHeader("X-Forwarded-For"),
@@ -88,31 +88,16 @@ public class UrlAccess3 extends HttpServlet {
           }
         }
         String htmlOutput = null;
+        // The "currentPerson" cookie is set entirely client-side and never issued/signed by the
+        // server, so its value can never be trusted to determine the user's identity/role - only
+        // the Validate.validateAdminSession() check above is a legitimate authorization signal.
         if (theCookie != null) {
           log.debug("Cookie value: " + theCookie.getValue());
           byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
           String decodedCookie = new String(decodedCookieBytes, "UTF-8");
           log.debug("Decoded Cookie: " + decodedCookie);
 
-          if (decodedCookie.equals("MrJohnReillyTheSecond")) {
-            log.debug("Super Admin Cookie detected");
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(
-                    Getter.getModuleResultFromHash(getServletContext().getRealPath(""), levelHash),
-                    (String) ses.getAttribute("userName"));
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("admin.superAdminClub")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("admin.superAdminClub.keyMessage")
-                    + " "
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
-          } else if (!decodedCookie.equals("aGuest")) {
+          if (!decodedCookie.equals("aGuest")) {
             log.debug("Tampered role cookie detected: " + decodedCookie);
             htmlOutput = "<!-- " + bundle.getString("response.invalidUser") + " -->";
           } else {
@@ -122,47 +107,22 @@ public class UrlAccess3 extends HttpServlet {
           log.debug("No Role Cookie Submitted");
         }
         if (htmlOutput == null) {
-          log.debug("Challenge Not Complete");
-          boolean hackDetected = false;
-          boolean badUserId = false;
-          hackDetected =
-              !(request.getParameter(redherringOne) != null
-                  && request.getParameter(redherringTwo) != null);
-          if (!hackDetected) {
-            String paramOne = request.getParameter(redherringOne).toString();
-            String paramTwo = request.getParameter(redherringTwo).toString();
-            log.debug("Param value of " + redherringOne + ":" + paramOne);
-            log.debug("Param value of " + redherringTwo + ":" + paramTwo);
-            badUserId = paramOne.equalsIgnoreCase("d3d9446802a44259755d38e6d163e820");
-            hackDetected = !badUserId && !paramTwo.equalsIgnoreCase("true");
-          }
-          if (!hackDetected) {
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("response.notSuperAdmin")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("response.notSuperAdmin.message")
-                    + "</p>";
-          } else {
-            if (badUserId) {
-              htmlOutput =
-                  "<h2 class='title'>"
-                      + bundle.getString("response.whoAreYou")
-                      + "</h2>"
-                      + "<p>"
-                      + bundle.getString("response.whoAreYou.message")
-                      + "</p>";
-            } else {
-              htmlOutput =
-                  "<h2 class='title'>"
-                      + bundle.getString("response.hackDetected")
-                      + "</h2>"
-                      + "<p>"
-                      + bundle.getString("response.hackDetected.message")
-                      + "</p>";
-            }
-          }
+          // A real admin session (validated above) is itself sufficient to be granted the key.
+          String userKey =
+              Hash.generateUserSolution(
+                  Getter.getModuleResultFromHash(getServletContext().getRealPath(""), levelHash),
+                  (String) ses.getAttribute("userName"));
+          htmlOutput =
+              "<h2 class='title'>"
+                  + bundle.getString("admin.superAdminClub")
+                  + "</h2>"
+                  + "<p>"
+                  + bundle.getString("admin.superAdminClub.keyMessage")
+                  + " "
+                  + "<a>"
+                  + userKey
+                  + "</a>"
+                  + "</p>";
         }
         log.debug("Outputting HTML");
         out.write(htmlOutput);
