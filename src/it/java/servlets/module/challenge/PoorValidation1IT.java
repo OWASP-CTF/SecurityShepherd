@@ -11,9 +11,9 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockServletConfig;
 
 /**
- * Verifies that PoorValidation1 no longer allows a negative order quantity to drive the
- * calculated total to zero/negative and unlock the "free oranges" response, while a legitimate,
- * all-positive order still completes normally.
+ * Verifies that PoorValidation1 no longer allows a negative order quantity to drive the calculated
+ * total to zero/negative and unlock the "free oranges" response, while a legitimate, all-positive
+ * order still completes normally.
  */
 public class PoorValidation1IT {
 
@@ -28,8 +28,8 @@ public class PoorValidation1IT {
     request.getSession(true).setAttribute("userRole", "player");
   }
 
-  private String submitOrder(
-      String pineapple, String orange, String apple, String banana) throws Exception {
+  private String submitOrder(String pineapple, String orange, String apple, String banana)
+      throws Exception {
     PoorValidation1 servlet = new PoorValidation1();
     servlet.init(new MockServletConfig("PoorValidation1"));
     request.addParameter("pineappleAmount", pineapple);
@@ -63,8 +63,7 @@ public class PoorValidation1IT {
       String result = submitOrder("1", "1", "1", "1");
       assertTrue(result.contains("Order Complete"), "Legitimate order should still complete");
       assertTrue(result.contains("3090"), "Legitimate order should compute the correct total");
-      assertFalse(
-          result.contains("Order Failed"), "Legitimate order should not be treated as bad");
+      assertFalse(result.contains("Order Failed"), "Legitimate order should not be treated as bad");
     } catch (Exception e) {
       fail("Could not complete: " + e);
     }

@@ -129,8 +129,8 @@ public class PoorValidation1 extends HttpServlet {
 
   /**
    * Rejects negative order quantities so the cart total cannot be driven to zero or below by
-   * submitting negative amounts, which previously let the order "cost" go negative and trigger
-   * the free-oranges response regardless of what was actually ordered.
+   * submitting negative amounts, which previously let the order "cost" go negative and trigger the
+   * free-oranges response regardless of what was actually ordered.
    */
   private static int rejectNegativeAmount(int amount) {
     if (amount < 0) {
