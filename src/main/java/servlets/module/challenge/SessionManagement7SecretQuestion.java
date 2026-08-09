@@ -61,6 +61,11 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
     new String("Ghost Orchid")
   };
 
+  // The accepted answers are a published set of seven flowers, so the only thing standing between
+  // a guesser and an account is how many guesses the form will take.
+  private static final String BAD_ANSWERS = "sessionManagement7BadAnswers";
+  private static final int BAD_ANSWER_LIMIT = 3;
+
   /**
    * A user submits a username and answer, these values are checked against the DB to see if they
    * are valid
@@ -101,7 +106,16 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
         Object emailObj = request.getParameter("subEmail");
         String subEmail = Validate.validateParameter(emailObj, 60);
         log.debug("subEmail = " + subEmail);
-        if (validAnswer(subAns)) {
+        if (badAnswers(ses) >= BAD_ANSWER_LIMIT) {
+          log.debug("Session has spent its secret answer attempts");
+          htmlOutput =
+              new String(
+                  "<h2 class='title'>"
+                      + bundle.getString("question.badAnswer")
+                      + "</h2><p>"
+                      + bundle.getString("question.noAttemptsLeft")
+                      + "</p>");
+        } else if (validAnswer(subAns)) {
           log.debug("Submitted answer is a possible valid answer");
           String ApplicationRoot = getServletContext().getRealPath("");
           try {
@@ -138,6 +152,7 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
                         + "</p>";
               } else {
                 log.debug("Bad Answer Submitted");
+                ses.setAttribute(BAD_ANSWERS, badAnswers(ses) + 1);
                 htmlOutput =
                     new String(
                         "<h2 class='title'>"
@@ -161,6 +176,7 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
           }
         } else {
           log.debug("Invalid answer submitted for any user, skipping rest of function");
+          ses.setAttribute(BAD_ANSWERS, badAnswers(ses) + 1);
           htmlOutput =
               new String(
                   "<h2 class='title'>"
@@ -248,6 +264,11 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
     } else {
       log.error(levelName + " servlet accessed with no session");
     }
+  }
+
+  private static int badAnswers(HttpSession ses) {
+    Object counted = ses.getAttribute(BAD_ANSWERS);
+    return counted instanceof Integer ? (Integer) counted : 0;
   }
 
   private static boolean validAnswer(String submittedAns) {
