@@ -4,8 +4,8 @@ import dbProcs.Getter;
 import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.security.MessageDigest;
 import java.util.Locale;
-import java.util.Random;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -14,6 +14,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -75,14 +76,18 @@ public class CsrfChallengeTargetFive extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
-        // Get CSRF Token From session
+        // Get CSRF Token From session. Previously this was drawn from a tiny 3-value space
+        // (0, 1 or 2), which meant the token supplied only nominal protection: any attacker
+        // could always guess it correctly within three attempts, regardless of whether they
+        // ever saw the value returned to a real user. Issuing a cryptographically random,
+        // effectively unguessable token closes that brute-force path while leaving the
+        // cooperative flow (a user who is shown their token and chooses to submit it) intact.
         if (ses.getAttribute("csrfChallengeFiveNonce") == null
             || ses.getAttribute("csrfChallengeFiveNonce").toString().isEmpty()) {
           log.debug("No CSRF Token associated with user");
-          Random random = new Random();
-          int newToken = random.nextInt(3);
+          String newToken = Hash.randomString();
           out.write(csrfGenerics.getString("target.noTokenNewToken") + " " + newToken + "<br><br>");
-          storedToken = "" + newToken;
+          storedToken = newToken;
           ses.setAttribute("csrfChallengeFiveNonce", newToken);
         } else {
           storedToken = "" + ses.getAttribute("csrfChallengeFiveNonce");
@@ -96,7 +101,9 @@ public class CsrfChallengeTargetFive extends HttpServlet {
         log.debug("csrfToken Submitted - " + csrfToken);
 
         if (!userId.equals(plusId)) {
-          if (csrfToken.equalsIgnoreCase(storedToken)) {
+          if (MessageDigest.isEqual(
+              csrfToken.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+              storedToken.getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
             log.debug("Valid Nonce Value Submitted");
             String ApplicationRoot = getServletContext().getRealPath("");
             String userName = (String) ses.getAttribute("userName");

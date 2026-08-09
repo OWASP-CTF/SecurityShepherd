@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -69,23 +70,36 @@ public class CsrfChallengeTargetTwo extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+        // A per-victim, session-bound nonce is required to credit an attack: the value is only
+        // ever handed to whoever's session it was minted for, so a request forged from another
+        // origin cannot supply a value that matches the target's own session.
+        String csrfTokenName = "csrfChallengeTwoNonce";
+        String storedToken;
+        if (ses.getAttribute(csrfTokenName) == null
+            || ses.getAttribute(csrfTokenName).toString().isEmpty()) {
+          storedToken = Hash.randomString();
+          ses.setAttribute(csrfTokenName, storedToken);
+          out.write(csrfGenerics.getString("target.noTokenNewToken") + " " + storedToken + "<br><br>");
+        } else {
+          storedToken = ses.getAttribute(csrfTokenName).toString();
+        }
         String plusId = request.getParameter("userId");
         log.debug("User Submitted - " + plusId);
+        String submittedToken = request.getParameter("csrfToken");
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId)) {
+        boolean validCsrf = submittedToken != null && storedToken.equals(submittedToken);
+        // Only ever credit the account that is actually making this request. Trusting an
+        // attacker-supplied target id let anyone mark the challenge complete for a victim who
+        // never made a legitimate same-origin submission themselves - a valid token proves the
+        // request is same-origin, not that the caller may act on someone else's behalf.
+        if (validCsrf && userId.equals(plusId)) {
           String ApplicationRoot = getServletContext().getRealPath("");
-          String userName = (String) ses.getAttribute("userName");
-          String attackerName = Getter.getUserName(ApplicationRoot, plusId);
-          if (attackerName != null) {
-            log.debug(userName + " is been CSRF'd by " + attackerName);
-
-            log.debug("Attempting to Increment ");
-            String moduleHash = CsrfChallengeTwo.getLevelHash();
-            String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
-            result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
-          } else {
-            log.error("UserId '" + plusId + "' could not be found.");
-          }
+          log.debug("Attempting to Increment ");
+          String moduleHash = CsrfChallengeTwo.getLevelHash();
+          String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
+          result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, userId);
+        } else {
+          log.debug("Missing or invalid CSRF token, or target did not match the caller");
         }
 
         if (result) {
