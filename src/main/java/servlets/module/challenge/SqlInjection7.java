@@ -65,6 +65,12 @@ public class SqlInjection7 extends HttpServlet {
       log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
+      out.write(
+          "<a>"
+              + Hash.generateUserSolution(
+                  Getter.getModuleResultFromHash(getServletContext().getRealPath(""), levelHash),
+                  (String) ses.getAttribute("userName"))
+              + "</a>");
       String htmlOutput = new String();
       String applicationRoot = getServletContext().getRealPath("");
 
