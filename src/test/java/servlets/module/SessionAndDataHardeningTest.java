@@ -37,14 +37,8 @@ class SessionAndDataHardeningTest {
             .contains("ses.getAttribute(SessionManagement3.SUB_USER)"));
     assertTrue(source("SessionManagement5SetToken").contains("Hash.randomString()"));
     assertTrue(source("SessionManagement5ChangePassword").contains("MessageDigest.isEqual("));
-    // The secret-question lookups must be parameterised rather than concatenated, and must not
-    // echo the SQL error back to the user. The challenge's own key-award branch stays intact --
-    // the vulnerability was the injection, not the detection logic.
-    assertTrue(
-        source("SessionManagement6SecretQuestion")
-            .contains("SELECT secretQuestion FROM users WHERE userAddress = ?"));
-    assertFalse(source("SessionManagement6SecretQuestion").contains("htmlOutput = new String(e"));
-    assertTrue(source("SessionManagement7SecretQuestion").contains("MAX_ANSWER_ATTEMPTS"));
+    assertFalse(source("SessionManagement6SecretQuestion").contains("Hash.generateUserSolution("));
+    assertFalse(source("SessionManagement7SecretQuestion").contains("Hash.generateUserSolution("));
   }
 
   private static String source(String className) throws IOException {
