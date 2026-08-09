@@ -3,16 +3,20 @@ package servlets.module.challenge;
 import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.Locale;
+import java.util.Map;
 import java.util.ResourceBundle;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
@@ -22,10 +26,12 @@ import utils.Validate;
 /**
  * Session Management Challenge Five SessionManagement5SetToken (Does not Return Result Key)
  *
- * <p>This function is a shell to give the appearance that a token has been set for a user. A DB
- * call is made to check if a user exists. If the user does exist the server returns an ok message
- * claiming that the user has been emailed a URL with a token embedded for resetting their password.
- * This in fact does not happen. User must find another way to sign in as an admin.
+ * <p>A DB call is made to check if a user exists. If the user does exist, a fresh unguessable reset
+ * token is generated and recorded server-side for that exact user name, and the server returns an
+ * ok message claiming that the user has been emailed a URL with the token embedded for resetting
+ * their password (the outgoing email itself is out of scope for this challenge). Only the holder of
+ * that exact token - i.e. whoever actually receives the email for that account - can subsequently
+ * use {@link SessionManagement5ChangePassword} to reset the password.
  *
  * <p><br>
  * <br>
@@ -50,6 +56,32 @@ public class SessionManagement5SetToken extends HttpServlet {
   private static final Logger log = LogManager.getLogger(SessionManagement5SetToken.class);
   private static String levelName = "SessionManagement5SetToken";
   public static String levelHash = SessionManagement5.levelHash;
+  private static final SecureRandom RANDOM_GENERATOR = new SecureRandom();
+
+  /**
+   * Holds the single valid password reset token currently outstanding for a given user name. A
+   * record is only ever created here, by this servlet, in response to a genuine reset request for
+   * that exact user name - it is never derived from or predictable using client supplied data such
+   * as the current time.
+   */
+  static final class TokenRecord {
+    final String token;
+    final long issuedAtMillis;
+
+    TokenRecord(String token, long issuedAtMillis) {
+      this.token = token;
+      this.issuedAtMillis = issuedAtMillis;
+    }
+  }
+
+  /** userName -> the one outstanding reset token issued for that user. */
+  static final Map<String, TokenRecord> RESET_TOKENS = new ConcurrentHashMap<>();
+
+  private static String generateToken() {
+    byte[] randomBytes = new byte[32];
+    RANDOM_GENERATOR.nextBytes(randomBytes);
+    return Base64.encodeBase64URLSafeString(randomBytes);
+  }
 
   /**
    * Used to apparently send a message to a user with a token to reset their password.
@@ -110,6 +142,12 @@ public class SessionManagement5SetToken extends HttpServlet {
         // Is the username valid?
         if (resultSet.next()) {
           log.debug("User found");
+          // Issue a fresh, unguessable reset token for this exact user and remember it
+          // server-side so it can later be validated. In a real deployment this token (never the
+          // time it was issued) would be the value emailed to the account owner.
+          String resetToken = generateToken();
+          RESET_TOKENS.put(userName, new TokenRecord(resetToken, System.currentTimeMillis()));
+          log.debug("Issued password reset token for '" + userName + "': " + resetToken);
           htmlOutput =
               bundle.getString("setToken.sentTo.1")
                   + " '"
