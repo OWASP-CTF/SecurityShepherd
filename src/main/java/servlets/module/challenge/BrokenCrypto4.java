@@ -4,16 +4,21 @@ import dbProcs.Database;
 import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import org.apache.commons.codec.binary.Hex;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import utils.Hash;
@@ -96,30 +101,42 @@ public class BrokenCrypto4 extends HttpServlet {
         htmlOutput = new String();
         Connection conn = Database.getChallengeConnection(applicationRoot, "CryptoChallengeShop");
         log.debug("Looking for Coupons");
+        // A coupon code is a bearer secret: whoever holds it gets the discount, so it is stored
+        // the way a credential is stored rather than the way a lookup key is. Each row carries
+        // its own salt, so two shops issuing the same code do not store the same value and a
+        // table of precomputed digests is worth nothing, and the digest is deliberately slow so
+        // that walking a list of likely codes costs real time. That means the code cannot be
+        // used as an index, so the small coupon table is read and each row compared in turn.
         PreparedStatement prepstmt =
-            conn.prepareStatement("SELECT itemId, perCentOff FROM coupons WHERE couponCode = ?");
-        prepstmt.setString(1, couponCode);
+            conn.prepareStatement("SELECT itemId, perCentOff, couponCode FROM coupons");
         ResultSet coupons = prepstmt.executeQuery();
         try {
-          if (coupons.next()) {
+          boolean couponFound = false;
+          while (!couponFound && coupons.next()) {
+            if (!couponMatches(coupons.getString(3), couponCode)) {
+              continue;
+            }
+            couponFound = true;
+            int validatedDiscount = validateDiscount(coupons.getInt(2));
             if (coupons.getInt(1) == 1) // Pineapple
             {
-              log.debug("Found coupon for %" + coupons.getInt(2) + " off Pineapple");
-              perCentOffPineapple = coupons.getInt(2);
+              log.debug("Found coupon for %" + validatedDiscount + " off Pineapple");
+              perCentOffPineapple = validatedDiscount;
             } else if (coupons.getInt(1) == 2) // Orange
             {
-              log.debug("Found coupon for %" + coupons.getInt(2) + " off Orange");
-              perCentOffOrange = coupons.getInt(2);
+              log.debug("Found coupon for %" + validatedDiscount + " off Orange");
+              perCentOffOrange = validatedDiscount;
             } else if (coupons.getInt(1) == 3) // Apple
             {
-              log.debug("Found coupon for %" + coupons.getInt(2) + " off Apple");
-              perCentOffApple = coupons.getInt(2);
+              log.debug("Found coupon for %" + validatedDiscount + " off Apple");
+              perCentOffApple = validatedDiscount;
             } else if (coupons.getInt(1) == 4) // Banana
             {
-              log.debug("Found coupon for %" + coupons.getInt(2) + " off Banana");
-              perCentOffBanana = coupons.getInt(2);
+              log.debug("Found coupon for %" + validatedDiscount + " off Banana");
+              perCentOffBanana = validatedDiscount;
             }
-          } else {
+          }
+          if (!couponFound) {
             log.debug("Invalid Coupon Code");
           }
         } catch (Exception e) {
@@ -128,11 +145,11 @@ public class BrokenCrypto4 extends HttpServlet {
         conn.close();
 
         // Work Out Final Cost
-        pineappleCost = pineappleCost - (pineappleCost * (perCentOffPineapple / 100));
-        appleCost = appleCost - (appleCost * (perCentOffApple / 100));
-        bananaCost = bananaCost - (bananaCost * (perCentOffBanana / 100));
-        orangeCost = orangeCost - (orangeCost * (perCentOffOrange / 100));
-        int finalCost = pineappleCost + appleCost + bananaAmount + orangeCost;
+        pineappleCost = pineappleCost - ((pineappleCost * perCentOffPineapple) / 100);
+        appleCost = appleCost - ((appleCost * perCentOffApple) / 100);
+        bananaCost = bananaCost - ((bananaCost * perCentOffBanana) / 100);
+        orangeCost = orangeCost - ((orangeCost * perCentOffOrange) / 100);
+        int finalCost = pineappleCost + appleCost + bananaCost + orangeCost;
 
         // Output Order
         htmlOutput =
@@ -174,10 +191,72 @@ public class BrokenCrypto4 extends HttpServlet {
     }
   }
 
+  /** Largest quantity of any single item one order may contain. */
+  private static final int maxItemAmount = 1000;
+
+  /** Iterations behind each stored coupon code digest. */
+  private static final int couponHashIterations = 100000;
+
+  /**
+   * Confines a submitted quantity to a sane range. A quantity outside it is a mistake in the form
+   * rather than an order, so it is brought back into range instead of failing the whole request.
+   *
+   * @param amount Quantity as submitted by the client
+   * @return The quantity confined to 0..maxItemAmount
+   */
   private static int validateAmount(int amount) {
-    if (amount < 0 || amount > 9000) {
-      amount = 0;
+    if (amount < 0) {
+      return 0;
+    }
+    if (amount > maxItemAmount) {
+      return maxItemAmount;
     }
     return amount;
+  }
+
+  private static int validateDiscount(int discount) {
+    if (discount < 0 || discount > 90) {
+      throw new IllegalArgumentException("Coupon discount is outside the allowed range");
+    }
+    return discount;
+  }
+
+  /**
+   * Reports whether a submitted coupon code is the one a stored row was issued for.
+   *
+   * @param storedCode The stored value, as a hex salt and hex digest separated by a dollar sign
+   * @param submittedCode The code as submitted by the shopper
+   * @return True when the submitted code produces the stored digest under the stored salt
+   */
+  private static boolean couponMatches(String storedCode, String submittedCode) {
+    if (storedCode == null || submittedCode == null) {
+      return false;
+    }
+    int separator = storedCode.indexOf('$');
+    if (separator < 1 || separator == storedCode.length() - 1) {
+      log.error("A coupon row is not stored as a salt and a digest and cannot be matched");
+      return false;
+    }
+    try {
+      byte[] salt = Hex.decodeHex(storedCode.substring(0, separator).toCharArray());
+      byte[] expected = Hex.decodeHex(storedCode.substring(separator + 1).toCharArray());
+      // Compared in constant time: an early exit on the first differing byte tells a caller how
+      // much of a guess was right, which is enough to build the rest of the code a byte at a time.
+      return MessageDigest.isEqual(expected, couponDigest(submittedCode, salt, expected.length));
+    } catch (Exception e) {
+      log.error("Could not compare a submitted coupon code: " + e.toString());
+      return false;
+    }
+  }
+
+  private static byte[] couponDigest(String couponCode, byte[] salt, int lengthInBytes)
+      throws GeneralSecurityException {
+    PBEKeySpec spec =
+        new PBEKeySpec(couponCode.toCharArray(), salt, couponHashIterations, lengthInBytes * 8);
+    try {
+      return SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).getEncoded();
+    } finally {
+      spec.clearPassword();
+    }
   }
 }

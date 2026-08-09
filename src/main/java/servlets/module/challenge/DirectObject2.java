@@ -6,6 +6,9 @@ import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -16,6 +19,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
+import utils.IndirectReferenceMap;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -43,6 +47,28 @@ public class DirectObject2 extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(DirectObject2.class);
   private static String levelName = "Insecure Direct Object Reference Challenge Two";
+
+  /**
+   * Names this challenge's set of indirect references. Digesting a small number does not make it
+   * unguessable, so the page publishes a per session handle for each profile it offers and the row
+   * identifier is never client supplied.
+   */
+  public static final String referenceNamespace = "directObjectRefChalTwo";
+
+  /**
+   * The profiles this challenge publishes. Resolving a handle already proves it was issued to this
+   * session, but the row it names is checked against the published set as well, so a reference
+   * that somehow resolves to a profile the challenge never offered is refused rather than served.
+   */
+  private static final List<String> AUTHORISED_USER_IDS =
+      Collections.unmodifiableList(
+          Arrays.asList(
+              "c81e728d9d4c2f636f067f89cc14862c",
+              "eccbc87e4b5ce2fe28308fd9f2a7baf3",
+              "e4da3b7fbbce2345d7772b0674a318d5",
+              "8f14e45fceea167a5a36dedd4bea2543",
+              "6512bd43d9caa6e02c990b0a82652dca"));
+
   public static String levelHash =
       "vc9b78627df2c032ceaf7375df1d847e47ed7abac2a4ce4cb6086646e0f313a4";
 
@@ -73,19 +99,31 @@ public class DirectObject2 extends HttpServlet {
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
       try {
-        String userId = request.getParameter("userId[]");
-        log.debug("User Submitted - " + userId);
+        // What arrives is the handle the page published, not the identifier of a row. Resolving
+        // it against the handles issued to this session is the authorisation decision: a handle
+        // this session was never given resolves to nothing, so the identifiers cannot be
+        // reproduced by digesting the numbers they were made from.
+        String submittedReference = request.getParameter("userId[]");
+        log.debug("User Submitted - " + submittedReference);
+        String userId = IndirectReferenceMap.resolve(ses, referenceNamespace, submittedReference);
+        if (userId == null || !AUTHORISED_USER_IDS.contains(userId)) {
+          log.warn("Refusing a profile reference this user was never given");
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
+        }
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
         String htmlOutput = new String();
 
-        Connection conn =
-            Database.getChallengeConnection(ApplicationRoot, "directObjectRefChalTwo");
-        PreparedStatement prepstmt =
-            conn.prepareStatement("SELECT userName, privateMessage FROM users WHERE userId = ?");
-        prepstmt.setString(1, userId);
-        ResultSet resultSet = prepstmt.executeQuery();
-        if (resultSet.next()) {
+        Connection conn = Database.getChallengeConnection(ApplicationRoot, referenceNamespace);
+        ResultSet resultSet = null;
+        if (userId != null) {
+          PreparedStatement prepstmt =
+              conn.prepareStatement("SELECT userName, privateMessage FROM users WHERE userId = ?");
+          prepstmt.setString(1, userId);
+          resultSet = prepstmt.executeQuery();
+        }
+        if (resultSet != null && resultSet.next()) {
           log.debug("Found user: " + resultSet.getString(1));
           String userName = resultSet.getString(1);
           String privateMessage = resultSet.getString(2);
@@ -107,7 +145,7 @@ public class DirectObject2 extends HttpServlet {
                   + "</h2><p>"
                   + bundle.getString("response.notFoundMessage.1")
                   + " '"
-                  + Encode.forHtml(userId)
+                  + Encode.forHtml(submittedReference)
                   + "' "
                   + bundle.getString("response.notFoundMessage.2")
                   + "</p>";

@@ -79,16 +79,17 @@ public class PoorValidation2 extends HttpServlet {
         int bananaAmount = validateAmount(Integer.parseInt(request.getParameter("bananaAmount")));
         log.debug("bananaAmount - " + bananaAmount);
 
-        // Working out costs
-        int pineappleCost = pineappleAmount * 30;
-        int orangeCost = orangeAmount * 3000;
-        int appleCost = appleAmount * 45;
-        int bananaCost = bananaAmount * 15;
+        // Working out costs. Long arithmetic so a large order cannot wrap around to a negative
+        // total.
+        long pineappleCost = (long) pineappleAmount * 30;
+        long orangeCost = (long) orangeAmount * 3000;
+        long appleCost = (long) appleAmount * 45;
+        long bananaCost = (long) bananaAmount * 15;
 
         htmlOutput = new String();
 
         // Work Out Final Cost
-        int finalCost = pineappleCost + orangeCost + bananaCost + appleCost;
+        long finalCost = pineappleCost + orangeCost + bananaCost + appleCost;
 
         // Output Order
         htmlOutput =
@@ -126,9 +127,15 @@ public class PoorValidation2 extends HttpServlet {
     }
   }
 
+  /** Largest quantity of any single item one order may contain. */
+  private static final int MAX_ITEM_AMOUNT = 1000;
+
   private static int validateAmount(int amount) {
     if (amount < 0) {
-      amount = 0;
+      return 0;
+    }
+    if (amount > MAX_ITEM_AMOUNT) {
+      return MAX_ITEM_AMOUNT;
     }
     return amount;
   }
