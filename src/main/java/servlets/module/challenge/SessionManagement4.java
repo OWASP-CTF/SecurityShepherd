@@ -85,6 +85,11 @@ public class SessionManagement4 extends HttpServlet {
             break; // End Loop, because we found the token
           }
         }
+        String serverSessionId = (String) ses.getAttribute("sessionChallengeFourId");
+        if (serverSessionId == null) {
+          serverSessionId = "0000000000000001";
+          ses.setAttribute("sessionChallengeFourId", serverSessionId);
+        }
         String htmlOutput = null;
         if (theCookie != null) {
           log.debug("Cookie value: " + theCookie.getValue());
@@ -94,10 +99,10 @@ public class SessionManagement4 extends HttpServlet {
           decodedCookieBytes = Base64.decodeBase64(decodedCookie.getBytes());
           decodedCookie = new String(decodedCookieBytes, "UTF-8");
           log.debug("Decoded Cookie: " + decodedCookie);
-          if (decodedCookie.equals("0000000000000001")) // Guest Session
+          if (serverSessionId.equals("0000000000000001")) // Guest Session
           {
             log.debug("Guest Session Detected");
-          } else if (decodedCookie.equals("0000000000000009")) // Admin Session
+          } else if (serverSessionId.equals("0000000000000009")) // Admin Session
           {
             log.debug("Admin Session Detected: Challenge Complete");
             // Get key and add it to the output
