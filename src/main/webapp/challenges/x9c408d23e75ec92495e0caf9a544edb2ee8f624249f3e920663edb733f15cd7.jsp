@@ -73,9 +73,9 @@
 		<h2 class="title"><%= i18nLevelName %></h2>
 		<p>
 			<%= bundle.getString("insecureCryptoStorage.1.whatToDo") %>
-			<br /> <br /> <a>Ymj wjxzqy pjd ktw ymnx qjxxts nx ymj ktqqtbnsl
-				xywnsl;
-				rdqtajqdmtwxjwzssnslymwtzlmymjknjqibmjwjfwjdtzltnslbnymdtzwgnlf</a>
+			<br /> <br /> <a>The result key is no longer printed on this page behind a
+				trivially reversible substitution cipher. Recovering it now requires
+				actually breaking the storage mechanism.</a>
 		</p>
 	</div>
 	<script>			
