@@ -73,8 +73,13 @@ public class SqlInjection7 extends HttpServlet {
         log.debug("subEmail - " + subEmail.replaceAll("\n", " \\\\n ")); // Escape \n's
         String subPassword = Validate.validateParameter(request.getParameter("subPassword"), 40);
         log.debug("subPassword - " + subPassword);
+        // The address is checked as it will be used, and against a conservative set of
+        // characters. The library check on its own accepts a quoted local part, which is a
+        // legitimate address form that can carry quotes, spaces and semicolons; there is no
+        // reason for this sign-in to take one.
         boolean validEmail =
-            Validate.isValidEmailAddress(subEmail.replaceAll("\n", "")); // Ignore \n 's
+            subEmail.matches("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}")
+                && Validate.isValidEmailAddress(subEmail);
         if (!subPassword.isEmpty() && !subPassword.isEmpty() && validEmail) {
           Connection conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSeven");
           try {
