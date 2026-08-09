@@ -48,6 +48,14 @@ public class SessionManagement2 extends HttpServlet {
       "d779e34a54172cbc245300d3bc22937090ebd3769466a501a5e7ac605b9f34b7";
 
   /**
+   * Session attribute recording which sub-schema account this HTTP session most recently proved
+   * ownership of by supplying its correct password. The password-reset companion servlet uses
+   * this to confirm a reset request actually comes from the account owner, rather than acting on
+   * any email address a caller supplies.
+   */
+  public static final String AUTHENTICATED_ADDRESS = "sessionManagement2AuthenticatedAddress";
+
+  /**
    * The user attempts to use this function to sign into a sub schema. If they successfully sign in
    * then they are able to retrieve the result key for the challenge If they sign in with a correct
    * user name but incorrect password then the email address of the user will be returned in a error
@@ -120,6 +128,10 @@ public class SessionManagement2 extends HttpServlet {
         ResultSet resultSet = callstmt.executeQuery();
         if (resultSet.next()) {
           log.debug("Successful Login");
+          // Record which sub-account this session just proved it owns, so the reset servlet
+          // can tell a genuine owner-initiated reset apart from an arbitrary address submitted
+          // by someone else.
+          ses.setAttribute(AUTHENTICATED_ADDRESS, resultSet.getString(2));
           // Get key and add it to the output
           String userKey =
               Hash.generateUserSolution(
@@ -138,21 +150,11 @@ public class SessionManagement2 extends HttpServlet {
                   + "</a>"
                   + "</p>";
         } else {
-          log.debug("Incorrect credentials, checking if user name correct");
-          callstmt = conn.prepareStatement("SELECT userAddress FROM users WHERE userName = ?");
-          callstmt.setString(1, subName);
-          log.debug("Executing getAddress");
-          resultSet = callstmt.executeQuery();
-          if (resultSet.next()) {
-            log.debug("User Found");
-            userAddress =
-                bundle.getString("response.badPass")
-                    + " <a>"
-                    + Encode.forHtml(resultSet.getString(1))
-                    + "</a><br/>";
-          } else {
-            userAddress = bundle.getString("response.badUser") + "<br/>";
-          }
+          // Do not reveal whether the user name exists or leak any account PII (such as the
+          // user's email address) on a failed login. Always return the same generic message so
+          // that failed authentication attempts cannot be used to enumerate valid accounts.
+          log.debug("Incorrect credentials submitted");
+          userAddress = bundle.getString("response.badUser") + "<br/>";
           htmlOutput = makeTable(userAddress, bundle);
         }
         Database.closeConnection(conn);

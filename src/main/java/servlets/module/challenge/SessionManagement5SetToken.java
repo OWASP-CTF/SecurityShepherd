@@ -8,6 +8,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -16,6 +17,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -50,6 +52,26 @@ public class SessionManagement5SetToken extends HttpServlet {
   private static final Logger log = LogManager.getLogger(SessionManagement5SetToken.class);
   private static String levelName = "SessionManagement5SetToken";
   public static String levelHash = SessionManagement5.levelHash;
+
+  /**
+   * Holds a single, unpredictable, single-use password reset token per user name, generated with a
+   * cryptographically secure random source (see {@link utils.Hash#randomString()}) and stamped with
+   * its issue time. {@link SessionManagement5ChangePassword} must present the exact token stored
+   * here (verified in constant time) before a password reset for that account is honoured - unlike
+   * a bare, attacker-computable timestamp, this cannot be forged by a client.
+   */
+  static class ResetToken {
+    final String token;
+    final long issuedAtMillis;
+
+    ResetToken(String token, long issuedAtMillis) {
+      this.token = token;
+      this.issuedAtMillis = issuedAtMillis;
+    }
+  }
+
+  static final ConcurrentHashMap<String, ResetToken> pendingResetTokens =
+      new ConcurrentHashMap<String, ResetToken>();
 
   /**
    * Used to apparently send a message to a user with a token to reset their password.
@@ -110,16 +132,22 @@ public class SessionManagement5SetToken extends HttpServlet {
         // Is the username valid?
         if (resultSet.next()) {
           log.debug("User found");
-          htmlOutput =
-              bundle.getString("setToken.sentTo.1")
-                  + " '"
-                  + Encode.forHtml(userName)
-                  + "' "
-                  + bundle.getString("setToken.sentTo.2");
+          // Generate a real, unpredictable, single-use reset token bound to this account,
+          // instead of relying on a client-forgeable timestamp. Only the (simulated) email
+          // recipient ever learns this value.
+          String resetToken = Hash.randomString();
+          pendingResetTokens.put(userName, new ResetToken(resetToken, System.currentTimeMillis()));
         } else {
           log.debug("User not Found");
-          htmlOutput = bundle.getString("response.badUser") + "" + Encode.forHtml(userName);
         }
+        // Respond identically whether or not the account exists, so this endpoint cannot be used
+        // to enumerate valid user names.
+        htmlOutput =
+            bundle.getString("setToken.sentTo.1")
+                + " '"
+                + Encode.forHtml(userName)
+                + "' "
+                + bundle.getString("setToken.sentTo.2");
         Database.closeConnection(conn);
         log.debug("Outputting HTML");
         out.write(htmlOutput);

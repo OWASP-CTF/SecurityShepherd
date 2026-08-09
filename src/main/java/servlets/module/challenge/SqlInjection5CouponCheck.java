@@ -79,9 +79,8 @@ public class SqlInjection5CouponCheck extends HttpServlet {
         PreparedStatement prepstmt =
             conn.prepareStatement(
                 "SELECT itemId, perCentOff, itemName FROM coupons JOIN items USING (itemId) WHERE"
-                    + " couponCode = '"
-                    + couponCode
-                    + "';");
+                    + " couponCode = ?;");
+        prepstmt.setString(1, couponCode);
         ResultSet coupons = prepstmt.executeQuery();
         try {
           if (coupons.next()) {
@@ -108,8 +107,10 @@ public class SqlInjection5CouponCheck extends HttpServlet {
         }
         conn.close();
       } catch (Exception e) {
-        log.debug("Did complete Check: " + e.toString());
-        htmlOutput = "" + bundle.getString("errors.Occurred") + "" + Encode.forHtml(e.toString());
+        // Handing the exception text back names the query and schema behind this lookup - log
+        // it and tell the caller nothing more than the "no coupon" response already does.
+        log.error("Could not complete coupon check: " + e.toString());
+        htmlOutput = "" + bundle.getString("response.checkFailed") + "";
       }
       try {
         Thread.sleep(1000);

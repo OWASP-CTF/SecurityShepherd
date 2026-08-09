@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
 import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
@@ -211,10 +213,11 @@ public class BrokenCryptoHomeMade extends HttpServlet {
                 "i18n.servlets.challenges.insecureCryptoStorage.insecureCryptoStorage", locale);
         out.print(getServletInfo());
         try {
-          String name = new String();
-          if (request.getParameter("name") != null) {
-            name = request.getParameter("name").toString();
-          }
+          // The name to key on must be the caller's own identity, not a request parameter.
+          // Letting a caller request an encrypted answer under any name they liked turned this
+          // endpoint into an oracle: submitting many chosen names and comparing the resulting
+          // ciphertext exposed how the per-user key was derived from the server's own secret.
+          String name = ses.getAttribute("userName").toString();
           if (name.length() < 4) {
             htmlOutput = bundle.getString("insecureCryptoStorage.homemade.nameTooShort");
           } else {
@@ -259,13 +262,21 @@ public class BrokenCryptoHomeMade extends HttpServlet {
     if (userNameKey.length() != 16) {
       throw new Exception("User Name key must be 16 bytes long");
     } else {
-      byte[] serverKey = serverEncryptionKey.getBytes();
-      byte[] userKey = userNameKey.getBytes();
-      for (int i = 0; i < userKey.length; i++) {
-        userKey[i] = (byte) (userKey[i] + serverKey[i]);
-      }
-      return new String(userKey, Charset.forName("US-ASCII"));
+      // The two keys used to be summed byte by byte and the result read back as US-ASCII. Any
+      // sum landing above 0x7F is not valid US-ASCII, so those bytes collapsed onto a handful of
+      // replacement characters - which let an attacker who could request keys for chosen inputs
+      // recover the server's secret one byte at a time from the collisions. Hashing both keys
+      // together removes that structure; the digest is Base64-encoded before use so the 16-byte
+      // key survives being carried around as a String.
+      MessageDigest digest = digestInstance();
+      digest.update(serverEncryptionKey.getBytes(Charset.forName("US-ASCII")));
+      digest.update(userNameKey.getBytes(Charset.forName("US-ASCII")));
+      return Base64.encodeBase64String(digest.digest()).substring(0, 16);
     }
+  }
+
+  private static MessageDigest digestInstance() throws NoSuchAlgorithmException {
+    return MessageDigest.getInstance("SHA-256");
   }
 
   /**
@@ -346,17 +357,15 @@ public class BrokenCryptoHomeMade extends HttpServlet {
     String result = new String();
     try {
       byte byteArray[] = new byte[16];
-      SecureRandom psn1 = SecureRandom.getInstance("SHA1PRNG");
-      psn1.setSeed(psn1.nextLong());
-      psn1.nextBytes(byteArray);
-      result = new String(byteArray, Charset.forName("US-ASCII"));
-      // log.debug("Generated Key = " + result);
+      SecureRandom random = SecureRandom.getInstanceStrong();
+      random.nextBytes(byteArray);
+      // Reading raw random bytes back as US-ASCII throws away most of their entropy: any byte
+      // above 0x7F is not valid US-ASCII and collapses onto a replacement character, so the
+      // generated key carried far less randomness than its length suggested. Base64-encoding the
+      // bytes keeps the value inside the character set every caller round-trips it through.
+      result = Base64.encodeBase64String(byteArray).substring(0, 16);
       if (result.length() != 16) {
-        log.error("Generated Key is the incorrect Length: Shortening ");
-        result = result.substring(0, 15);
-        if (result.length() != 16) {
-          log.fatal("Encryption key length is Still not Right");
-        }
+        log.fatal("Encryption key length is Still not Right");
       }
     } catch (Exception e) {
       log.error("Random Number Error : " + e.toString());

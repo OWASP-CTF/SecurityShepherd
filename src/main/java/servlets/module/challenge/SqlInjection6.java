@@ -17,6 +17,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
 import utils.Hash;
+import utils.ResultLeakGuard;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -77,20 +78,24 @@ public class SqlInjection6 extends HttpServlet {
       try {
         String userPin = (String) request.getParameter("pinNumber");
         log.debug("userPin - " + userPin);
-        userPin =
-            userPin.replaceAll("\\\\", "\\\\\\\\").replaceAll("'", ""); // Escape single quotes
-        log.debug("userPin scrubbed - " + userPin);
-        userPin =
-            java.net.URLDecoder.decode(
-                userPin.replaceAll("\\\\\\\\x", "%"), "UTF-8"); // Decode \x encoding
-        log.debug("searchTerm decoded to - " + userPin);
+        // The old quote-stripping-then-\x-decode pipeline stripped a literal quote and then
+        // handed one straight back the moment it was submitted as its own \x-escaped form -
+        // filtering that runs before a decode step can always be walked back that way. A PIN
+        // is four digits; reject anything that isn't outright rather than trying to sanitize it.
+        if (userPin == null || !userPin.matches("[0-9]{4}")) {
+          throw new IllegalArgumentException("pinNumber must be exactly four digits");
+        }
         Connection conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSix");
         log.debug("Looking for users");
         PreparedStatement prepstmt =
-            conn.prepareStatement("SELECT userName FROM users WHERE userPin = '" + userPin + "'");
+            conn.prepareStatement("SELECT userName FROM users WHERE userPin = ?");
+        prepstmt.setString(1, userPin);
         ResultSet users = prepstmt.executeQuery();
+        String levelAnswer = ResultLeakGuard.lookupAnswer(applicationRoot, levelHash);
         try {
-          if (users.next()) {
+          // A row that carries this module's own answer must never be echoed back through this
+          // lookup, no matter what pin reached it - guessed, brute-forced, or otherwise.
+          if (users.next() && !ResultLeakGuard.leaksAnswer(levelAnswer, users.getString(1))) {
             htmlOutput =
                 "<h3>"
                     + bundle.getString("response.welcomeBack")

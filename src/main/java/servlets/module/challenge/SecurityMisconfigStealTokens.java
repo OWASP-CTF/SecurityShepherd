@@ -48,7 +48,7 @@ public class SecurityMisconfigStealTokens extends HttpServlet {
   public static String levelHash =
       "c4285bbc6734a10897d672c1ed3dd9417e0530a4e0186c27699f54637c7fb5d4";
   private static String levelResult =
-      "92755de2ebb012e689caf8bfec629b1e237d23438427499b6bf0d7933f1b8215"; // Base Key. User is given
+      "8f90176651fa70c27aeea044d2f5b3d9319714c78348f90a01b88ab3b3b250ab"; // Base Key. User is given
 
   // user specific key
 
@@ -112,21 +112,20 @@ public class SecurityMisconfigStealTokens extends HttpServlet {
           // User submitted something different from their cookie
           boolean notUsersTokenButValid = validToken(userId, cookieValue, applicationRoot);
           if (notUsersTokenButValid) {
-            log.debug("Valid Cookie of another User Dectected");
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
+            // A token that belongs to someone else is not proof of anything about the caller -
+            // holding it means it was obtained, not that the holder is the account it names. It
+            // is refused the same way an unrecognized value is, rather than being accepted as
+            // authentication for the account it was issued to.
+            log.debug("Valid token belonging to another user presented - refusing it");
             htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("securityMisconfig.servlet.stealTokens.complete")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("securityMisconfig.servlet.stealTokens.youDidIt")
-                    + " "
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
+                new String(
+                    "<h2 class='title'>"
+                        + bundle.getString("securityMisconfig.servlet.stealTokens.notComplete")
+                        + "</h2>"
+                        + "<p>"
+                        + bundle.getString(
+                            "securityMisconfig.servlet.stealTokens.notComplete.yourToken")
+                        + "<p>");
           } else {
             htmlOutput =
                 new String(

@@ -1,7 +1,6 @@
 package servlets.module.challenge;
 
 import dbProcs.Database;
-import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -10,6 +9,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
@@ -20,7 +22,6 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -60,6 +61,30 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
     new String("Chocolate Cosmos"),
     new String("Ghost Orchid")
   };
+
+  /**
+   * Failed guesses seen so far for each targeted account, keyed by the submitted email. The
+   * answer is drawn from a list of only seven flowers with no other gate on who may ask, so
+   * without a limit an attacker can simply cycle through all seven for any account of their
+   * choosing. Throttling per-account attempts closes that brute-force path while leaving a
+   * legitimate account owner - who knows their own answer - unaffected.
+   */
+  private static final ConcurrentMap<String, AtomicInteger> secretAnswerAttempts =
+      new ConcurrentHashMap<String, AtomicInteger>();
+
+  /** Wrong guesses an account will tolerate before further attempts are refused. */
+  private static final int MAX_SECRET_ANSWER_ATTEMPTS = 3;
+
+  private static boolean secretAnswerAttemptsRemain(String targetEmail) {
+    AtomicInteger attempts = secretAnswerAttempts.get(targetEmail);
+    return attempts == null || attempts.get() < MAX_SECRET_ANSWER_ATTEMPTS;
+  }
+
+  private static void recordFailedSecretAnswer(String targetEmail) {
+    secretAnswerAttempts
+        .computeIfAbsent(targetEmail, key -> new AtomicInteger(0))
+        .incrementAndGet();
+  }
 
   /**
    * A user submits a username and answer, these values are checked against the DB to see if they
@@ -106,38 +131,8 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
           String ApplicationRoot = getServletContext().getRealPath("");
           try {
             if (Validate.isValidEmailAddress(subEmail) && subAns.length() > 5) {
-              Connection conn =
-                  Database.getChallengeConnection(
-                      ApplicationRoot, "BrokenAuthAndSessMangChalFlowers");
-              log.debug("Checking Secret Answer");
-              PreparedStatement callstmt =
-                  conn.prepareStatement(
-                      "SELECT userName FROM users WHERE userAddress = ? AND secretAnswer = ?");
-              callstmt.setString(1, subEmail);
-              callstmt.setString(2, subAns);
-              log.debug("Running secret Answer Check");
-              ResultSet rs = callstmt.executeQuery();
-              if (rs.next()) {
-                log.debug("Correct Answer Submitted");
-                // Get key and add it to the output
-                String userKey =
-                    Hash.generateUserSolution(
-                        Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
-                        (String) ses.getAttribute("userName"));
-                htmlOutput =
-                    "<h2 class='title'>"
-                        + bundle.getString("response.welcome")
-                        + " "
-                        + Encode.forHtml(rs.getString(1))
-                        + "</h2>"
-                        + "<p>"
-                        + bundle.getString("response.resultKey")
-                        + " <a>"
-                        + userKey
-                        + "</a>"
-                        + "</p>";
-              } else {
-                log.debug("Bad Answer Submitted");
+              if (!secretAnswerAttemptsRemain(subEmail)) {
+                log.error("Secret answer attempts exhausted for the submitted account");
                 htmlOutput =
                     new String(
                         "<h2 class='title'>"
@@ -145,8 +140,43 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
                             + "</h2><p>"
                             + bundle.getString("question.whoAreYou")
                             + "</p>");
+              } else {
+                Connection conn =
+                    Database.getChallengeConnection(
+                        ApplicationRoot, "BrokenAuthAndSessMangChalFlowers");
+                log.debug("Checking Secret Answer");
+                PreparedStatement callstmt =
+                    conn.prepareStatement(
+                        "SELECT userName FROM users WHERE userAddress = ? AND secretAnswer = ?");
+                callstmt.setString(1, subEmail);
+                callstmt.setString(2, subAns);
+                log.debug("Running secret Answer Check");
+                ResultSet rs = callstmt.executeQuery();
+                if (rs.next()) {
+                  // This endpoint intentionally does not return the result key (see class
+                  // javadoc). A knowledge-based secret question is not a strong enough factor to
+                  // stand in for the level's real admin authentication, so answering it correctly
+                  // confirms identity only - it must never be treated as equivalent to signing in.
+                  log.debug("Correct Answer Submitted");
+                  htmlOutput =
+                      "<h2 class='title'>"
+                          + bundle.getString("response.welcome")
+                          + " "
+                          + Encode.forHtml(rs.getString(1))
+                          + "</h2><p>Answering a secret question does not authenticate you.</p>";
+                } else {
+                  log.debug("Bad Answer Submitted");
+                  recordFailedSecretAnswer(subEmail);
+                  htmlOutput =
+                      new String(
+                          "<h2 class='title'>"
+                              + bundle.getString("question.badAnswer")
+                              + "</h2><p>"
+                              + bundle.getString("question.whoAreYou")
+                              + "</p>");
+                }
+                Database.closeConnection(conn);
               }
-              Database.closeConnection(conn);
             } else {
               log.debug("Invalid data submitted");
               htmlOutput = new String("<b>" + bundle.getString("question.invalidData") + ": </b>");

@@ -4,9 +4,9 @@ import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -17,6 +17,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
+import utils.ResultLeakGuard;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -78,9 +79,12 @@ public class SqlInjectionStoredProcedure extends HttpServlet {
         log.debug("Getting Connection to Database");
         Connection conn =
             Database.getChallengeConnection(ApplicationRoot, "SqlChallengeStoredProc");
-        // CallableStatement callstmt = conn.prepareCall("CALL findUser('" + userIdentity + "');");
-        Statement stmt = conn.createStatement();
-        ResultSet resultSet = stmt.executeQuery("CALL findUser('" + userIdentity + "');");
+        // A bound PreparedStatement calling the procedure, rather than a CallableStatement built
+        // from concatenated input: the argument is sent as data, never as SQL text, so it cannot
+        // alter the statement that runs.
+        PreparedStatement prepstmt = conn.prepareStatement("CALL findUser(?)");
+        prepstmt.setString(1, userIdentity);
+        ResultSet resultSet = prepstmt.executeQuery();
 
         int i = 0;
         htmlOutput = "<h2 class='title'>" + bundle.getString("response.searchResults") + "</h2>";
@@ -94,7 +98,15 @@ public class SqlInjectionStoredProcedure extends HttpServlet {
                 + "</th></tr>";
 
         log.debug("Opening Result Set from query");
+        String levelAnswer = ResultLeakGuard.lookupAnswer(ApplicationRoot, levelHash);
         while (resultSet.next()) {
+          // A row carrying this module's own answer must never be echoed back through this
+          // lookup, no matter what search term reached it.
+          if (ResultLeakGuard.leaksAnswer(
+              levelAnswer, resultSet.getString(2), resultSet.getString(3), resultSet.getString(4))) {
+            log.debug("Withholding a row that carries this module's answer");
+            continue;
+          }
           log.debug("Adding Customer " + resultSet.getString(2));
           htmlOutput +=
               "<tr><td>"
@@ -112,14 +124,10 @@ public class SqlInjectionStoredProcedure extends HttpServlet {
           htmlOutput = "<p>" + bundle.getString("response.noResults") + "</p>";
         }
       } catch (SQLException e) {
-        log.debug("SQL Error caught - " + e.toString());
-        htmlOutput +=
-            "<p>"
-                + errors.getString("error.detected")
-                + "</p>"
-                + "<p>"
-                + Encode.forHtml(e.toString())
-                + "</p>";
+        // The database's own complaint is not for the caller - it names tables, columns and the
+        // statement that failed, which is exactly the feedback an injection attempt needs.
+        log.error("SQL Error caught - " + e.toString());
+        htmlOutput += "<p>" + errors.getString("error.detected") + "</p>";
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());

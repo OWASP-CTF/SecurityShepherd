@@ -9,12 +9,10 @@ import java.sql.ResultSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
@@ -70,31 +68,18 @@ public class UrlAccess3UserList extends HttpServlet {
       String htmlOutput = new String();
 
       try {
-        Cookie userCookies[] = request.getCookies();
-        int i = 0;
-        Cookie theCookie = null;
-        for (i = 0; i < userCookies.length; i++) {
-          if (userCookies[i].getName().compareTo("currentPerson") == 0) {
-            theCookie = userCookies[i];
-            break; // End Loop, because we found the token
-          }
-        }
-        String currentUser = new String("aGuest");
-        if (theCookie != null) {
-          log.debug("Cookie value: " + theCookie.getValue());
-          byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
-          String decodedCookie = new String(decodedCookieBytes, "UTF-8");
-          log.debug("Decoded Cookie: " + decodedCookie);
-          currentUser = decodedCookie;
-        }
+        // The submitted "currentPerson" cookie used to select which user's row this query
+        // looked up, and the query itself unconditionally included every admin row regardless
+        // of what was asked for ("... WHERE userRole = 'admin' OR userName = ?"). Together those
+        // handed back the super-admin's name to whoever asked, no matter what identity - real,
+        // forged, or absent - they presented. This sub-application only ever exposes the guest
+        // view; nothing a caller submits can change whose row is returned.
+        String currentUser = "aGuest";
         String ApplicationRoot = getServletContext().getRealPath("");
         Connection conn = Database.getChallengeConnection(ApplicationRoot, "UrlAccessThree");
         PreparedStatement callstmt;
-        callstmt =
-            conn.prepareStatement(
-                "SELECT userName FROM users WHERE userRole = \"admin\" OR userName = \""
-                    + currentUser
-                    + "\";");
+        callstmt = conn.prepareStatement("SELECT userName FROM users WHERE userName = ?;");
+        callstmt.setString(1, currentUser);
         log.debug("Getting User List");
         htmlOutput = new String();
         ResultSet rs = callstmt.executeQuery();

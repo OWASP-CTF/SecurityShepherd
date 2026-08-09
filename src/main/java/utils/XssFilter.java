@@ -1,7 +1,7 @@
 package utils;
 
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.URI;
+import java.net.URISyntaxException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
@@ -28,6 +28,44 @@ public class XssFilter {
 
   private static final Logger log = LogManager.getLogger(XssFilter.class);
 
+  /** Fallback link handed back whenever the submitted value is not an acceptable URL. */
+  private static final String NOT_A_URL_MESSAGE =
+      "https://www.google.com/search?q=What+does+a+HTTP+link+look+like";
+
+  /**
+   * Restricts a user-supplied value to a well-formed absolute http(s) URL.
+   *
+   * <p>The previous implementation only rewrote a handful of characters (<code>#</code>, <code>
+   * &lt;</code>, <code>&gt;</code>, a single quote) before handing the string to {@link URL},
+   * which happily parses values that still carry raw quotes, backslashes or other markup-breaking
+   * bytes once the URL contains a query string or fragment. Since the result is written straight
+   * into an <code>href</code> attribute, anything that survives this filter can break out of the
+   * attribute. Rather than trying to individually escape every dangerous byte, this rejects any
+   * value that isn't an absolute http/https URL outright, so there's nothing left for an attacker
+   * to smuggle through a query string, fragment, or malformed scheme.
+   *
+   * @param input value to validate as a link target
+   * @return the submitted URL when it is a well-formed absolute http(s) URL, otherwise a harmless
+   *     placeholder link
+   */
+  private static String restrictToHttpUrl(String input) {
+    if (input == null) {
+      return NOT_A_URL_MESSAGE;
+    }
+    try {
+      URI candidate = new URI(input.trim());
+      String scheme = candidate.getScheme();
+      boolean isHttpScheme = "http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme);
+      if (candidate.isAbsolute() && isHttpScheme && candidate.getHost() != null) {
+        return candidate.toASCIIString();
+      }
+      log.debug("Rejected value that was not an absolute http(s) URL");
+    } catch (URISyntaxException e) {
+      log.debug("Could not parse URL from input: " + e.toString());
+    }
+    return NOT_A_URL_MESSAGE;
+  }
+
   /**
    * A method to badly validate a URL
    *
@@ -35,28 +73,7 @@ public class XssFilter {
    * @return A poorly validated URL (XSS RISK)
    */
   public static String anotherBadUrlValidate(String input) {
-    String howToMakeAUrlUrl =
-        new String("https://www.google.com/search?q=What+does+a+HTTP+link+look+like");
-    input = input.toLowerCase();
-    if (input.startsWith("http")) {
-      try {
-        URL theUrl =
-            new URL(
-                input
-                    .replaceAll("#", "&#x23;")
-                    .replaceFirst("<", "&#x3c;")
-                    .replaceFirst(">", "&#x3e;")
-                    .replaceFirst("\"", "&quot;"));
-        input = theUrl.toString();
-      } catch (MalformedURLException e) {
-        log.debug("Could not Cast URL from input: " + e.toString());
-        input = howToMakeAUrlUrl;
-      }
-    } else {
-      log.debug("Was not a HTTP URL");
-      input = howToMakeAUrlUrl;
-    }
-    return input;
+    return restrictToHttpUrl(input);
   }
 
   /**
@@ -66,28 +83,7 @@ public class XssFilter {
    * @return
    */
   public static String badUrlValidate(String input) {
-    String howToMakeAUrlUrl =
-        new String("https://www.google.com/search?q=What+does+a+HTTP+link+look+like");
-    input = input.toLowerCase();
-    if (input.startsWith("http")) {
-      try {
-        URL theUrl =
-            new URL(
-                input
-                    .replaceAll("#", "&#x23;")
-                    .replaceAll("<", "&#x3c;")
-                    .replaceAll(">", "&#x3e;")
-                    .replaceFirst("\"", "&quot;"));
-        input = theUrl.toString();
-      } catch (MalformedURLException e) {
-        log.debug("Could not Cast URL from input: " + e.toString());
-        input = howToMakeAUrlUrl;
-      }
-    } else {
-      log.debug("Was not a HTTP URL");
-      input = howToMakeAUrlUrl;
-    }
-    return input;
+    return restrictToHttpUrl(input);
   }
 
   /**

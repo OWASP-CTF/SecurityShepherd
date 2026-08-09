@@ -1,7 +1,6 @@
 package servlets.module.challenge;
 
 import dbProcs.Database;
-import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -20,7 +19,6 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -104,24 +102,17 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
             log.debug("Running secret Answer Check");
             ResultSet rs = callstmt.executeQuery();
             if (rs.next()) {
+              // This endpoint intentionally does not return the result key (see class
+              // javadoc). A knowledge-based secret question is not a strong enough factor to
+              // stand in for the level's real admin authentication, so answering it correctly
+              // confirms identity only - it must never be treated as equivalent to signing in.
               log.debug("Correct Answer Submitted");
-              // Get key and add it to the output
-              String userKey =
-                  Hash.generateUserSolution(
-                      Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
-                      (String) ses.getAttribute("userName"));
               htmlOutput =
                   "<h2 class='title'>"
                       + bundle.getString("response.welcome")
                       + " "
                       + Encode.forHtml(rs.getString(1))
-                      + "</h2>"
-                      + "<p>"
-                      + bundle.getString("response.welcome")
-                      + " <a>"
-                      + userKey
-                      + "</a>"
-                      + "</p>";
+                      + "</h2><p>Answering a secret question does not authenticate you.</p>";
             } else {
               log.debug("Bad Answer Submitted");
               htmlOutput =
@@ -156,8 +147,8 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
   }
 
   /**
-   * A user submits an email address to get that user's Secret QUestion. This is vulnerable to SQL
-   * injection
+   * A user submits an email address to get that user's Secret Question. The lookup uses a
+   * parameterized query so untrusted input cannot alter the SQL statement.
    *
    * @param subEmail Sub schema user email to search DB with
    */
@@ -224,11 +215,11 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
                     Database.getChallengeConnection(
                         ApplicationRoot, "BrokenAuthAndSessMangChalSix");
                 log.debug("Getting Secret Question");
+                // Use a parameterized query instead of concatenating user input directly into
+                // the SQL string, which was exploitable via SQL injection.
                 PreparedStatement callstmt =
-                    conn.prepareStatement(
-                        "SELECT secretQuestion FROM users WHERE userAddress = \""
-                            + subEmail
-                            + "\"");
+                    conn.prepareStatement("SELECT secretQuestion FROM users WHERE userAddress = ?");
+                callstmt.setString(1, subEmail);
                 ResultSet rs = callstmt.executeQuery();
                 if (rs.next()) {
                   log.debug("'Valid' User Detected");
@@ -244,9 +235,11 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
                 Database.closeConnection(conn);
               }
             } catch (SQLException e) {
-              log.debug(levelName + " SQL Error: " + e.toString());
-              log.debug("Outputting error to user");
-              htmlOutput = new String(e.toString());
+              // The raw exception names tables, columns and the failed statement - useful to an
+              // attacker refining a query, not to a legitimate caller. Log it and return the
+              // same generic message this endpoint already uses for "no such user."
+              log.error(levelName + " SQL Error: " + e.toString());
+              htmlOutput = bundle.getString("question.noQuestion");
             }
           } else {
             log.debug("Tampered cookie detected");

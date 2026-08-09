@@ -4,9 +4,9 @@ import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -91,15 +91,13 @@ public class SqlInjection4 extends HttpServlet {
 
         log.debug("Getting Connection to Database");
         Connection conn = Database.getChallengeConnection(ApplicationRoot, "SqlChallengeFour");
-        Statement stmt = conn.createStatement();
+        PreparedStatement stmt =
+            conn.prepareStatement(
+                "SELECT userName FROM users WHERE userName = ? AND userPassword = ?");
+        stmt.setString(1, theUserName);
+        stmt.setString(2, thePassword);
         log.debug("Gathering result set");
-        ResultSet resultSet =
-            stmt.executeQuery(
-                "SELECT userName FROM users WHERE userName = '"
-                    + theUserName
-                    + "' AND userPassword = '"
-                    + thePassword
-                    + "'");
+        ResultSet resultSet = stmt.executeQuery();
 
         int i = 0;
         htmlOutput = "<h2 class='title'>" + bundle.getString("response.loginResults") + "</h2>";
@@ -135,14 +133,10 @@ public class SqlInjection4 extends HttpServlet {
                   + "</p>";
         }
       } catch (SQLException e) {
-        log.debug("SQL Error caught - " + e.toString());
-        htmlOutput +=
-            "<p>"
-                + errors.getString("error.detected")
-                + "</p>"
-                + "<p>"
-                + Encode.forHtml(e.toString())
-                + "</p>";
+        // The database's own complaint is not for the caller - it names tables, columns and
+        // the statement that failed, which is exactly the feedback an injection attempt needs.
+        log.error("SQL Error caught - " + e.toString());
+        htmlOutput += "<p>" + errors.getString("error.detected") + "</p>";
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());

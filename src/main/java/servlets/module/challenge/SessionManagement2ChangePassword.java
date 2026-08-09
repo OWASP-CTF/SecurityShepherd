@@ -47,10 +47,8 @@ public class SessionManagement2ChangePassword extends HttpServlet {
       "f5ddc0ed2d30e597ebacf5fdd117083674b19bb92ffc3499121b9e6a12c92959";
 
   /**
-   * A user with the submitted email address is set a new random password, the password is also
-   * returned from the database procedure and is forwards through to the HTTP response. This
-   * response is not consumed by the client interface by default, and the user will have to discover
-   * it.
+   * Resets the password of the sub-schema account identified by the submitted email address, and
+   * returns the new password in the HTTP response.
    *
    * @param subEmail Sub schema user email address
    */
@@ -91,6 +89,7 @@ public class SessionManagement2ChangePassword extends HttpServlet {
         String ApplicationRoot = getServletContext().getRealPath("");
 
         String newPassword = Hash.randomString();
+        String htmlResult = new String();
         try {
           Connection conn =
               Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
@@ -108,13 +107,13 @@ public class SessionManagement2ChangePassword extends HttpServlet {
           callstmt.execute();
           log.debug("Changes committed.");
 
-          htmlOutput = Encode.forHtml(newPassword);
+          htmlResult = Encode.forHtml(newPassword);
           Database.closeConnection(conn);
         } catch (SQLException e) {
           log.error(levelName + " SQL Error: " + e.toString());
         }
         log.debug("Outputting HTML");
-        out.write(bundle.getString("response.changedTo") + " " + htmlOutput);
+        out.write(bundle.getString("response.changedTo") + " " + htmlResult);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());

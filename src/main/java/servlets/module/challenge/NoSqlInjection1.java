@@ -113,7 +113,11 @@ public class NoSqlInjection1 extends HttpServlet {
         String gamerId = request.getParameter("theGamerName");
         log.debug("User Submitted: " + gamerId);
 
-        DBObject whereQuery = new BasicDBObject("$where", "this._id == '" + gamerId + "'");
+        // Use a structured query operator instead of building a JavaScript "$where"
+        // expression from untrusted input - $where evaluates arbitrary JS server side
+        // and is the classic NoSQL injection vector. Passing the value as a plain
+        // field comparison means it is always treated as data, never as code.
+        DBObject whereQuery = new BasicDBObject("_id", gamerId);
         cursor = dbCollection.find(whereQuery);
 
         try {
@@ -146,13 +150,13 @@ public class NoSqlInjection1 extends HttpServlet {
           }
 
         } catch (MongoTimeoutException e) {
+          // The driver's own error text names the database and collection behind this query -
+          // log it, don't hand it back.
           log.fatal(bundle.getString("result.mongoError") + e.toString());
-          htmlOutput +=
-              "<p>Mongo Timeout Occurred</p>" + "<p>" + Encode.forHtml(e.toString()) + "</p>";
+          htmlOutput += "<p>Mongo Timeout Occurred</p>";
         } catch (MongoException e) {
           log.error(bundle.getString("result.mongoError") + e.toString());
-          htmlOutput +=
-              "<p>An error was detected!</p>" + "<p>" + Encode.forHtml(e.toString()) + "</p>";
+          htmlOutput += "<p>An error was detected!</p>";
         } catch (Exception e) {
           out.write("An Error Occurred! You must be getting funky!");
           log.fatal(levelName + " - " + e.toString());
@@ -162,12 +166,10 @@ public class NoSqlInjection1 extends HttpServlet {
         }
       } catch (MongoSocketException e) {
         log.error(bundle.getString("result.mongoError") + e.toString());
-        htmlOutput +=
-            "<p>An error was detected!</p>" + "<p>" + Encode.forHtml(e.toString()) + "</p>";
+        htmlOutput += "<p>An error was detected!</p>";
       } catch (MongoException e) {
         log.fatal("MongoDb Error caught - " + e.toString());
-        htmlOutput +=
-            "<p>An error was detected!</p>" + "<p>" + Encode.forHtml(e.toString()) + "</p>";
+        htmlOutput += "<p>An error was detected!</p>";
       } catch (Exception e) {
         log.fatal(levelName + " - " + e);
       }

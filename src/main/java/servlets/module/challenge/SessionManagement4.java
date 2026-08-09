@@ -2,8 +2,14 @@ package servlets.module.challenge;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
+import java.security.InvalidKeyException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
@@ -43,6 +49,25 @@ public class SessionManagement4 extends HttpServlet {
   public static String levelHash =
       "ec43ae137b8bf7abb9c85a87cf95c23f7fadcf08a092e05620c9968bd60fcba6";
   private static String levelResult = "238a43b12dde07f39d14599a780ae90f87a23e";
+
+  // Server-side secret used to sign privileged (admin) SubSessionID values. The small,
+  // sequential, guessable numeric identifiers used by this sub application must never be
+  // trusted on their own to grant admin rights - only a value bearing a valid signature
+  // produced with this secret may do so. Nothing in this application legitimately issues
+  // such a signature, so brute-forcing/guessing the numeric id can no longer succeed.
+  private static final byte[] sessionSigningKey = Hash.randomKeyBytes();
+  private static final String HMAC_ALGO = "HmacSHA256";
+
+  private static byte[] signPayload(String payload) {
+    try {
+      Mac mac = Mac.getInstance(HMAC_ALGO);
+      mac.init(new SecretKeySpec(sessionSigningKey, HMAC_ALGO));
+      return mac.doFinal(payload.getBytes("UTF-8"));
+    } catch (NoSuchAlgorithmException | InvalidKeyException | UnsupportedEncodingException e) {
+      log.error("Could not sign SubSessionID payload: " + e.toString());
+      return null;
+    }
+  }
 
   /**
    * Users must discover the session id for this sub application is very weak. The default session
@@ -88,17 +113,33 @@ public class SessionManagement4 extends HttpServlet {
         String htmlOutput = null;
         if (theCookie != null) {
           log.debug("Cookie value: " + theCookie.getValue());
+          // Optional signature suffix: "<double-base64-payload>.<base64-hmac-of-payload>"
+          String rawCookie = theCookie.getValue();
+          int separatorIndex = rawCookie.indexOf('.');
+          String payloadToken =
+              separatorIndex > 0 ? rawCookie.substring(0, separatorIndex) : rawCookie;
           // Decode Twice
-          byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
+          byte[] decodedCookieBytes = Base64.decodeBase64(payloadToken);
           String decodedCookie = new String(decodedCookieBytes, "UTF-8");
           decodedCookieBytes = Base64.decodeBase64(decodedCookie.getBytes());
           decodedCookie = new String(decodedCookieBytes, "UTF-8");
           log.debug("Decoded Cookie: " + decodedCookie);
+
+          boolean adminSignatureValid = false;
+          if (separatorIndex > 0) {
+            byte[] submittedSignature =
+                Base64.decodeBase64(rawCookie.substring(separatorIndex + 1));
+            byte[] expectedSignature = signPayload(decodedCookie);
+            adminSignatureValid =
+                expectedSignature != null
+                    && MessageDigest.isEqual(expectedSignature, submittedSignature);
+          }
+
           if (decodedCookie.equals("0000000000000001")) // Guest Session
           {
             log.debug("Guest Session Detected");
-          } else if (decodedCookie.equals("0000000000000009")) // Admin Session
-          {
+            // Admin Session - requires a valid signature, not just the right guessed id
+          } else if (adminSignatureValid && decodedCookie.equals("0000000000000009")) {
             log.debug("Admin Session Detected: Challenge Complete");
             // Get key and add it to the output
             String userKey =

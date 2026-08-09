@@ -113,7 +113,21 @@ public class SessionManagement3ChangePassword extends HttpServlet {
         log.debug("subName Decoded = " + subName);
         log.debug("subPass = " + subNewPass);
 
-        if (subNewPass.length() >= 6) {
+        // The "current" cookie is entirely client-controlled and nothing in this application
+        // ever legitimately issues it. It must never be trusted to select which account's
+        // password gets changed - that would let anyone reset an arbitrary user's password
+        // just by supplying that user's (base64'd) name in a cookie. Only allow a password
+        // change to proceed for the sub-schema account this session actually authenticated as
+        // via SessionManagement3's own password check.
+        Object authenticatedAccountObj = ses.getAttribute("sessionManagement3AuthenticatedAccount");
+        String authenticatedAccount =
+            authenticatedAccountObj == null ? "" : authenticatedAccountObj.toString();
+        boolean ownsAccount = !subName.isEmpty() && subName.equals(authenticatedAccount);
+
+        if (!ownsAccount) {
+          log.debug("Change password attempted for an account not owned by the caller");
+          htmlOutput = "<p>" + bundle.getString("reset.failed") + "</p>";
+        } else if (subNewPass.length() >= 6) {
           log.debug("Getting ApplicationRoot");
           String ApplicationRoot = getServletContext().getRealPath("");
 
@@ -123,8 +137,12 @@ public class SessionManagement3ChangePassword extends HttpServlet {
           log.debug("Changing password to: " + subNewPass);
           PreparedStatement callstmt;
 
-          callstmt =
-              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userName = ?");
+          // SessionManagement3's login check now compares the submitted password against the
+          // stored value directly (this sub-schema's rows hold plain text, not a SHA digest -
+          // see that servlet). Writing a SHA digest here while the check reads plain text would
+          // leave a user unable to log back in with the very password they just set, which is
+          // not a security fix, it is a self-inflicted lockout. Store what the check will read.
+          callstmt = conn.prepareStatement("UPDATE users SET userPassword = ? WHERE userName = ?");
           callstmt.setString(1, subNewPass);
           callstmt.setString(2, subName);
           log.debug("Executing changePassword");
