@@ -93,9 +93,16 @@ public class SolutionSubmit extends HttpServlet {
 
         // Validation
         notNull = (moduleId != null && solutionKey != null);
+        // A blank submission is never something a player derived by solving the level. Presence
+        // alone used to be enough to reach the comparison, so an empty submission was comparable
+        // against whatever the module happened to hold. Nothing blank is treated as an answer.
+        boolean submissionUsable = notNull && !solutionKey.trim().isEmpty();
         if (notNull) {
           storedResult = Getter.getModuleResult(ApplicationRoot, moduleId);
         }
+        // The same reasoning applies to the stored side of the comparison: a module carrying a
+        // blank answer cannot prove anyone solved it, so it is never comparable either.
+        boolean answerUsable = storedResult != null && !storedResult.trim().isEmpty();
         boolean moduleOpen = false;
         boolean isRunning = false;
         try {
@@ -106,10 +113,10 @@ public class SolutionSubmit extends HttpServlet {
           log.error(message);
           throw new RuntimeException(e);
         }
-        if (notNull && storedResult != null) {
+        if (submissionUsable && answerUsable) {
           moduleOpen = Getter.isModuleOpen(ApplicationRoot, moduleId) && isRunning;
         }
-        if (notNull && storedResult != null && moduleOpen) {
+        if (submissionUsable && answerUsable && moduleOpen) {
           boolean validKey = false;
           // Identify if solution is a user Specific key (Does it need to be decrypted?)
           if (Getter.getModuleKeyType(ApplicationRoot, moduleId)) {
@@ -198,10 +205,10 @@ public class SolutionSubmit extends HttpServlet {
         } else {
           // Validation Error Responses
           String errorMessage = "An Error Occurred: ";
-          if (!notNull) {
-            log.error("Null values detected");
+          if (!submissionUsable) {
+            log.error("Null or blank values detected");
             errorMessage += "Invalid Request. Please try again";
-          } else if (storedResult == null) {
+          } else if (!answerUsable) {
             log.error("Module not found");
             errorMessage += "Module Not Found. Please try again";
           } else {
