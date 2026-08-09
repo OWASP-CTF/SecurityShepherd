@@ -4,6 +4,8 @@ import dbProcs.Getter;
 import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -98,7 +100,14 @@ public class CsrfChallengeTargetSeven extends HttpServlet {
         log.debug("storedCsrf Token is - '" + storedToken + "'");
 
         if (!userId.equals(plusId)) {
-          if (csrfToken.equalsIgnoreCase(storedToken)) {
+          // Compare in constant time, and require an exact match rather than treating the token
+          // as case-insensitive - the previous check accepted any casing variant of the nonce,
+          // which meaningfully shrinks the space a guess has to land in.
+          boolean validNonce =
+              MessageDigest.isEqual(
+                  storedToken.getBytes(StandardCharsets.UTF_8),
+                  csrfToken.getBytes(StandardCharsets.UTF_8));
+          if (validNonce) {
             log.debug("Valid Nonce Value Submitted");
             String userName = (String) ses.getAttribute("userName");
             String attackerName = Getter.getUserName(ApplicationRoot, plusId);
@@ -108,6 +117,12 @@ public class CsrfChallengeTargetSeven extends HttpServlet {
               log.debug("Attempting to Increment ");
               String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
               result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
+              // Burn the nonce on use. A nonce that still validates after it has already
+              // granted one increment can be replayed indefinitely by anyone who observed it
+              // once, which defeats the point of it being single-use.
+              String replacementToken = Hash.randomString();
+              ses.setAttribute(csrfTokenName, replacementToken);
+              Setter.setCsrfChallengeSevenCsrfToken(userId, replacementToken, ApplicationRoot);
             } else {
               log.error("UserId '" + plusId + "' could not be found.");
             }
