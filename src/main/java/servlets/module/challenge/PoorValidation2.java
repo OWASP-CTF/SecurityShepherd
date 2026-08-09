@@ -79,16 +79,18 @@ public class PoorValidation2 extends HttpServlet {
         int bananaAmount = validateAmount(Integer.parseInt(request.getParameter("bananaAmount")));
         log.debug("bananaAmount - " + bananaAmount);
 
-        // Working out costs
-        int pineappleCost = pineappleAmount * 30;
-        int orangeCost = orangeAmount * 3000;
-        int appleCost = appleAmount * 45;
-        int bananaCost = bananaAmount * 15;
+        // Working out costs. Amounts are widened to long before multiplying so that even
+        // if validateAmount()'s clamp were ever loosened, the arithmetic itself cannot wrap
+        // an int around to a negative total.
+        long pineappleCost = (long) pineappleAmount * 30;
+        long orangeCost = (long) orangeAmount * 3000;
+        long appleCost = (long) appleAmount * 45;
+        long bananaCost = (long) bananaAmount * 15;
 
         htmlOutput = new String();
 
         // Work Out Final Cost
-        int finalCost = pineappleCost + orangeCost + bananaCost + appleCost;
+        long finalCost = pineappleCost + orangeCost + bananaCost + appleCost;
 
         // Output Order
         htmlOutput =
@@ -126,9 +128,19 @@ public class PoorValidation2 extends HttpServlet {
     }
   }
 
+  /**
+   * Amounts submitted by the client are clamped to a sane, bounded range so that neither a
+   * negative quantity nor an absurdly large one (previously able to overflow the int-based cost
+   * arithmetic into a negative total and trigger the free-oranges response) can reach the cost
+   * calculation below.
+   */
+  private static final int MAX_ITEM_AMOUNT = 1000;
+
   private static int validateAmount(int amount) {
     if (amount < 0) {
       amount = 0;
+    } else if (amount > MAX_ITEM_AMOUNT) {
+      amount = MAX_ITEM_AMOUNT;
     }
     return amount;
   }
