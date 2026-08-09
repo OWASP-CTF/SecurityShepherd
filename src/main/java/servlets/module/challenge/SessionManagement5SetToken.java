@@ -22,10 +22,10 @@ import utils.Validate;
 /**
  * Session Management Challenge Five SessionManagement5SetToken (Does not Return Result Key)
  *
- * <p>This function is a shell to give the appearance that a token has been set for a user. A DB
- * call is made to check if a user exists. If the user does exist the server returns an ok message
- * claiming that the user has been emailed a URL with a token embedded for resetting their password.
- * This in fact does not happen. User must find another way to sign in as an admin.
+ * <p>A DB call is made to check if a user exists. If the user does exist, a real random token is
+ * generated and stored server-side (see SessionManagement5TokenStore), and the server returns an ok
+ * message claiming that the user has been emailed a URL with a token embedded for resetting their
+ * password. The token itself is never included in the response.
  *
  * <p><br>
  * <br>
@@ -110,6 +110,9 @@ public class SessionManagement5SetToken extends HttpServlet {
         // Is the username valid?
         if (resultSet.next()) {
           log.debug("User found");
+          // Actually issue and store a real, unpredictable token server-side - the response
+          // never includes it, matching a real "check your email" reset flow.
+          SessionManagement5TokenStore.issueToken(userName);
           htmlOutput =
               bundle.getString("setToken.sentTo.1")
                   + " '"

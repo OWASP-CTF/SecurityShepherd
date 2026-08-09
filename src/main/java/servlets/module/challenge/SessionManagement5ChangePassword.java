@@ -3,12 +3,8 @@ package servlets.module.challenge;
 import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -16,7 +12,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import utils.ShepherdLogManager;
@@ -51,12 +46,13 @@ public class SessionManagement5ChangePassword extends HttpServlet {
 
   /**
    * Function used by Session Management Challenge Five to change the password of the submitted user
-   * name. The function requires a valid token which is a base64'd timestamp. If the current time is
-   * within 10 minutes of the token, the function will execute
+   * name. The function requires a valid token, actually issued and stored server-side by
+   * SessionManagement5SetToken (see SessionManagement5TokenStore), not just any self-supplied value
+   * the caller can mint themselves.
    *
    * @param userName User cookie used to store the user password to be reset
    * @param newPassword the password which to use to update an accounts password
-   * @param resetPasswordToken Base64'd time stamp
+   * @param resetPasswordToken The token actually issued to this user by SessionManagement5SetToken
    */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -80,8 +76,6 @@ public class SessionManagement5ChangePassword extends HttpServlet {
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
       String htmlOutput = new String();
-      String errorMessage = new String();
-      int tokenLife = 11;
       try {
         log.debug("Getting Challenge Parameters");
         Object passNewObj = request.getParameter("newPassword");
@@ -102,80 +96,43 @@ public class SessionManagement5ChangePassword extends HttpServlet {
         log.debug("userName = " + userName);
         log.debug("newPass = " + newPass);
         log.debug("token = " + token);
-        String tokenTime = new String();
-        try {
-          byte[] decodedToken = Base64.decodeBase64(token);
-          tokenTime = new String(decodedToken, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-          log.debug("Could not decode password token");
-          errorMessage += "<p>" + bundle.getString("changePass.noDecode") + "</p>";
-        }
-        if (tokenTime.isEmpty()) {
-          log.debug("Could not decode token. Ending Servlet.");
-          out.write(errorMessage);
-        } else {
-          log.debug("Decoded Token = " + tokenTime);
 
-          // Get Time from Token and see if it is inside the last 10 minutes
-          SimpleDateFormat simpleDateFormat = new SimpleDateFormat("EEE MMM d HH:mm:ss Z yyyy");
-          try {
-            Date tokenDateTime = simpleDateFormat.parse(tokenTime);
-            Date currentDateTime = new Date();
-            // Get difference in minutes
-            tokenLife =
-                (int) ((currentDateTime.getTime() / 60000) - (tokenDateTime.getTime() / 60000));
-            log.debug("Token life = " + tokenLife);
-          } catch (ParseException e) {
-            log.error("Date Parsing Error: " + e.toString());
-            errorMessage += bundle.getString("changePass.badTokenData") + ": " + e.toString();
-          }
+        // The token must be one actually issued to this user by SessionManagement5SetToken and
+        // still within its lifetime - a self-supplied base64'd timestamp is no longer accepted.
+        if (SessionManagement5TokenStore.validateAndConsumeToken(userName, token)) {
+          if (newPass.length() >= 12) {
+            log.debug("Getting ApplicationRoot");
+            String ApplicationRoot = getServletContext().getRealPath("");
+            log.debug("Servlet root = " + ApplicationRoot);
 
-          if (tokenLife < 10 && tokenLife >= 0) {
-            if (newPass.length() >= 12) {
-              log.debug("Getting ApplicationRoot");
-              String ApplicationRoot = getServletContext().getRealPath("");
-              log.debug("Servlet root = " + ApplicationRoot);
+            Connection conn =
+                Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalFive");
+            log.debug("Changing password for user: " + userName);
+            log.debug("Changing password to: " + newPass);
+            PreparedStatement callstmt;
 
-              Connection conn =
-                  Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalFive");
-              log.debug("Changing password for user: " + userName);
-              log.debug("Changing password to: " + newPass);
-              PreparedStatement callstmt;
+            callstmt =
+                conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userName = ?");
 
-              callstmt =
-                  conn.prepareStatement(
-                      "UPDATE users SET userPassword = SHA(?) WHERE userName = ?");
+            callstmt.setString(1, newPass);
+            callstmt.setString(2, userName);
 
-              callstmt.setString(1, newPass);
-              callstmt.setString(2, userName);
+            log.debug("Executing changePassword");
+            callstmt.execute();
 
-              log.debug("Executing changePassword");
-              callstmt.execute();
+            log.debug("Committing changes made to database");
+            callstmt = conn.prepareStatement("COMMIT");
+            callstmt.execute();
+            log.debug("Changes committed.");
 
-              log.debug("Committing changes made to database");
-              callstmt = conn.prepareStatement("COMMIT");
-              callstmt.execute();
-              log.debug("Changes committed.");
-
-              htmlOutput = "<p>" + bundle.getString("changePass.success") + "</p>";
-            } else {
-              log.debug("Invalid password submitted: " + newPass);
-              htmlOutput = "<p>" + bundle.getString("changePass.failure") + "</p>";
-            }
+            htmlOutput = "<p>" + bundle.getString("changePass.success") + "</p>";
           } else {
-            if (!errorMessage.isEmpty()) {
-              htmlOutput = "<p><font colour='red'><b>" + errorMessage + "</b></font</p>";
-            } else if (tokenLife >= 10) {
-              log.debug("Token too old");
-              htmlOutput = "<p>" + bundle.getString("changePass.oldToken") + "</p>";
-            } else if (tokenLife < 0) {
-              log.debug("Token to young");
-              htmlOutput = "<p>" + bundle.getString("changePass.youngToken") + "</p>";
-            } else {
-              log.error("Token to Strange: Unexpected Error");
-              htmlOutput = "<p>" + bundle.getString("changePass.funkyToken") + "</p>";
-            }
+            log.debug("Invalid password submitted: " + newPass);
+            htmlOutput = "<p>" + bundle.getString("changePass.failure") + "</p>";
           }
+        } else {
+          log.debug("Token invalid, expired, or already used for user: " + userName);
+          htmlOutput = "<p>" + bundle.getString("changePass.oldToken") + "</p>";
         }
         log.debug("Outputting HTML");
         out.write(htmlOutput);
