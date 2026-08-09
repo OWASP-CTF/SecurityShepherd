@@ -132,7 +132,9 @@ public class FeedbackSubmit extends HttpServlet {
               storedResult =
                   Hash.generateUserSolutionKeyOnly(
                       Getter.getModuleResult(ApplicationRoot, moduleId), userName);
-              validKey = storedResult.compareTo(solutionKey) == 0;
+              // The generator hands back null when the HMAC cannot be produced. Nothing was
+              // derived in that case, so there is no answer to compare against.
+              validKey = storedResult != null && storedResult.compareTo(solutionKey) == 0;
               log.debug("Submitted Key: " + solutionKey);
               log.debug("Expected Key : " + storedResult);
             }

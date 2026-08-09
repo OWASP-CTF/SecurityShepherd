@@ -54,6 +54,10 @@ public class BrokenCryptoHomeMade extends HttpServlet {
   private static final String levelHash =
       new String("9e5ed059b23632c8801d95621fa52071b2eb211d8c044dde6d2f4b89874a7bc4");
   private static final long serialVersionUID = 1L;
+  // Returned to the browser when a user specific key cannot be generated. It is a fixed public
+  // notice, never a solution, so nothing may ever be compared as equal to it.
+  private static final String KEY_GENERATION_FAILED =
+      "Key Should be here! Please refresh the home page and try again!";
   public static String userNameKey = randomKeyLengthString();
   private static String serverEncryptionKey = randomKeyLengthString();
   private static String encryptionKeySalt = randomKeyLengthString();
@@ -129,7 +133,14 @@ public class BrokenCryptoHomeMade extends HttpServlet {
                 BrokenCryptoHomeMade.generateUserSolutionKeyOnly(
                     BrokenCryptoHomeMade.challenges.get(4).get(1),
                     ses.getAttribute("userName").toString());
-            if (submittedSolution.equals(expectedSolution)) {
+            // A failed generation hands back a fixed public notice instead of a cipher text.
+            // Comparing a submission against that notice handed the level to anybody who typed
+            // it out, so an unusable expected solution can never match a submission.
+            boolean expectedSolutionUsable =
+                expectedSolution != null
+                    && !expectedSolution.trim().isEmpty()
+                    && !expectedSolution.equals(KEY_GENERATION_FAILED);
+            if (expectedSolutionUsable && submittedSolution.equals(expectedSolution)) {
               log.debug("Correct Solution Submitted for 'This Challenge'. Returning Key");
               htmlOutput =
                   "<h2 class='title'>"
@@ -379,7 +390,7 @@ public class BrokenCryptoHomeMade extends HttpServlet {
    */
   public static String generateUserSolution(String baseKey, String userSalt) {
     log.debug("Generating key for " + userSalt);
-    String toReturn = "Key Should be here! Please refresh the home page and try again!";
+    String toReturn = KEY_GENERATION_FAILED;
 
     try {
       String key = createUserSpecificEncryptionKey(Validate.validateEncryptionKey(userSalt));
@@ -403,7 +414,7 @@ public class BrokenCryptoHomeMade extends HttpServlet {
       log.debug("Returning: " + forLog);
     } catch (Exception e) {
       log.error("Encrypt Failure: " + e.toString());
-      toReturn = "Key Should be here! Please refresh the home page and try again!";
+      toReturn = KEY_GENERATION_FAILED;
       ;
     }
     return toReturn;
@@ -411,7 +422,7 @@ public class BrokenCryptoHomeMade extends HttpServlet {
 
   public static String generateUserSolutionKeyOnly(String baseKey, String userSalt) {
     log.debug("Generating key for " + userSalt);
-    String forLog = "Key Should be here! Please refresh the home page and try again!";
+    String forLog = KEY_GENERATION_FAILED;
 
     try {
       String key = createUserSpecificEncryptionKey(Validate.validateEncryptionKey(userSalt));
