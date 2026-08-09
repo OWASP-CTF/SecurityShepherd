@@ -44,6 +44,9 @@ public class PoorValidation1 extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(PoorValidation1.class);
 
+  /** Largest quantity of any single item that will be accepted on one order. */
+  private static final int MAX_ITEM_AMOUNT = 9000;
+
   /** Shopping cart addition algorithm does not check for negative numbers on amounts */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -66,25 +69,28 @@ public class PoorValidation1 extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
       try {
-        int pineappleAmount = Integer.parseInt(request.getParameter("pineappleAmount"));
+        int pineappleAmount = validateAmount(request.getParameter("pineappleAmount"));
         log.debug("pineappleAmount - " + pineappleAmount);
-        int orangeAmount = Integer.parseInt(request.getParameter("orangeAmount"));
+        int orangeAmount = validateAmount(request.getParameter("orangeAmount"));
         log.debug("orangeAmount - " + orangeAmount);
-        int appleAmount = Integer.parseInt(request.getParameter("appleAmount"));
+        int appleAmount = validateAmount(request.getParameter("appleAmount"));
         log.debug("appleAmount - " + appleAmount);
-        int bananaAmount = Integer.parseInt(request.getParameter("bananaAmount"));
+        int bananaAmount = validateAmount(request.getParameter("bananaAmount"));
         log.debug("bananaAmount - " + bananaAmount);
 
-        // Working out costs
-        int pineappleCost = pineappleAmount * 30;
-        int orangeCost = orangeAmount * 3000;
-        int appleCost = appleAmount * 45;
-        int bananaCost = bananaAmount * 15;
+        // Working out costs. Amounts are validated to [0, MAX_ITEM_AMOUNT] and the arithmetic is
+        // exact, so a line item can never be negative and the total can never wrap around.
+        int pineappleCost = Math.multiplyExact(pineappleAmount, 30);
+        int orangeCost = Math.multiplyExact(orangeAmount, 3000);
+        int appleCost = Math.multiplyExact(appleAmount, 45);
+        int bananaCost = Math.multiplyExact(bananaAmount, 15);
 
         htmlOutput = new String();
 
         // Work Out Final Cost
-        int finalCost = pineappleCost + appleCost + bananaCost + orangeCost;
+        int finalCost = Math.addExact(pineappleCost, appleCost);
+        finalCost = Math.addExact(finalCost, bananaCost);
+        finalCost = Math.addExact(finalCost, orangeCost);
 
         // Output Order
         htmlOutput =
@@ -121,5 +127,25 @@ public class PoorValidation1 extends HttpServlet {
     } else {
       log.error(levelName + " servlet accessed with no session");
     }
+  }
+
+  /**
+   * Validates a submitted item quantity. Quantities must be whole numbers between 0 and {@link
+   * #MAX_ITEM_AMOUNT} inclusive. Anything else is rejected outright rather than being priced.
+   *
+   * @param amount the raw request parameter
+   * @return the validated quantity
+   * @throws IllegalArgumentException if the parameter is missing or outside the allowed range
+   * @throws NumberFormatException if the parameter is not an integer
+   */
+  private static int validateAmount(String amount) {
+    if (amount == null) {
+      throw new IllegalArgumentException("Item amount was not submitted");
+    }
+    int parsedAmount = Integer.parseInt(amount.trim());
+    if (parsedAmount < 0 || parsedAmount > MAX_ITEM_AMOUNT) {
+      throw new IllegalArgumentException("Item amount out of range: " + parsedAmount);
+    }
+    return parsedAmount;
   }
 }

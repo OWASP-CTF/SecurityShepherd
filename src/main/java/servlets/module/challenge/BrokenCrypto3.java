@@ -41,8 +41,17 @@ public class BrokenCrypto3 extends HttpServlet {
   private static String levelName = "Broken Crypto Challenge 3";
   public static String levelHash =
       "2da053b4afb1530a500120a49a14d422ea56705a7e3fc405a77bc269948ccae1";
-  public static String levelResult =
-      "thisisthesecurityshepherdabcencryptionkey"; // Is used as encryption key in this level
+
+  /**
+   * Key used by the demonstration cipher below. A repeating key XOR is reversible by definition:
+   * anybody who can choose the cipher text recovers the key with cipherText XOR plainText. A cipher
+   * like that must therefore never be keyed with a secret, and above all never with this module's
+   * result key. This value is published on purpose and protects nothing.
+   */
+  private static final String DEMONSTRATION_KEY = "NotASecretDemoKeyForBrokenCrypto3Level";
+
+  /** Hard limit on how much cipher text the demonstration cipher will process per request. */
+  private static final int MAX_CIPHERTEXT_LENGTH = 4096;
 
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -69,11 +78,18 @@ public class BrokenCrypto3 extends HttpServlet {
               "i18n.servlets.challenges.insecureCryptoStorage.insecureCryptoStorage", locale);
       try {
         String userData = request.getParameter("userData");
+        if (userData == null) {
+          userData = new String();
+        }
+        if (userData.length() > MAX_CIPHERTEXT_LENGTH) {
+          userData = userData.substring(0, MAX_CIPHERTEXT_LENGTH);
+        }
         log.debug("User Submitted - " + userData);
 
         log.debug("Decrypting user input");
-        // Using level key as encryption key
-        String decryptedUserData = decrypt(userData, levelResult);
+        // Keyed with the published demonstration key. No application secret is involved, so this
+        // decryption cannot disclose one no matter what cipher text the client chooses.
+        String decryptedUserData = decrypt(userData, DEMONSTRATION_KEY);
         log.debug("Decrypted to: " + decryptedUserData);
 
         htmlOutput =

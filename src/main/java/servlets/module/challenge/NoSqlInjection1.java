@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.regex.Pattern;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -55,6 +56,9 @@ public class NoSqlInjection1 extends HttpServlet {
   private static String levelName = "NoSQL Injection Challenge One";
   public static String levelHash =
       "d63c2fb5da9b81ca26237f1308afe54491d1bacf9fffa0b21a072b03c5bafe66";
+
+  /** Gamer identifiers are 64 character hexadecimal strings. */
+  private static final Pattern GAMER_ID_PATTERN = Pattern.compile("^[a-fA-F0-9]{64}$");
 
   // private static String levelResult = ""; // Stored in Vulnerable DB. Not User
   // Specific
@@ -113,8 +117,21 @@ public class NoSqlInjection1 extends HttpServlet {
         String gamerId = request.getParameter("theGamerName");
         log.debug("User Submitted: " + gamerId);
 
-        DBObject whereQuery = new BasicDBObject("$where", "this._id == '" + gamerId + "'");
-        cursor = dbCollection.find(whereQuery);
+        if (gamerId == null) {
+          gamerId = new String();
+        }
+
+        // Defence in depth: gamer identifiers are 64 character hexadecimal strings. Anything else
+        // is looked up as an empty identifier, which simply finds nothing.
+        if (!GAMER_ID_PATTERN.matcher(gamerId).matches()) {
+          log.debug("Rejecting malformed gamer id");
+          gamerId = new String();
+        }
+
+        // The submitted value is bound as a BSON equality operand instead of being concatenated
+        // into a $where JavaScript clause, so it can never be interpreted as query logic.
+        DBObject gamerQuery = new BasicDBObject("_id", gamerId);
+        cursor = dbCollection.find(gamerQuery);
 
         try {
           int i = 0;
@@ -157,8 +174,9 @@ public class NoSqlInjection1 extends HttpServlet {
           out.write("An Error Occurred! You must be getting funky!");
           log.fatal(levelName + " - " + e.toString());
         } finally {
+          // The MongoClient is a pooled singleton owned by dbProcs.MongoDatabase, so only the
+          // cursor is released here. Closing the shared client would break every later request.
           cursor.close();
-          mongoClient.close();
         }
       } catch (MongoSocketException e) {
         log.error(bundle.getString("result.mongoError") + e.toString());

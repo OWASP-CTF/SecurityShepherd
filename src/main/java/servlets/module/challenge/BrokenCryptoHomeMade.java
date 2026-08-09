@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.crypto.Cipher;
+import javax.crypto.Mac;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import javax.servlet.ServletException;
@@ -54,7 +55,14 @@ public class BrokenCryptoHomeMade extends HttpServlet {
       new String("9e5ed059b23632c8801d95621fa52071b2eb211d8c044dde6d2f4b89874a7bc4");
   private static final long serialVersionUID = 1L;
   public static String userNameKey = randomKeyLengthString();
-  private static String serverEncryptionKey = randomKeyLengthString();
+
+  /**
+   * Server side key material. Kept as raw bytes straight from a SecureRandom rather than as a
+   * US-ASCII String, because that conversion folded every byte over 127 onto the same character and
+   * threw away most of the key.
+   */
+  private static final byte[] serverEncryptionKey = Hash.randomKeyBytes();
+
   private static String encryptionKeySalt = randomKeyLengthString();
   private static final Logger log = LogManager.getLogger(BrokenCryptoHomeMade.class);
   public static List<List<String>> challenges = new ArrayList<List<String>>();
@@ -211,10 +219,10 @@ public class BrokenCryptoHomeMade extends HttpServlet {
                 "i18n.servlets.challenges.insecureCryptoStorage.insecureCryptoStorage", locale);
         out.print(getServletInfo());
         try {
-          String name = new String();
-          if (request.getParameter("name") != null) {
-            name = request.getParameter("name").toString();
-          }
+          // Key material is only ever generated for the identity that owns this session. Honouring
+          // a caller supplied name turned this listing into a chosen input oracle that could be
+          // used to pull the server side key apart.
+          String name = ses.getAttribute("userName").toString();
           if (name.length() < 4) {
             htmlOutput = bundle.getString("insecureCryptoStorage.homemade.nameTooShort");
           } else {
@@ -252,6 +260,13 @@ public class BrokenCryptoHomeMade extends HttpServlet {
    * Merges current server encryption key with user name based encryption key to create user
    * specific key
    *
+   * <p>The two keys used to be added together byte by byte and the sum squeezed back through a
+   * US-ASCII String, which folded every byte over 127 onto the same character. That collapse was
+   * observable one byte at a time by anyone who could ask for key material under a name of their
+   * choosing, so it leaked the server key. The keys are now mixed with an HMAC and the result is
+   * mapped onto printable US-ASCII, which makes the byte to String round trip below lossless and
+   * removes any per byte relationship between the name and the derived key.
+   *
    * @param userNameKey
    * @return
    */
@@ -259,10 +274,12 @@ public class BrokenCryptoHomeMade extends HttpServlet {
     if (userNameKey.length() != 16) {
       throw new Exception("User Name key must be 16 bytes long");
     } else {
-      byte[] serverKey = serverEncryptionKey.getBytes();
-      byte[] userKey = userNameKey.getBytes();
+      Mac keyDerivation = Mac.getInstance("HmacSHA256");
+      keyDerivation.init(new SecretKeySpec(serverEncryptionKey, "HmacSHA256"));
+      byte[] derived = keyDerivation.doFinal(userNameKey.getBytes(Charset.forName("UTF-8")));
+      byte[] userKey = new byte[16];
       for (int i = 0; i < userKey.length; i++) {
-        userKey[i] = (byte) (userKey[i] + serverKey[i]);
+        userKey[i] = (byte) ((derived[i] & 0x3F) + 0x21);
       }
       return new String(userKey, Charset.forName("US-ASCII"));
     }
