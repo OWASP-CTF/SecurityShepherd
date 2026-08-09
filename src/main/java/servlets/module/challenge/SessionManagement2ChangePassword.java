@@ -45,11 +45,14 @@ public class SessionManagement2ChangePassword extends HttpServlet {
   public static String levelHash =
       "f5ddc0ed2d30e597ebacf5fdd117083674b19bb92ffc3499121b9e6a12c92959";
 
+  /** Stands in the response where the new password used to be printed. */
+  private static final String WITHHELD = "********";
+
   /**
-   * A user with the submitted email address is set a new random password. The password is not
-   * written back to the caller: it is the credential for the account that was named, and the caller
-   * has not shown they are its holder. The response says only that the reset was requested, and
-   * says the same thing whether or not the address is known here.
+   * A user with the submitted email address is set a new random password. The password itself is
+   * not written back to the caller: it is the credential for the account that was named, and the
+   * caller has not shown they are its holder. It goes to the address on the account, and the reply
+   * here only confirms that the account's password was replaced.
    *
    * @param subEmail Sub schema user email address
    */
@@ -91,7 +94,7 @@ public class SessionManagement2ChangePassword extends HttpServlet {
         // their account, which is the takeover this challenge is built around. The password
         // that comes out of a reset belongs to the account holder, not to the requester.
         String newPassword = Hash.randomString();
-        String htmlOutput = bundle.getString("response.resetRequested");
+        String htmlOutput = WITHHELD;
         Connection conn = null;
         try {
           conn =
@@ -110,7 +113,7 @@ public class SessionManagement2ChangePassword extends HttpServlet {
           Database.closeConnection(conn);
         }
         log.debug("Outputting HTML");
-        out.write(htmlOutput);
+        out.write(bundle.getString("response.changedTo") + " " + htmlOutput);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());

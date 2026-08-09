@@ -141,8 +141,25 @@ public class SessionManagement2 extends HttpServlet {
                   + userKey
                   + "</a></p>";
         } else {
-          log.debug("Incorrect credentials");
-          userAddress = bundle.getString("response.badUser") + "<br/>";
+          log.debug("Incorrect credentials, checking if user name correct");
+          callstmt = conn.prepareStatement("SELECT userAddress FROM users WHERE userName = ?");
+          callstmt.setString(1, subName);
+          log.debug("Executing getAddress");
+          resultSet = callstmt.executeQuery();
+          if (resultSet.next()) {
+            log.debug("User Found");
+            // The form still tells the caller which address the reset would go to, because that
+            // is what a person who owns the account needs to see. It no longer spells the
+            // address out: enough of it is covered that somebody who already knows it can
+            // recognise it, and somebody who does not cannot copy it down.
+            userAddress =
+                bundle.getString("response.badPass")
+                    + " <a>"
+                    + Encode.forHtml(maskAddress(resultSet.getString(1)))
+                    + "</a><br/>";
+          } else {
+            userAddress = bundle.getString("response.badUser") + "<br/>";
+          }
           htmlOutput = makeTable(userAddress, bundle);
         }
         log.debug("Outputting HTML");
@@ -156,6 +173,31 @@ public class SessionManagement2 extends HttpServlet {
     } else {
       log.error(levelName + " servlet accessed with no session");
     }
+  }
+
+  /**
+   * Covers the local part of an email address, leaving its first character and its domain. What
+   * comes back is still recognisably the address on the account, but it is not enough to write the
+   * address down and use it somewhere else.
+   *
+   * @param address The address held for the account
+   * @return The address with its local part covered
+   */
+  private static String maskAddress(String address) {
+    if (address == null) {
+      return "";
+    }
+    int at = address.indexOf('@');
+    if (at < 1) {
+      return "*****";
+    }
+    StringBuilder masked = new StringBuilder();
+    masked.append(address.charAt(0));
+    for (int i = 1; i < at; i++) {
+      masked.append('*');
+    }
+    masked.append(address.substring(at));
+    return masked.toString();
   }
 
   private static String makeTable(String userAddress, ResourceBundle bundle) {
