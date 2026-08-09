@@ -390,7 +390,8 @@ public class Setup extends HttpServlet {
       return false;
     }
     return MessageDigest.isEqual(
-        expectedAuth.getBytes(StandardCharsets.UTF_8), suppliedAuth.getBytes(StandardCharsets.UTF_8));
+        expectedAuth.getBytes(StandardCharsets.UTF_8),
+        suppliedAuth.getBytes(StandardCharsets.UTF_8));
   }
 
   public static boolean isInstalled() {
