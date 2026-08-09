@@ -9,6 +9,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import utils.ScoreboardStatus;
+import utils.Validate;
 
 @WebServlet("/api/scoreboard")
 public class Scoreboard extends HttpServlet {
@@ -21,7 +22,11 @@ public class Scoreboard extends HttpServlet {
     PrintWriter out = response.getWriter();
     out.print(getServletInfo());
     HttpSession ses = request.getSession(true);
-    if (ScoreboardStatus.canSeeScoreboard((String) ses.getAttribute("userRole"))) {
+    boolean canSeeScoreboard =
+        ScoreboardStatus.isPublicScoreboard()
+            || (Validate.validateSession(ses)
+                && ScoreboardStatus.canSeeScoreboard((String) ses.getAttribute("userRole")));
+    if (canSeeScoreboard) {
       out.write("true");
     } else {
       // Return 403
