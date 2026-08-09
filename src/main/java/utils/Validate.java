@@ -430,9 +430,6 @@ public class Validate {
             result = (role.compareTo("player") == 0 || role.compareTo("admin") == 0);
             if (!result) {
               log.fatal("User Role Parameter Tampered. Role = " + role);
-            } else if (ses.getAttribute("userName") == null) {
-              log.error("Session holds a role but no user name");
-              result = false;
             } else {
               String userName = ses.getAttribute("userName").toString();
               // Has the user been suspended? Should they be kicked?
