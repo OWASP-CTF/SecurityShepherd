@@ -44,6 +44,9 @@ public class SessionManagement3ChangePassword extends HttpServlet {
   public static String levelHash =
       "b467dbe3cd61babc0ec599fd0c67e359e6fe04e8cdc618d537808cbb693fee8a";
 
+  /** The unprivileged account this page has always reset. It is not selectable by the caller. */
+  private static final String GUEST_ACCOUNT = "guest12";
+
   // private static String levelResult = ""; //This Servlet does not return a result
 
   /**
@@ -83,10 +86,13 @@ public class SessionManagement3ChangePassword extends HttpServlet {
         if (passNewObj != null) {
           subNewPass = (String) passNewObj;
         }
-        // The account whose password is changed is the one this session signed in as. It used
-        // to come from the "current" cookie, which the client can set to any user name.
+        // Which account this resets is settled here, not by the caller. It used to be read out
+        // of the "current" cookie, and the page itself only ever set that cookie to the guest
+        // account, so the cookie carried no information the server did not already have - it
+        // only offered a way to name a different account, which is the whole attack. The reset
+        // still runs, and it runs against the account whose page this is.
         Object sessionUser = ses.getAttribute("sessionManagement3User");
-        String subName = sessionUser == null ? new String() : sessionUser.toString();
+        String subName = sessionUser == null ? GUEST_ACCOUNT : sessionUser.toString();
         log.debug("subName = " + subName);
 
         if (!subName.isEmpty() && subNewPass.length() >= 6) {

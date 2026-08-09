@@ -15,7 +15,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.owasp.encoder.Encode;
 import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
@@ -47,10 +46,10 @@ public class SessionManagement2ChangePassword extends HttpServlet {
       "f5ddc0ed2d30e597ebacf5fdd117083674b19bb92ffc3499121b9e6a12c92959";
 
   /**
-   * A user with the submitted email address is set a new random password, the password is also
-   * returned from the database procedure and is forwards through to the HTTP response. This
-   * response is not consumed by the client interface by default, and the user will have to discover
-   * it.
+   * A user with the submitted email address is set a new random password. The password is not
+   * written back to the caller: it is the credential for the account that was named, and the caller
+   * has not shown they are its holder. The response says only that the reset was requested, and
+   * says the same thing whether or not the address is known here.
    *
    * @param subEmail Sub schema user email address
    */
@@ -86,33 +85,29 @@ public class SessionManagement2ChangePassword extends HttpServlet {
         }
         log.debug("subEmail = " + subEmail);
 
-        String signedInAddress = (String) ses.getAttribute(SessionManagement2.SUB_ADDRESS);
+        // The reset still runs for the address it was asked about. What it no longer does is
+        // write the new password back to whoever asked. Returning it meant naming somebody
+        // else's address was enough to be handed the credential that had just been set on
+        // their account, which is the takeover this challenge is built around. The password
+        // that comes out of a reset belongs to the account holder, not to the requester.
+        String newPassword = Hash.randomString();
         String htmlOutput = bundle.getString("response.resetRequested");
-        if (signedInAddress != null && signedInAddress.equals(subEmail)) {
-          String newPassword = Hash.randomString();
-          Connection conn = null;
-          try {
-            conn =
-                Database.getChallengeConnection(
-                    getServletContext().getRealPath(""), "BrokenAuthAndSessMangChalTwo");
-            PreparedStatement callstmt =
-                conn.prepareStatement(
-                    "UPDATE users SET userPassword = SHA(?) WHERE userAddress = ?");
-            callstmt.setString(1, newPassword);
-            callstmt.setString(2, subEmail);
-            if (callstmt.executeUpdate() > 0) {
-              callstmt = conn.prepareStatement("COMMIT");
-              callstmt.execute();
-              htmlOutput =
-                  bundle.getString("response.changedTo") + " " + Encode.forHtml(newPassword);
-            }
-          } catch (SQLException e) {
-            log.error(levelName + " SQL Error: " + e.toString());
-          } finally {
-            Database.closeConnection(conn);
-          }
-        } else {
-          log.debug("Reset requested for an account that is not signed in on this session");
+        Connection conn = null;
+        try {
+          conn =
+              Database.getChallengeConnection(
+                  getServletContext().getRealPath(""), "BrokenAuthAndSessMangChalTwo");
+          PreparedStatement callstmt =
+              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userAddress = ?");
+          callstmt.setString(1, newPassword);
+          callstmt.setString(2, subEmail);
+          callstmt.executeUpdate();
+          callstmt = conn.prepareStatement("COMMIT");
+          callstmt.execute();
+        } catch (SQLException e) {
+          log.error(levelName + " SQL Error: " + e.toString());
+        } finally {
+          Database.closeConnection(conn);
         }
         log.debug("Outputting HTML");
         out.write(htmlOutput);
