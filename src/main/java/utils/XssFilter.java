@@ -1,9 +1,7 @@
 package utils;
 
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
@@ -71,28 +69,7 @@ public class XssFilter {
    * @return A poorly validated URL (XSS RISK)
    */
   public static String anotherBadUrlValidate(String input) {
-    String howToMakeAUrlUrl =
-        new String("https://www.google.com/search?q=What+does+a+HTTP+link+look+like");
-    input = input.toLowerCase();
-    if (input.startsWith("http")) {
-      try {
-        URL theUrl =
-            new URL(
-                input
-                    .replaceAll("#", "&#x23;")
-                    .replaceFirst("<", "&#x3c;")
-                    .replaceFirst(">", "&#x3e;")
-                    .replaceFirst("\"", "&quot;"));
-        input = theUrl.toString();
-      } catch (MalformedURLException e) {
-        log.debug("Could not Cast URL from input: " + e.toString());
-        input = howToMakeAUrlUrl;
-      }
-    } else {
-      log.debug("Was not a HTTP URL");
-      input = howToMakeAUrlUrl;
-    }
-    return input;
+    return Encode.forHtmlAttribute(safeHttpUrl(input));
   }
 
   /**
@@ -102,28 +79,7 @@ public class XssFilter {
    * @return
    */
   public static String badUrlValidate(String input) {
-    String howToMakeAUrlUrl =
-        new String("https://www.google.com/search?q=What+does+a+HTTP+link+look+like");
-    input = input.toLowerCase();
-    if (input.startsWith("http")) {
-      try {
-        URL theUrl =
-            new URL(
-                input
-                    .replaceAll("#", "&#x23;")
-                    .replaceAll("<", "&#x3c;")
-                    .replaceAll(">", "&#x3e;")
-                    .replaceFirst("\"", "&quot;"));
-        input = theUrl.toString();
-      } catch (MalformedURLException e) {
-        log.debug("Could not Cast URL from input: " + e.toString());
-        input = howToMakeAUrlUrl;
-      }
-    } else {
-      log.debug("Was not a HTTP URL");
-      input = howToMakeAUrlUrl;
-    }
-    return input;
+    return Encode.forHtmlAttribute(safeHttpUrl(input));
   }
 
   /**
@@ -133,13 +89,8 @@ public class XssFilter {
    * @return
    */
   public static String encodeForHtml(String input) {
-    log.debug("Filtering input at XSS white list");
-
-    input = Encode.forHtml(input);
-    // Decode quotes to open a security hole in Encoder
-    input = input.replaceFirst("&#34;", "\"");
-    // Encode lower-case "on" and upper-case "on" to complicate the required attack vectors to pass
-    return input.replaceAll("on", "&#x6f;&#x6e;").replaceAll("ON", "&#x4f;&#x4e;");
+    log.debug("Encoding untrusted HTML text");
+    return Encode.forHtml(input == null ? "" : input);
   }
 
   /**
@@ -150,24 +101,7 @@ public class XssFilter {
    * @return XSS Blacklist filtered HTML
    */
   public static String levelFour(String input) {
-    String[] javascriptTriggers = FindXSS.javascriptTriggers;
-    log.debug("Filtering input at XSS levelFour");
-    input = input.toLowerCase();
-    while (input.contains("script")) {
-      System.out.println("input = " + input);
-      input = input.replaceAll("script", "scr.pt");
-    }
-    for (int i = 0; i < javascriptTriggers.length; i++) {
-      while (input.contains(javascriptTriggers[i])) {
-        int len = javascriptTriggers[i].length();
-        String replacement =
-            javascriptTriggers[i].substring(0, (len / 2) - 1)
-                + "."
-                + javascriptTriggers[i].substring((len / 2) + 1, len);
-        input = input.replaceAll(javascriptTriggers[i], replacement);
-      }
-    }
-    return screwHtmlEncodings(input);
+    return encodeForHtml(input);
   }
 
   /**
@@ -177,8 +111,7 @@ public class XssFilter {
    * @return XSS Blacklist filtered HTML
    */
   public static String levelOne(String input) {
-    log.debug("Filtering input at XSS levelOne");
-    return input.toLowerCase().replaceAll("script", "scr.pt").replaceAll("SCRIPT", "SCR.PT");
+    return encodeForHtml(input);
   }
 
   /**
@@ -188,15 +121,7 @@ public class XssFilter {
    * @return
    */
   public static String levelThree(String input) {
-    log.debug("Filtering input at XSS levelThree");
-    input = input.toLowerCase();
-    input = input.replaceAll("script", "scr.pt");
-    for (int h = 0; h < FindXSS.javascriptTriggers.length; h++) {
-      for (int i = 0; i <= 1; i++) {
-        input = input.replaceAll(FindXSS.javascriptTriggers[h], "");
-      }
-    }
-    return screwHtmlEncodings(input);
+    return encodeForHtml(input);
   }
 
   /**
@@ -206,15 +131,7 @@ public class XssFilter {
    * @return XSS Blacklist filtered HTML
    */
   public static String levelTwo(String input) {
-    input = input.toLowerCase();
-    log.debug("Filtering input at XSS levelTwo");
-    input = input.replaceAll("script", "scr.pt");
-    input = input.replaceAll("onclick", "o.ick");
-    input = input.replaceAll("onmouseover", "o.ver");
-    input = input.replaceAll("onload", "o.oad");
-    input = input.replaceAll("onerror", "o.err");
-    input = input.replaceAll("ondblclick", "o.dbl");
-    return screwHtmlEncodings(input);
+    return encodeForHtml(input);
   }
 
   /**
