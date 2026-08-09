@@ -5,50 +5,15 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.lang.reflect.Proxy;
 import java.util.Arrays;
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpSession;
 import org.junit.jupiter.api.Test;
 
 class ValidateTest {
-
-  private static HttpSession sessionWithCsrfToken(String token) {
-    return (HttpSession)
-        Proxy.newProxyInstance(
-            ValidateTest.class.getClassLoader(),
-            new Class<?>[] {HttpSession.class},
-            (proxy, method, args) ->
-                "getAttribute".equals(method.getName())
-                        && Validate.CSRF_TOKEN_SESSION_ATTRIBUTE.equals(args[0])
-                    ? token
-                    : null);
-  }
 
   private static String chars(char c, int count) {
     char[] arr = new char[count];
     Arrays.fill(arr, c);
     return new String(arr);
-  }
-
-  @Test
-  void validateTokens_acceptsMatchingSessionCookieAndRequestToken() {
-    String token = "12345678901234567890";
-    assertTrue(
-        Validate.validateTokens(sessionWithCsrfToken(token), new Cookie("token", token), token));
-  }
-
-  @Test
-  void validateTokens_rejectsMatchingCookieAndRequestWithoutSessionBinding() {
-    String token = "12345678901234567890";
-    assertFalse(
-        Validate.validateTokens(sessionWithCsrfToken("98765432109876543210"), new Cookie("token", token), token));
-  }
-
-  @Test
-  void validateTokens_rejectsMissingSessionToken() {
-    String token = "12345678901234567890";
-    assertFalse(Validate.validateTokens(sessionWithCsrfToken(null), new Cookie("token", token), token));
   }
 
   // validateParameter

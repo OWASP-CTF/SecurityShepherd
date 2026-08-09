@@ -64,7 +64,7 @@ public class ChangePassword extends HttpServlet {
         log.debug("Current User: " + ses.getAttribute("userName").toString());
         Cookie tokenCookie = Validate.getToken(request.getCookies());
         Object tokenParmeter = request.getParameter("csrfToken");
-        if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
+        if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
           log.debug("Getting Parameters");
           String userName = (String) ses.getAttribute("userName");
           String currentPassword = (String) request.getParameter("currentPassword");

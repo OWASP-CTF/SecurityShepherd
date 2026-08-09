@@ -75,7 +75,7 @@ public class FeedbackSubmit extends HttpServlet {
       log.debug("Current User: " + ses.getAttribute("userName").toString());
       Cookie tokenCookie = Validate.getToken(request.getCookies());
       Object tokenParmeter = request.getParameter("csrfToken");
-      if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
+      if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
         boolean notNull = false;
         String storedResult = null;
         try {

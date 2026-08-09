@@ -66,7 +66,7 @@ public class GetCheat extends HttpServlet {
       log.debug("Current User: " + ses.getAttribute("userName").toString());
       Cookie tokenCookie = Validate.getToken(request.getCookies());
       Object tokenParmeter = request.getParameter("csrfToken");
-      if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
+      if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
         if (CheatSheetStatus.showCheat(ses.getAttribute("userRole").toString())) {
           String ApplicationRoot = getServletContext().getRealPath("");
           String moduleId = request.getParameter("moduleId");

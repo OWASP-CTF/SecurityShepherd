@@ -32,7 +32,7 @@ public class Levels extends HttpServlet {
     boolean validSession = Validate.validateSession(ses);
     boolean validRequest =
         Validate.validateTokens(
-            ses, Validate.getToken(request.getCookies()), request.getParameter("csrfToken"));
+            Validate.getToken(request.getCookies()), request.getParameter("csrfToken"));
     if (validSession && validRequest) {
       JSONArray theModules = new JSONArray();
       String userId = ses.getAttribute("userStamp").toString();

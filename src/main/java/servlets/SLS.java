@@ -90,7 +90,7 @@ public class SLS extends HttpServlet {
           log.debug("Error when performing SSO Logout: " + StringUtils.join(errors, ", "));
         }
 
-        if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
+        if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
           // Remove Everything
           ses.removeAttribute("userStamp");
           ses.removeAttribute("userName");

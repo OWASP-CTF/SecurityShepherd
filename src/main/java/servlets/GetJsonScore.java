@@ -74,7 +74,7 @@ public class GetJsonScore extends HttpServlet {
       Cookie tokenCookie = Validate.getToken(request.getCookies());
       Object tokenParmeter = request.getParameter("csrfToken");
       String scoreboardClass = new String();
-      if ((Validate.validateTokens(ses, tokenCookie, tokenParmeter) && canSeeScoreboard)
+      if ((Validate.validateTokens(tokenCookie, tokenParmeter) && canSeeScoreboard)
           || ScoreboardStatus.isPublicScoreboard()) {
         // What Class to List?
         if (ScoreboardStatus.getClassSpecificScoreboard()) {

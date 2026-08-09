@@ -91,7 +91,7 @@ public class RefreshMenu extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug("Current User: " + ses.getAttribute("userName").toString());
-        if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
+        if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
           isAdmin = true;
         }
       }
@@ -99,7 +99,7 @@ public class RefreshMenu extends HttpServlet {
       // Check if ctf has started/ended
       if (isRunning || isAdmin) {
 
-        if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
+        if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
 
           String ApplicationRoot = getServletContext().getRealPath("");
           String userId = (String) ses.getAttribute("userStamp");

@@ -66,7 +66,7 @@ public class GetModule extends HttpServlet {
       log.debug("Current User: " + ses.getAttribute("userName").toString());
       Cookie tokenCookie = Validate.getToken(request.getCookies());
       Object tokenParmeter = request.getParameter("csrfToken");
-      if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
+      if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
         boolean notNull = false;
         String storedResult = null;
         boolean isAdmin = false;
@@ -86,7 +86,7 @@ public class GetModule extends HttpServlet {
               request.getHeader("X-Forwarded-For"),
               ses.getAttribute("userName").toString());
           log.debug("Current User: " + ses.getAttribute("userName").toString());
-          if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
+          if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
             isAdmin = true;
           }
         }
