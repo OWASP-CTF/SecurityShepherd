@@ -100,9 +100,12 @@ public class CsrfChallengeTargetFour extends HttpServlet {
         log.debug("storedCsrf Token is - '" + storedToken + "'");
 
         if (!userId.equals(plusId)) {
-          if (MessageDigest.isEqual(
-              storedToken.getBytes(StandardCharsets.UTF_8),
-              csrfToken.getBytes(StandardCharsets.UTF_8))) {
+          // An empty token must never compare equal to an empty submission
+          if (!storedToken.isEmpty()
+              && !csrfToken.isEmpty()
+              && MessageDigest.isEqual(
+                  storedToken.getBytes(StandardCharsets.UTF_8),
+                  csrfToken.getBytes(StandardCharsets.UTF_8))) {
             log.debug("Valid Nonce Value Submitted");
             String userName = (String) ses.getAttribute("userName");
             String attackerName = Getter.getUserName(ApplicationRoot, plusId);
