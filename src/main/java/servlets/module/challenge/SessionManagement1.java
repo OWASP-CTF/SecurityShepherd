@@ -86,6 +86,11 @@ public class SessionManagement1 extends HttpServlet {
             break; // End Loop, because we found the token
           }
         }
+        String serverRole = (String) ses.getAttribute("sessionChallengeOneRole");
+        if (serverRole == null) {
+          serverRole = "user";
+          ses.setAttribute("sessionChallengeOneRole", serverRole);
+        }
         String htmlOutput = null;
         if (theCookie != null) {
           log.debug("Cookie value: " + theCookie.getValue());
@@ -93,7 +98,7 @@ public class SessionManagement1 extends HttpServlet {
           String decodedCookie = new String(decodedCookieBytes, "UTF-8");
           log.debug("Decoded Cookie: " + decodedCookie);
 
-          if (decodedCookie.equals("userRole=administrator")) {
+          if ("administrator".equals(serverRole)) {
             log.debug("Challenge Complete");
             // Get key and add it to the output
             String userKey =
