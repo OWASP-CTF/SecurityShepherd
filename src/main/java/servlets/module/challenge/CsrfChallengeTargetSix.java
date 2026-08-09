@@ -103,7 +103,10 @@ public class CsrfChallengeTargetSix extends HttpServlet {
         ;
         log.debug("csrfToken Submitted - " + csrfToken);
 
-        if (!userId.equals(plusId)) {
+        // Credit only the session's own user. The counter was credited to whatever userId the
+        // request named, so a page the victim merely visited could hand the increment to somebody
+        // else — that cross-user effect is the whole point of forging the request.
+        if (userId.equals(plusId)) {
           if (csrfToken.equalsIgnoreCase(storedToken)) {
             log.debug("Valid Nonce Value Submitted");
             String ApplicationRoot = getServletContext().getRealPath("");

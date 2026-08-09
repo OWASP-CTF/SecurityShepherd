@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
 import utils.FindXSS;
 import utils.Hash;
 import utils.ShepherdLogManager;
@@ -80,8 +81,14 @@ public class XssChallengeTwo extends HttpServlet {
           log.debug("User Submitted - " + searchTerm);
           searchTerm = XssFilter.levelTwo(searchTerm);
           log.debug("After Filtering - " + searchTerm);
+          // The key must reflect whether the value we ACTUALLY render can execute, not whether the
+          // blacklist-filtered input still looks dangerous. Detection used to run on the pre-output
+          // string, so any casing/encoding/nesting bypass of the filter scored even though the
+          // value is HTML-encoded on the way out and is inert in the page. Search the same encoded
+          // string that is written below, so a payload that has been neutralised no longer counts.
+          String safeSearchTerm = Encode.forHtml(searchTerm);
           String htmlOutput = new String();
-          if (FindXSS.search(searchTerm)) {
+          if (FindXSS.search(safeSearchTerm)) {
             htmlOutput =
                 "<h2 class='title'>"
                     + bundle.getString("result.wellDone")
@@ -106,7 +113,11 @@ public class XssChallengeTwo extends HttpServlet {
                   + "<p>"
                   + bundle.getString("response.noResults")
                   + " "
-                  + searchTerm
+                  // Encode on output instead of relying on the blacklist filter above. A blacklist
+                  // can always be bypassed with a casing, encoding or nesting trick; contextual
+                  // output encoding makes the value inert as HTML no matter what it contains. This
+                  // is the same string the detector above was given.
+                  + safeSearchTerm
                   + "</p>";
           log.debug("Outputting HTML");
           out.write(htmlOutput);

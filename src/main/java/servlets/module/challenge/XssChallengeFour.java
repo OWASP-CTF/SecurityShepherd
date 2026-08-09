@@ -13,11 +13,11 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
 import utils.FindXSS;
 import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
-import utils.XssFilter;
 
 /**
  * Cross Site Scripting Challenge Four control class. <br>
@@ -89,9 +89,18 @@ public class XssChallengeFour extends HttpServlet {
                     + "</a>";
           } else {
 
-            searchTerm = XssFilter.encodeForHtml(searchTerm);
+            // The value lands in three different contexts, so encode for each one rather than
+            // applying a single HTML-text encoder. XssFilter.encodeForHtml deliberately leaves
+            // ampersands alone, which is what lets an entity-encoded payload survive into the
+            // attribute and break out of the quotes.
             userPost =
-                "<a href=\"" + searchTerm + "\" alt=\"" + searchTerm + "\">" + searchTerm + "</a>";
+                "<a href=\""
+                    + Encode.forHtmlAttribute(searchTerm)
+                    + "\" alt=\""
+                    + Encode.forHtmlAttribute(searchTerm)
+                    + "\">"
+                    + Encode.forHtml(searchTerm)
+                    + "</a>";
             log.debug("After Encoding - " + searchTerm);
             if (FindXSS.search(userPost)) {
               htmlOutput =

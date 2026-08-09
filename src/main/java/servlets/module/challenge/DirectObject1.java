@@ -6,6 +6,9 @@ import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -46,6 +49,10 @@ public class DirectObject1 extends HttpServlet {
   public static String levelHash =
       "o9a450a64cc2a196f55878e2bd9a27a72daea0f17017253f87e7ebd98c71c98c";
 
+  /** The profiles this level publishes, matching the options offered by the challenge page. */
+  private static final List<String> PERMITTED_USER_IDS =
+      Collections.unmodifiableList(Arrays.asList("1", "3", "5", "7", "9"));
+
   /**
    * The user must abuse this functionality to reveal a hidden user. The result key is hidden in
    * this users profile.
@@ -75,6 +82,17 @@ public class DirectObject1 extends HttpServlet {
       try {
         String userId = request.getParameter("userId[]");
         log.debug("User Submitted - " + userId);
+
+        // The level exposes a fixed set of profiles and the identifier arrives straight from the
+        // request, so editing it reaches records the page never offered — including the hidden
+        // profile whose message is the result key. This schema has no per-session owner to compare
+        // against, so the authorisation rule *is* that published set: check the reference against
+        // it server side instead of trusting whatever the client sends. Anything else is replaced
+        // with a value that matches no row, so the existing "profile not found" response renders.
+        if (!PERMITTED_USER_IDS.contains(userId)) {
+          log.error("Rejected profile request for an identifier outside the published set");
+          userId = "";
+        }
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
         String htmlOutput = new String();
@@ -89,14 +107,17 @@ public class DirectObject1 extends HttpServlet {
           log.debug("Found user: " + resultSet.getString(1));
           String userName = resultSet.getString(1);
           String privateMessage = resultSet.getString(2);
+          // Values read back out of the database are still untrusted — they were written by a user
+          // at some point — so encode them on the way into the page rather than assuming storage
+          // made them safe.
           htmlOutput =
               "<h2 class='title'>"
-                  + userName
+                  + Encode.forHtml(userName)
                   + "'s "
                   + bundle.getString("response.message")
                   + "</h2>"
                   + "<p>"
-                  + privateMessage
+                  + Encode.forHtml(privateMessage)
                   + "</p>";
         } else {
           log.debug("No Profile Found");

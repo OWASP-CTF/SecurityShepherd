@@ -71,6 +71,12 @@ String i18nLevelName = bundle.getString("securityMisconfig.stealTokens.challenge
 		try
 		{
 			Cookie userCookie = new Cookie("securityMisconfigLesson", SecurityMisconfigStealTokens.getUserToken(userId, applicationRoot));
+			// This cookie is a session token, and the level is built around stealing somebody else's
+			// copy of it. Nothing on the page reads it from script, so marking it HttpOnly costs no
+			// functionality and takes document.cookie — the route an injected script would use —
+			// off the table. Secure keeps it off the cleartext channel this page downgrades to.
+			userCookie.setHttpOnly(true);
+			userCookie.setSecure(true);
 	        response.addCookie(userCookie);
 		}
 		catch(Exception e)

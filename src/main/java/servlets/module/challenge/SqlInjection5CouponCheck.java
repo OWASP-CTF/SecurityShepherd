@@ -77,11 +77,12 @@ public class SqlInjection5CouponCheck extends HttpServlet {
             Database.getChallengeConnection(applicationRoot, "SqlInjectionChallenge5ShopCoupon");
         log.debug("Looking for Coupons Insecurely");
         PreparedStatement prepstmt =
+            // PreparedStatement only protects the values that are actually bound; concatenating the
+            // coupon code into the statement text leaves it injectable.
             conn.prepareStatement(
                 "SELECT itemId, perCentOff, itemName FROM coupons JOIN items USING (itemId) WHERE"
-                    + " couponCode = '"
-                    + couponCode
-                    + "';");
+                    + " couponCode = ?;");
+        prepstmt.setString(1, couponCode);
         ResultSet coupons = prepstmt.executeQuery();
         try {
           if (coupons.next()) {

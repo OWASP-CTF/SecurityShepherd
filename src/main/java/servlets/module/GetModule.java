@@ -114,7 +114,15 @@ public class GetModule extends HttpServlet {
         }
         boolean moduleOpen = false;
         if (notNull && storedResult != null) {
-          moduleOpen = Getter.isModuleOpen(ApplicationRoot, moduleId);
+          // Administrators need to reach any module in order to administer it. Everyone else is
+          // held
+          // to the progression of the current module plan, and that has to be enforced here rather
+          // than only in the menu JSON: otherwise posting a later moduleId straight to this servlet
+          // hands back the level address and skips the progression.
+          moduleOpen =
+              isAdmin
+                  ? Getter.isModuleOpen(ApplicationRoot, moduleId)
+                  : Getter.isModuleOpenForUser(ApplicationRoot, moduleId, userId);
         }
         if (notNull && storedResult != null && moduleOpen) {
           // Data is good, Add result: Now to check if there is a block in place

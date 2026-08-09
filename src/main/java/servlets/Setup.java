@@ -13,11 +13,13 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.security.MessageDigest;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -68,27 +70,38 @@ public class Setup extends HttpServlet {
     String dbUser = request.getParameter("dbuser");
     String dbPass = request.getParameter("dbpass");
 
-    String dbOptions;
-    String connectionURL;
-    String driverType;
+    // An omitted parameter arrives as null; treat it as "not supplied" rather than dereferencing
+    // it. Every one of these is dereferenced further down, and /setup is reachable before
+    // authentication, so a missing field has to produce a validation message rather than a 500.
+    dbHost = orEmpty(dbHost);
+    dbPort = orEmpty(dbPort);
+    dbUser = orEmpty(dbUser);
+    dbPass = orEmpty(dbPass);
 
-    String dbOverride = request.getParameter("dboverride");
+    String dbOptions = null;
+    String connectionURL = null;
+    String driverType = null;
+
+    String dbOverride = orEmpty(request.getParameter("dboverride"));
 
     Properties mysql_props = Setup.getDBProps();
     Properties mongo_props = new Properties();
 
     hasDBFile = (mysql_props != null);
 
-    if (hasDBFile) {
+    // Validate host and port up front. Both branches below build "jdbc:mariadb://host:port/" by
+    // concatenation and later append "?" + options, so an unvalidated host could smuggle arbitrary
+    // JDBC properties into the URL and redirect the connection to a server the requester controls.
+    String hostPortError = validateHostPort(dbHost, dbPort);
+
+    if (hostPortError != null) {
+      htmlOutput += hostPortError;
+      validateInput = false;
+      connectionURL = "";
+    } else if (hasDBFile) {
       // Db auth file exists, try to load from it
 
-      if (dbHost.isEmpty() != dbPort.isEmpty()) {
-        // Only one of db host and db port provided, we need both or neither
-
-        htmlOutput += "If you override db host and db port, both must be entered!";
-        validateInput = false;
-        connectionURL = "";
-      } else if (dbHost.isEmpty() && dbPort.isEmpty()) {
+      if (dbHost.isEmpty() && dbPort.isEmpty()) {
         // Both db host and db port are missing, load from props file instead
         connectionURL = mysql_props.getProperty("databaseConnectionURL");
         String databaseSchema = mysql_props.getProperty("databaseSchema");
@@ -125,6 +138,11 @@ public class Setup extends HttpServlet {
           validateInput = false;
         }
       }
+    } else if (dbHost.isEmpty()) {
+      // There is no properties file to fall back on, so host and port must both be supplied.
+      htmlOutput += "Database host and port are required!";
+      validateInput = false;
+      connectionURL = "";
     } else {
       connectionURL = "jdbc:mariadb://" + dbHost + ":" + dbPort + "/";
       driverType = "org.mariadb.jdbc.Driver";
@@ -160,11 +178,14 @@ public class Setup extends HttpServlet {
 
       log.debug("Starting database setup...");
 
-      String auth = "";
+      String auth = null;
+      boolean authFileLoaded = false;
 
-      String enableMongoChallenge = request.getParameter("enableMongoChallenge");
+      // Both are optional in the documented setup request, and both are dereferenced below, so a
+      // caller that omits them must not receive a 500 after the schema has already been written.
+      String enableMongoChallenge = orEmpty(request.getParameter("enableMongoChallenge"));
 
-      String enableUnsafeLevels = request.getParameter("unsafeLevels");
+      String enableUnsafeLevels = orEmpty(request.getParameter("unsafeLevels"));
 
       // Mongo DB properties
       StringBuffer mongoProp = new StringBuffer();
@@ -182,27 +203,33 @@ public class Setup extends HttpServlet {
       mongoProp.append("\n");
 
       try {
-        auth = new String(Files.readAllBytes(Paths.get(Constants.SETUP_AUTH)));
+        auth =
+            new String(Files.readAllBytes(Paths.get(Constants.SETUP_AUTH)), StandardCharsets.UTF_8)
+                .trim();
+        authFileLoaded = !auth.isEmpty();
       } catch (NoSuchFileException e) {
         // Auth file could not be found.
         htmlOutput += "Auth file could not be found";
         log.error("Auth file could not be found: " + e.toString());
       }
 
-      if (auth == "") {
-        // No auth loaded, could be because user never reloaded setup page after an
-        // error. Generate it again
+      if (!authFileLoaded) {
+        // No auth token available to compare against. This is the normal state on a fresh install,
+        // and also on an already-installed instance because a successful install deletes the file
+        // (see removeAuthFile). Generate a new token so the operator can read it off disk, but
+        // never treat the absent token as a match: doing so would let anyone POST an empty dbauth
+        // and re-run the schema, destroying every user and score.
         log.debug("Generating auth file");
 
         generateAuth();
       }
 
-      if (!auth.equals(dbAuth)) {
+      if (!isAuthorised(auth, dbAuth)) {
         log.debug("Invalid auth supplied");
 
         // The supplied auth data was incorrect
         htmlOutput += bundle.getString("generic.text.setup.authentication.failed");
-        log.error("Authorization mismatch: " + auth + " does not equal " + dbAuth);
+        log.error("Authorization mismatch: the supplied setup token was rejected");
 
       } else {
         // Test the user's entered database properties. Use DriverManager directly instead of
@@ -229,9 +256,11 @@ public class Setup extends HttpServlet {
           log.debug("Database connection successful");
 
         } catch (SQLException e) {
-          htmlOutput += bundle.getString("generic.text.setup.connection.failed") + e.getMessage();
+          // Keep the driver's message out of the response: it leaks internal hostnames, ports,
+          // schema names, server versions and the database username. It is logged instead.
+          htmlOutput += bundle.getString("generic.text.setup.connection.failed");
 
-          log.error("DB connection error: " + e.toString());
+          log.error("DB connection error: " + e.toString(), e);
           connectionSuccess = false;
         }
 
@@ -261,9 +290,9 @@ public class Setup extends HttpServlet {
 
               success = false;
 
-              htmlOutput = bundle.getString("generic.text.setup.failed") + ": " + e.getMessage();
+              htmlOutput = bundle.getString("generic.text.setup.failed");
 
-              log.error("Could not save mysql properties file: " + e.toString());
+              log.error("Could not save mysql properties file: " + e.toString(), e);
             }
 
           } else {
@@ -291,8 +320,8 @@ public class Setup extends HttpServlet {
               }
               success = true;
             } catch (SQLException e) {
-              htmlOutput = bundle.getString("generic.text.setup.failed") + ": " + e.getMessage();
-              log.error(bundle.getString("generic.text.setup.failed") + ": " + e.getMessage());
+              htmlOutput = bundle.getString("generic.text.setup.failed");
+              log.error(bundle.getString("generic.text.setup.failed") + ": " + e.getMessage(), e);
               if (!hasDBFile) {
                 FileUtils.deleteQuietly(new File(Constants.MYSQL_DB_PROP));
               }
@@ -321,8 +350,8 @@ public class Setup extends HttpServlet {
                 try {
                   executeMongoScript();
                 } catch (IOException e) {
-                  htmlOutput =
-                      bundle.getString("generic.text.setup.failed") + ": " + e.getMessage();
+                  htmlOutput = bundle.getString("generic.text.setup.failed");
+                  log.error("Could not execute mongo script: " + e.toString(), e);
                   if (!hasDBFile) {
                     FileUtils.deleteQuietly(new File(Constants.MYSQL_DB_PROP));
                   }
@@ -370,8 +399,46 @@ public class Setup extends HttpServlet {
   }
 
   /**
-   * Validates that db host and port are either both provided or both empty. Returns null if valid,
-   * or an error message if invalid.
+   * @param value A request parameter that may be absent
+   * @return The value, or the empty string when the parameter was not supplied
+   */
+  private static String orEmpty(String value) {
+    return value == null ? "" : value;
+  }
+
+  /**
+   * Constant-time comparison of the setup token held on disk against the one supplied in the
+   * request. Both must be present; an absent or blank token on either side is never a match.
+   *
+   * @param expected Token read from the setup auth file, or null when the file was unreadable
+   * @param supplied Token supplied by the requester, may be null
+   * @return True only when both tokens are present and identical
+   */
+  static boolean isAuthorised(String expected, String supplied) {
+    if (expected == null || expected.isEmpty() || supplied == null) {
+      return false;
+    }
+
+    String trimmedSupplied = supplied.trim();
+    if (trimmedSupplied.isEmpty()) {
+      return false;
+    }
+
+    return MessageDigest.isEqual(
+        expected.getBytes(StandardCharsets.UTF_8),
+        trimmedSupplied.getBytes(StandardCharsets.UTF_8));
+  }
+
+  /**
+   * Validates that db host and port are either both provided or both empty, and that a provided
+   * host and port are safe to interpolate into a JDBC URL. Returns null if valid, or an error
+   * message if invalid.
+   *
+   * <p>The host is concatenated straight into "jdbc:mariadb://host:port/" and the options string is
+   * appended after a "?", so a host containing "?" or "&" would let a requester append arbitrary
+   * JDBC properties (allowLoadLocalInfile, autoDeserialize, ...) and point the connection at a
+   * server they control. Restrict it to the characters a hostname, IPv4 address or bracketed IPv6
+   * address can legitimately contain.
    */
   static String validateHostPort(String dbHost, String dbPort) {
     if (dbHost == null) dbHost = "";
@@ -379,7 +446,29 @@ public class Setup extends HttpServlet {
     if (dbHost.isEmpty() != dbPort.isEmpty()) {
       return "If you override db host and db port, both must be entered!";
     }
+    if (dbHost.isEmpty()) {
+      // Neither supplied: the caller falls back to the properties file.
+      return null;
+    }
+    if (!isValidDatabaseHost(dbHost)) {
+      return "Database host is not a valid hostname or IP address!";
+    }
+    if (!Validate.isValidPortNumber(dbPort)) {
+      return "Database port is not a valid port number!";
+    }
     return null;
+  }
+
+  /**
+   * @param dbHost Candidate database host
+   * @return True if the value is a plain hostname, IPv4 address, or bracketed IPv6 address
+   */
+  private static boolean isValidDatabaseHost(String dbHost) {
+    if (dbHost.startsWith("[")) {
+      // Bracketed IPv6 literal, e.g. [::1]
+      return dbHost.matches("\\[[0-9A-Fa-f:.]{2,45}\\]");
+    }
+    return dbHost.matches("[A-Za-z0-9]([A-Za-z0-9._-]{0,253}[A-Za-z0-9])?");
   }
 
   public static boolean isInstalled() {
@@ -445,14 +534,31 @@ public class Setup extends HttpServlet {
 
   private static void generateAuth() {
     try {
-      if (!Files.exists(Paths.get(Constants.SETUP_AUTH), LinkOption.NOFOLLOW_LINKS)) {
+      boolean tokenNeeded =
+          !Files.exists(Paths.get(Constants.SETUP_AUTH), LinkOption.NOFOLLOW_LINKS);
+
+      if (!tokenNeeded) {
+        // A file that exists but is blank — an interrupted write, a full disk, a truncated or empty
+        // bind-mounted file — would otherwise leave setup permanently unauthorisable: isAuthorised
+        // never matches a blank expected token, and this method would keep declining to write one.
+        tokenNeeded =
+            new String(Files.readAllBytes(Paths.get(Constants.SETUP_AUTH)), StandardCharsets.UTF_8)
+                .trim()
+                .isEmpty();
+        if (tokenNeeded) {
+          log.warn("Auth file was empty, regenerating: " + Constants.SETUP_AUTH);
+        }
+      }
+
+      if (tokenNeeded) {
         UUID randomUUID = UUID.randomUUID();
-        log.info("Auth file not found, creating: " + Constants.SETUP_AUTH);
+        log.info("Creating auth file: " + Constants.SETUP_AUTH);
 
         Files.write(
             Paths.get(Constants.SETUP_AUTH),
-            randomUUID.toString().getBytes(),
-            StandardOpenOption.CREATE);
+            randomUUID.toString().getBytes(StandardCharsets.UTF_8),
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING);
         log.info("Generated UUID " + randomUUID + " in " + Constants.SETUP_AUTH);
       }
     } catch (IOException e) {

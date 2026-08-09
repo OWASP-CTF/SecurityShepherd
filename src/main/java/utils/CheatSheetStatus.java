@@ -103,7 +103,9 @@ public class CheatSheetStatus {
       if (isEnabledForPlayers()) {
         show = true;
       } else {
-        if (isEnabledForAdminsOnly() && userRole.compareTo("admin") == 0) {
+        // userRole is null for a caller without a valid session, so compare against the literal
+        // instead of dereferencing it.
+        if (isEnabledForAdminsOnly() && "admin".equals(userRole)) {
           show = true;
         }
       }

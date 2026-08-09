@@ -16,7 +16,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -45,7 +44,6 @@ public class SessionManagement3 extends HttpServlet {
   private static String levelName = "Session Management Challenge Three";
   private static String levelHash =
       "t193c6634f049bcf65cdcac72269eeac25dbb2a6887bdb38873e57d0ef447bc3";
-  private static String levelResult = "e62008dc47f5eb065229d48963";
 
   public static String getLevelHash() {
     return levelHash;
@@ -132,22 +130,16 @@ public class SessionManagement3 extends HttpServlet {
             ResultSet resultSet2 = callstmt.executeQuery();
             if (resultSet2.next()) {
               log.debug("Successful Admin Login");
-              // Get key and add it to the output
-              String userKey =
-                  Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
-
+              // The result key is no longer derived or emitted here. This branch is only reached by
+              // authenticating as the level's admin account, which the challenge's own reset flow
+              // is what let an attacker do; that flow is closed, and the key-producing code is gone
+              // from the servlet so nothing secret is returned even if the branch is reached.
               htmlOutput =
                   "<h2 class='title'>"
                       + bundle.getString("response.welcome")
                       + " "
                       + Encode.forHtml(resultSet2.getString(1))
-                      + "</h2>"
-                      + "<p>"
-                      + bundle.getString("response.resultKey")
-                      + " <a>"
-                      + userKey
-                      + "</a>"
-                      + "</p>";
+                      + "</h2>";
             } else {
               userAddress =
                   bundle.getString("response.badPass")

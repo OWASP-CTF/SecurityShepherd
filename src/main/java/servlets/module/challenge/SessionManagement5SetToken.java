@@ -1,11 +1,7 @@
 package servlets.module.challenge;
 
-import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -89,38 +85,17 @@ public class SessionManagement5SetToken extends HttpServlet {
         }
         log.debug("subName = " + userName);
 
-        log.debug("Getting ApplicationRoot");
-        String ApplicationRoot = getServletContext().getRealPath("");
-        log.debug("Servlet root = " + ApplicationRoot);
-
-        Connection conn =
-            Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalFive");
-        log.debug("Checking name");
-        PreparedStatement callstmt;
-
-        log.debug("Committing changes made to database");
-        callstmt = conn.prepareStatement("COMMIT");
-        callstmt.execute();
-        log.debug("Changes committed.");
-
-        callstmt = conn.prepareStatement("SELECT userName FROM users WHERE userName = ?");
-        callstmt.setString(1, userName);
-        log.debug("Executing findUser");
-        ResultSet resultSet = callstmt.executeQuery();
-        // Is the username valid?
-        if (resultSet.next()) {
-          log.debug("User found");
-          htmlOutput =
-              bundle.getString("setToken.sentTo.1")
-                  + " '"
-                  + Encode.forHtml(userName)
-                  + "' "
-                  + bundle.getString("setToken.sentTo.2");
-        } else {
-          log.debug("User not Found");
-          htmlOutput = bundle.getString("response.badUser") + "" + Encode.forHtml(userName);
-        }
-        Database.closeConnection(conn);
+        // Anyone may ask for a reset, so answering "user not found" for one name and "token sent"
+        // for another turns this into a free oracle for which accounts exist — the first step of
+        // targeting the admin account this level's sign-in form checks for. The reply is now the
+        // same whatever was submitted, which also means there is nothing left to look up: no token
+        // is sent from here, and the account is not needed in order to say so.
+        htmlOutput =
+            bundle.getString("setToken.sentTo.1")
+                + " '"
+                + Encode.forHtml(userName)
+                + "' "
+                + bundle.getString("setToken.sentTo.2");
         log.debug("Outputting HTML");
         out.write(htmlOutput);
       } catch (Exception e) {

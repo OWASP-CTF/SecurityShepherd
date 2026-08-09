@@ -221,18 +221,13 @@ public class BrokenCryptoHomeMade extends HttpServlet {
             for (int i = 0; i < BrokenCryptoHomeMade.challenges.size(); i++) {
               htmlOutput += "<tr><td>" + BrokenCryptoHomeMade.challenges.get(i).get(0) + "</td>";
               htmlOutput += "<td>" + BrokenCryptoHomeMade.challenges.get(i).get(1) + "</td>";
-              if (!BrokenCryptoHomeMade.challenges
-                  .get(i)
-                  .get(0)
-                  .equalsIgnoreCase("This Challenge")) {
-                htmlOutput +=
-                    "<td>"
-                        + BrokenCryptoHomeMade.generateUserSolution(
-                            BrokenCryptoHomeMade.challenges.get(i).get(1), name)
-                        + "</td>";
-              } else {
-                htmlOutput += "<td></td>";
-              }
+              // This was an encryption oracle: it applied the level's key derivation to any name
+              // the caller supplied and handed back the result, for every entry but the one the
+              // level is about. Withholding that single row protects nothing — a home-made cipher
+              // exposed to chosen input is exactly what lets an attacker recover the scheme and
+              // compute the withheld value themselves. A service must not perform its secret key
+              // derivation on caller-chosen input, so no derived value is returned here now.
+              htmlOutput += "<td></td>";
               htmlOutput += "</tr>";
             }
           }

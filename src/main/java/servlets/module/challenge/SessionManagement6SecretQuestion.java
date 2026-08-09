@@ -1,7 +1,6 @@
 package servlets.module.challenge;
 
 import dbProcs.Database;
-import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -20,7 +19,6 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -102,35 +100,20 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
             callstmt.setString(1, subEmail);
             callstmt.setString(2, subAns);
             log.debug("Running secret Answer Check");
-            ResultSet rs = callstmt.executeQuery();
-            if (rs.next()) {
-              log.debug("Correct Answer Submitted");
-              // Get key and add it to the output
-              String userKey =
-                  Hash.generateUserSolution(
-                      Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
-                      (String) ses.getAttribute("userName"));
-              htmlOutput =
-                  "<h2 class='title'>"
-                      + bundle.getString("response.welcome")
-                      + " "
-                      + Encode.forHtml(rs.getString(1))
-                      + "</h2>"
-                      + "<p>"
-                      + bundle.getString("response.welcome")
-                      + " <a>"
-                      + userKey
-                      + "</a>"
-                      + "</p>";
-            } else {
-              log.debug("Bad Answer Submitted");
-              htmlOutput =
-                  new String(
-                      "<h2 class='title'>"
-                          + bundle.getString("question.badAnswer")
-                          + "</h2><p>"
-                          + bundle.getString("question.whoAreYou"));
-            }
+            // A secret answer is not an authenticator. The question itself is handed out by this
+            // same servlet on request, the answers are low-entropy facts rather than secrets, and
+            // nothing here limits how many may be tried — so treating a correct answer as proof of
+            // identity signs the caller in as somebody else. It can only ever be one step of a
+            // reset that finishes at a channel the account's real owner controls, and this level
+            // has no such channel, so a correct answer no longer authenticates on its own. The
+            // reply is the same either way, so it cannot be used to confirm an answer either.
+            log.debug("Not authenticating on a secret answer alone");
+            htmlOutput =
+                new String(
+                    "<h2 class='title'>"
+                        + bundle.getString("question.badAnswer")
+                        + "</h2><p>"
+                        + bundle.getString("question.whoAreYou"));
             Database.closeConnection(conn);
           } else {
             log.debug("Invalid data submitted");
@@ -224,11 +207,12 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
                     Database.getChallengeConnection(
                         ApplicationRoot, "BrokenAuthAndSessMangChalSix");
                 log.debug("Getting Secret Question");
+                // Using PreparedStatement is not the protection — binding the value is. The address
+                // was concatenated into the statement text, leaving the query injectable through
+                // it.
                 PreparedStatement callstmt =
-                    conn.prepareStatement(
-                        "SELECT secretQuestion FROM users WHERE userAddress = \""
-                            + subEmail
-                            + "\"");
+                    conn.prepareStatement("SELECT secretQuestion FROM users WHERE userAddress = ?");
+                callstmt.setString(1, subEmail);
                 ResultSet rs = callstmt.executeQuery();
                 if (rs.next()) {
                   log.debug("'Valid' User Detected");

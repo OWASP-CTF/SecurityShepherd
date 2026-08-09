@@ -153,8 +153,8 @@ public class Register extends HttpServlet {
             response.sendRedirect("register.jsp");
           }
         } else {
-          log.debug("paramToken = " + paramToken);
-          log.debug("sessToken = " + sessToken);
+          // The tokens themselves are not logged, only the fact that they did not match.
+          log.error("Registration CSRF tokens did not match");
         }
       } catch (Exception e) {
         log.error("Registration Error: " + e.toString());

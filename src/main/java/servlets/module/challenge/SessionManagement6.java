@@ -103,7 +103,6 @@ public class SessionManagement6 extends HttpServlet {
             Object passObj = request.getParameter("subPassword");
             String subName = new String();
             String subPass = new String();
-            String userAddress = new String();
             if (nameObj != null) {
               subName = (String) nameObj;
             }
@@ -158,23 +157,13 @@ public class SessionManagement6 extends HttpServlet {
                       + "</a>"
                       + "</p>";
             } else {
-              log.debug("Incorrect credentials, checking if user name correct");
-              callstmt = conn.prepareStatement("SELECT userAddress FROM users WHERE userName = ?");
-              callstmt.setString(1, subName);
-              log.debug("Executing getAddress");
-              resultSet = callstmt.executeQuery();
-              if (resultSet.next()) {
-                log.debug("User Found");
-                userAddress =
-                    ""
-                        + bundle.getString("response.badPass")
-                        + " <a>"
-                        + Encode.forHtml(resultSet.getString(1))
-                        + "</a><br/>";
-              } else {
-                userAddress = "" + bundle.getString("response.badUser") + "<br/>";
-              }
-              htmlOutput = makeTable(userAddress, bundle);
+              // A failed sign-in used to say which half was wrong, and for a name that existed it
+              // printed that account's email address back to whoever guessed the name. That is the
+              // address the secret-question flow identifies accounts by, so the login form was
+              // handing out the input for the rest of the level. The reply is now the same for a
+              // wrong name and a wrong password, and names nothing about the account.
+              log.debug("Login failed");
+              htmlOutput = makeTable(bundle.getString("response.badLogin") + "<br/>", bundle);
             }
             Database.closeConnection(conn);
             log.debug("Outputting HTML");

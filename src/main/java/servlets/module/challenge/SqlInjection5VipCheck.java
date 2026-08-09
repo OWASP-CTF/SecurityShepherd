@@ -77,11 +77,12 @@ public class SqlInjection5VipCheck extends HttpServlet {
             Database.getChallengeConnection(applicationRoot, "SqlInjectionChallenge5ShopVipCoupon");
         log.debug("Looking for VipCoupons Insecurely");
         PreparedStatement prepstmt =
+            // PreparedStatement only protects the values that are actually bound; concatenating the
+            // coupon code into the statement text leaves it injectable.
             conn.prepareStatement(
                 "SELECT itemId, perCentOff, itemName FROM vipCoupons JOIN items USING (itemId)"
-                    + " WHERE couponCode = '"
-                    + couponCode
-                    + "';");
+                    + " WHERE couponCode = ?;");
+        prepstmt.setString(1, couponCode);
         ResultSet coupons = prepstmt.executeQuery();
         try {
           if (coupons.next()) {

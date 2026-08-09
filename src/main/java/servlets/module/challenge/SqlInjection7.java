@@ -80,11 +80,13 @@ public class SqlInjection7 extends HttpServlet {
           try {
             log.debug("Signing in with subitted details");
             PreparedStatement prepstmt =
+                // Binding only the password while concatenating the email leaves the statement
+                // fully injectable through the email field — one bound parameter does not protect
+                // the others.
                 conn.prepareStatement(
-                    "SELECT userName FROM users WHERE userEmail = '"
-                        + subEmail
-                        + "' AND userPassword = ?;");
-            prepstmt.setString(1, subPassword);
+                    "SELECT userName FROM users WHERE userEmail = ? AND userPassword = ?;");
+            prepstmt.setString(1, subEmail);
+            prepstmt.setString(2, subPassword);
             ResultSet users = prepstmt.executeQuery();
             if (users.next()) {
               htmlOutput =

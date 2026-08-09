@@ -95,6 +95,9 @@ public class MobileLogin extends HttpServlet {
         {
           token.setSecure(true);
         }
+        // Kept out of document.cookie, and scoped to "/" so Logout can reliably clear it.
+        token.setHttpOnly(true);
+        token.setPath("/");
         response.addCookie(token);
         authenticated = true;
 

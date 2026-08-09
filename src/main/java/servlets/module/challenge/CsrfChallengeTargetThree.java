@@ -7,6 +7,7 @@ import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -80,7 +81,15 @@ public class CsrfChallengeTargetThree extends HttpServlet {
         }
 
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId) && csrfParam != null) {
+        // Checking only that a csrfToken parameter is present is no protection at all — an attacker
+        // simply includes one with any value. Compare it against the token in the victim's cookie,
+        // which a cross-site page cannot read.
+        Cookie tokenCookie = Validate.getToken(request.getCookies());
+        // Credit only the session's own user. The counter was credited to whatever userId the
+        // request named, so a page the victim merely visited could hand the increment to somebody
+        // else — that cross-user effect is the whole point of forging the request. Requiring the
+        // two to match removes it; the token check above stays as the second line of defence.
+        if (userId.equals(plusId) && Validate.validateTokens(tokenCookie, csrfParam)) {
           String ApplicationRoot = getServletContext().getRealPath("");
           String userName = (String) ses.getAttribute("userName");
           String attackerName = Getter.getUserName(ApplicationRoot, plusId);

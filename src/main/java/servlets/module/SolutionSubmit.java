@@ -107,7 +107,17 @@ public class SolutionSubmit extends HttpServlet {
           throw new RuntimeException(e);
         }
         if (notNull && storedResult != null) {
-          moduleOpen = Getter.isModuleOpen(ApplicationRoot, moduleId) && isRunning;
+          // Scoring has to respect the module plan's progression. isModuleOpen reports only the
+          // global open/closed flag, so without the per-user check a player could submit the key
+          // for
+          // a level they have not unlocked yet and score it. Administrators keep the same exemption
+          // GetModule grants them, so that they can still smoke-test a level's key before an event.
+          boolean isAdmin = Validate.validateAdminSession(ses, tokenCookie, tokenParmeter);
+          moduleOpen =
+              (isAdmin
+                      ? Getter.isModuleOpen(ApplicationRoot, moduleId)
+                      : Getter.isModuleOpenForUser(ApplicationRoot, moduleId, userId))
+                  && isRunning;
         }
         if (notNull && storedResult != null && moduleOpen) {
           boolean validKey = false;
@@ -120,8 +130,8 @@ public class SolutionSubmit extends HttpServlet {
                 Hash.generateUserSolutionKeyOnly(
                     Getter.getModuleResult(ApplicationRoot, moduleId), userName);
             validKey = storedResult.compareTo(solutionKey) == 0;
-            log.debug("Submitted Key: " + storedResult);
-            log.debug("Expected Key : " + solutionKey);
+            // Neither the expected nor the submitted key is logged: log4j2 ships with debug
+            // enabled, so this would put the answer to every module on disk.
           }
           if (validKey) {
             log.debug("Correct key submitted, checking that module not already completed");

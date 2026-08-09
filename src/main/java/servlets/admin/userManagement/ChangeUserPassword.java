@@ -68,7 +68,8 @@ public class ChangeUserPassword extends HttpServlet {
           String player = (String) request.getParameter("player");
           log.debug("player = " + player.toString());
           String newPassword = (String) request.getParameter("password");
-          log.debug("newPass = " + newPassword);
+          // The new password is never logged: log4j2 ships with debug enabled, so this would put
+          // every admin-initiated password reset on disk in clear text.
 
           // Validation
           notNull = (player != null) && (newPassword != null);

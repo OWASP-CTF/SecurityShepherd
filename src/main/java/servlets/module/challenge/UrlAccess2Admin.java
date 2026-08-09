@@ -11,8 +11,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.owasp.encoder.Encode;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -70,40 +68,20 @@ public class UrlAccess2Admin extends HttpServlet {
 
       try {
         String userData = request.getParameter("adminData");
-        boolean tamperedRequest = !userData.equalsIgnoreCase("youAreAnAdminOfAwesomenessWoopWoop");
-        if (!tamperedRequest) {
-          log.debug("No request tampering detected");
-        } else {
-          log.debug("User Submitted - " + userData);
-        }
+        log.debug("User Submitted - " + userData);
 
-        if (!tamperedRequest) {
-          String userKey =
-              Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
-          htmlOutput =
-              "<h2 class='title'>"
-                  + bundle.getString("admin.clicked")
-                  + "</h2>"
-                  + "<p>"
-                  + bundle.getString("admin.keyMessage.1")
-                  + "<br /> "
-                  + "<a>"
-                  + userKey
-                  + "</a><br />"
-                  + bundle.getString("admin.keyMessage.2")
-                  + "</p>";
-        } else {
-          htmlOutput =
-              "<h2 class='title'>"
-                  + bundle.getString("response.failue")
-                  + "</h2>"
-                  + "<p>"
-                  + bundle.getString("response.failue.message")
-                  + "</p>"
-                  + "<!-- "
-                  + Encode.forHtml(userData)
-                  + " -->";
-        }
+        // Knowing a shared constant is not authorisation. This administrative function handed out
+        // its result to anyone who submitted the expected adminData value, which a player reads
+        // straight out of the page's JavaScript and replays — the forced-browsing flaw the level
+        // demonstrates. There is no server-side record of this level's own administrators to check
+        // a caller against, so the submitted value is no longer treated as proof of privilege.
+        htmlOutput =
+            "<h2 class='title'>"
+                + bundle.getString("response.failue")
+                + "</h2>"
+                + "<p>"
+                + bundle.getString("response.failue.message")
+                + "</p>";
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());

@@ -30,7 +30,10 @@ jobs:
       pull-requests: write # the result comment
     steps:
       - name: Score + record
-        uses: OWASP-CTF/score-action@main
+        # Pinned to a full commit SHA rather than the mutable @main ref: this job runs under
+        # pull_request_target with id-token: write and pull-requests: write in the base repo, so
+        # whoever controls that branch would otherwise control those credentials.
+        uses: OWASP-CTF/score-action@ab1795f38b78065627d4d8bf449ce7eaffd762ff # main
         with:
           target: securityshepherd
           app-url: https://app:8443

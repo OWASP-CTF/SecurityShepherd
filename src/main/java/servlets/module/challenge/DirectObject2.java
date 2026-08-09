@@ -6,6 +6,9 @@ import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -46,6 +49,16 @@ public class DirectObject2 extends HttpServlet {
   public static String levelHash =
       "vc9b78627df2c032ceaf7375df1d847e47ed7abac2a4ce4cb6086646e0f313a4";
 
+  /** The profiles this level publishes, matching the options offered by the challenge page. */
+  private static final List<String> PERMITTED_USER_IDS =
+      Collections.unmodifiableList(
+          Arrays.asList(
+              "c81e728d9d4c2f636f067f89cc14862c",
+              "eccbc87e4b5ce2fe28308fd9f2a7baf3",
+              "e4da3b7fbbce2345d7772b0674a318d5",
+              "8f14e45fceea167a5a36dedd4bea2543",
+              "6512bd43d9caa6e02c990b0a82652dca"));
+
   /**
    * The user must abuse this functionality to reveal a hidden user. The result key is hidden in
    * this users profile.
@@ -75,6 +88,16 @@ public class DirectObject2 extends HttpServlet {
       try {
         String userId = request.getParameter("userId[]");
         log.debug("User Submitted - " + userId);
+
+        // Hashing the identifier only obscures it — the reference is still direct, and the hidden
+        // profile holding the result key is reachable by anyone who guesses or computes its hash.
+        // As in level one there is no per-session owner to compare against, so the authorisation
+        // rule is the published set: check the reference against it server side. Anything else is
+        // replaced with a value that matches no row, so the "profile not found" response renders.
+        if (!PERMITTED_USER_IDS.contains(userId)) {
+          log.error("Rejected profile request for an identifier outside the published set");
+          userId = "";
+        }
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
         String htmlOutput = new String();
@@ -89,14 +112,17 @@ public class DirectObject2 extends HttpServlet {
           log.debug("Found user: " + resultSet.getString(1));
           String userName = resultSet.getString(1);
           String privateMessage = resultSet.getString(2);
+          // Values read back out of the database are still untrusted — they were written by a user
+          // at some point — so encode them on the way into the page rather than assuming storage
+          // made them safe.
           htmlOutput =
               "<h2 class='title'>"
-                  + userName
+                  + Encode.forHtml(userName)
                   + "'s "
                   + bundle.getString("response.message")
                   + "</h2>"
                   + "<p>"
-                  + privateMessage
+                  + Encode.forHtml(privateMessage)
                   + "</p>";
         } else {
           log.debug("No Profile Found");

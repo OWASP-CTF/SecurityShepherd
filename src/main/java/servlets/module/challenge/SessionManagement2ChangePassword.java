@@ -1,11 +1,7 @@
 package servlets.module.challenge;
 
-import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -15,8 +11,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.owasp.encoder.Encode;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -90,31 +84,22 @@ public class SessionManagement2ChangePassword extends HttpServlet {
         log.debug("Getting ApplicationRoot");
         String ApplicationRoot = getServletContext().getRealPath("");
 
-        String newPassword = Hash.randomString();
         try {
-          Connection conn =
-              Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
-          log.debug("Checking credentials");
-          PreparedStatement callstmt =
-              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userAddress = ?");
-          callstmt.setString(1, newPassword);
-          callstmt.setString(2, subEmail);
-          log.debug("Executing resetPassword");
-          callstmt.execute();
-          log.debug("Statement executed");
-
-          log.debug("Committing changes made to database");
-          callstmt = conn.prepareStatement("COMMIT");
-          callstmt.execute();
-          log.debug("Changes committed.");
-
-          htmlOutput = Encode.forHtml(newPassword);
-          Database.closeConnection(conn);
-        } catch (SQLException e) {
-          log.error(levelName + " SQL Error: " + e.toString());
+          // A reset is neither performed nor disclosed on the strength of an address anyone can
+          // type in. This flow used to reset the account belonging to whatever email was submitted
+          // and then print the new password straight back to the requester, which hands over any
+          // account whose address is known. A reset has to travel to the address's real owner, and
+          // this level has no delivery channel, so nothing is changed here.
+          //
+          // The reply is deliberately the same whether or not the address exists, so it cannot be
+          // used to enumerate accounts either.
+          log.debug("Refusing to reset a password from an unverified address");
+          htmlOutput = bundle.getString("response.resetRequested");
+        } catch (Exception e) {
+          log.error(levelName + " Error: " + e.toString());
         }
         log.debug("Outputting HTML");
-        out.write(bundle.getString("response.changedTo") + " " + htmlOutput);
+        out.write(htmlOutput);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());

@@ -17,7 +17,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -109,35 +108,21 @@ public class SecurityMisconfigStealTokens extends HttpServlet {
                           "securityMisconfig.servlet.stealTokens.notComplete.message")
                       + "<p>");
         } else {
-          // User submitted something different from their cookie
-          boolean notUsersTokenButValid = validToken(userId, cookieValue, applicationRoot);
-          if (notUsersTokenButValid) {
-            log.debug("Valid Cookie of another User Dectected");
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("securityMisconfig.servlet.stealTokens.complete")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("securityMisconfig.servlet.stealTokens.youDidIt")
-                    + " "
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
-          } else {
-            htmlOutput =
-                new String(
-                    "<h2 class='title'>"
-                        + bundle.getString("securityMisconfig.servlet.stealTokens.notComplete")
-                        + "</h2>"
-                        + "<p>"
-                        + bundle.getString(
-                            "securityMisconfig.servlet.stealTokens.notComplete.yourToken")
-                        + "<p>");
-          }
+          // A session token authenticates exactly one account: the one it was issued to. Honouring
+          // a token that belongs to somebody else is the impersonation this level is built around,
+          // so a token that is not the caller's own is now simply rejected rather than rewarded.
+          // Marking the cookie HttpOnly and Secure where it is issued closes the browser-side theft
+          // routes; this closes the server's willingness to accept the result.
+          log.debug("Rejecting a token that does not belong to the caller");
+          htmlOutput =
+              new String(
+                  "<h2 class='title'>"
+                      + bundle.getString("securityMisconfig.servlet.stealTokens.notComplete")
+                      + "</h2>"
+                      + "<p>"
+                      + bundle.getString(
+                          "securityMisconfig.servlet.stealTokens.notComplete.yourToken")
+                      + "<p>");
         }
       } catch (Exception e) {
         out.write(errors.getString("securityMisconfig.servlet.stealTokens.notComplete.yourToken"));

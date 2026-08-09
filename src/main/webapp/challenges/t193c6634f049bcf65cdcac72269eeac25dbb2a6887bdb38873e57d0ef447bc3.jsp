@@ -104,6 +104,10 @@ String i18nLevelName = bundle.getString("challenge.challengeName");
 				<p><%= bundle.getString("reset.whatToDo") %></p>
 				<table>
 					<tr>
+						<td><%= bundle.getString("reset.form.current") %></td>
+						<td><input type="password" id="passCurrent" /></td>
+					</tr>
+					<tr>
 						<td><%= bundle.getString("reset.form.new") %></td>
 						<td><input type="password" id="passOne" /></td>
 					</tr>
@@ -160,6 +164,7 @@ String i18nLevelName = bundle.getString("challenge.challengeName");
 			
 			$("#leForm2").submit(function(){
 				document.cookie="current=WjNWbGMzUXhNZz09";
+				var theCurrentPassword = $("#passCurrent").val();
 				var theNewPassword = $("#passOne").val();
 				var theNewPasswordAgain = $("#passTwo").val();
 				if(theNewPassword == theNewPasswordAgain && theNewPassword.length > 6)
@@ -171,6 +176,7 @@ String i18nLevelName = bundle.getString("challenge.challengeName");
 							type: "POST",
 							url: "b467dbe3cd61babc0ec599fd0c67e359e6fe04e8cdc618d537808cbb693fee8a",
 							data: {
+								currentPassword: theCurrentPassword,
 								newPassword: theNewPassword
 							},
 							async: false

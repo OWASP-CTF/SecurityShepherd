@@ -8,6 +8,7 @@ import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.Scanner;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -81,7 +82,14 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
         String plusId = (String) json.get("userId");
         log.debug("User Submitted - " + plusId);
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId)) {
+        // This action changed state on nothing but the session cookie, which the browser attaches
+        // to a forged cross-site request automatically. Require the session's unpredictable CSRF
+        // token in the body as well: a cross-site page cannot read it, so it cannot forge a request
+        // that passes. The other CSRF targets already gate on Validate.validateTokens; this one did
+        // not check any token at all.
+        Cookie tokenCookie = Validate.getToken(request.getCookies());
+        Object csrfToken = json.has("csrfToken") ? json.get("csrfToken") : null;
+        if (userId.equals(plusId) && Validate.validateTokens(tokenCookie, csrfToken)) {
           String ApplicationRoot = getServletContext().getRealPath("");
           String userName = (String) ses.getAttribute("userName");
           String attackerName = Getter.getUserName(ApplicationRoot, plusId);

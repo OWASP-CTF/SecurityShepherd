@@ -103,7 +103,7 @@ public class EnableScoreboard extends HttpServlet {
                         + " The scoreboard is public</p>";
               } else {
                 // Scoreboard is admin only
-                ScoreboardStatus.setScoreboardPublic();
+                ScoreboardStatus.setScoreboardAdminOnly();
                 log.debug("Admin only scoreboard set");
                 scoreboardMessage = "Scoreboard is only enabled for administrators.";
 

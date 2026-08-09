@@ -265,6 +265,9 @@ public class ACS extends HttpServlet {
 
               // We must set the path because the ACS servlet is in a subdir...
               token.setPath("/");
+              // Kept out of document.cookie: no script reads this token, pages receive it rendered
+              // into the markup by Validate.getToken.
+              token.setHttpOnly(true);
               response.addCookie(token);
 
               mustRedirect = true;

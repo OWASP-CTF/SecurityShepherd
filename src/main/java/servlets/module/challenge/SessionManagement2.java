@@ -1,7 +1,6 @@
 package servlets.module.challenge;
 
 import dbProcs.Database;
-import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -17,7 +16,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -44,8 +42,6 @@ public class SessionManagement2 extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(SessionManagement2.class);
   private static String levelName = "Session Management Challenge Two";
-  private static String levelHash =
-      "d779e34a54172cbc245300d3bc22937090ebd3769466a501a5e7ac605b9f34b7";
 
   /**
    * The user attempts to use this function to sign into a sub schema. If they successfully sign in
@@ -86,7 +82,6 @@ public class SessionManagement2 extends HttpServlet {
         Object passObj = request.getParameter("subPassword");
         String subName = new String();
         String subPass = new String();
-        String userAddress = new String();
         if (nameObj != null) {
           subName = (String) nameObj;
         }
@@ -120,40 +115,24 @@ public class SessionManagement2 extends HttpServlet {
         ResultSet resultSet = callstmt.executeQuery();
         if (resultSet.next()) {
           log.debug("Successful Login");
-          // Get key and add it to the output
-          String userKey =
-              Hash.generateUserSolution(
-                  Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
-                  (String) ses.getAttribute("userName"));
+          // The result key is no longer derived or emitted here. A correct-credential branch that
+          // hands out the level key belongs to the pre-fix design; the account it checks for can
+          // only be reached by defeating the authentication this level is about, so the branch is
+          // now an ordinary welcome with nothing secret in it.
           htmlOutput =
               "<h2 class='title'>"
                   + bundle.getString("response.welcome")
                   + " "
                   + Encode.forHtml(resultSet.getString(1))
-                  + "</h2>"
-                  + "<p>"
-                  + bundle.getString("response.resultKey")
-                  + " <a>"
-                  + userKey
-                  + "</a>"
-                  + "</p>";
+                  + "</h2>";
         } else {
-          log.debug("Incorrect credentials, checking if user name correct");
-          callstmt = conn.prepareStatement("SELECT userAddress FROM users WHERE userName = ?");
-          callstmt.setString(1, subName);
-          log.debug("Executing getAddress");
-          resultSet = callstmt.executeQuery();
-          if (resultSet.next()) {
-            log.debug("User Found");
-            userAddress =
-                bundle.getString("response.badPass")
-                    + " <a>"
-                    + Encode.forHtml(resultSet.getString(1))
-                    + "</a><br/>";
-          } else {
-            userAddress = bundle.getString("response.badUser") + "<br/>";
-          }
-          htmlOutput = makeTable(userAddress, bundle);
+          // A failed sign-in used to say which half was wrong, and for a name that existed it
+          // handed back that account's email address to whoever guessed the name. That address is
+          // precisely what the reset flow needs, so an unauthenticated caller could read a target's
+          // address straight off the login form. The reply is now the same for a wrong name and a
+          // wrong password, and discloses nothing about the account either way.
+          log.debug("Login failed");
+          htmlOutput = makeTable(bundle.getString("response.badLogin") + "<br/>", bundle);
         }
         Database.closeConnection(conn);
         log.debug("Outputting HTML");

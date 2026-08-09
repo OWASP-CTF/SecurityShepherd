@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
 import utils.FindXSS;
 import utils.Hash;
 import utils.ShepherdLogManager;
@@ -80,7 +81,10 @@ public class XssChallengeFive extends HttpServlet {
           String searchTerm = request.getParameter("searchTerm");
           log.debug("User Submitted - " + searchTerm);
           searchTerm = XssFilter.badUrlValidate(searchTerm);
-          userPost = "<a href=\"" + searchTerm + "\">Your HTTP Link!</a>";
+          // badUrlValidate only replaces the *first* double quote (replaceFirst), so a second one
+          // escapes the href attribute. Encode for the attribute context on output instead of
+          // trusting that validator to have neutralised the value.
+          userPost = "<a href=\"" + Encode.forHtmlAttribute(searchTerm) + "\">Your HTTP Link!</a>";
           log.debug("After WhiteListing - " + searchTerm);
 
           boolean xssDetected = FindXSS.search(userPost);

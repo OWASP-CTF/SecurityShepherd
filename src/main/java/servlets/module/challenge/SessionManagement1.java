@@ -10,10 +10,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -87,28 +85,14 @@ public class SessionManagement1 extends HttpServlet {
           }
         }
         String htmlOutput = null;
+        // No privilege is derived from the cookie any more. Base64 is an encoding, not a signature,
+        // so a client can mint "userRole=administrator" for itself at will, and this level has no
+        // server-side record of its own administrators to validate such a claim against. Deferring
+        // to the platform's admin role would not help either: that role belongs to the training
+        // platform, not to this level's fictional club, so honouring it would still hand out the
+        // result key on the strength of a forged cookie.
         if (theCookie != null) {
-          log.debug("Cookie value: " + theCookie.getValue());
-          byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
-          String decodedCookie = new String(decodedCookieBytes, "UTF-8");
-          log.debug("Decoded Cookie: " + decodedCookie);
-
-          if (decodedCookie.equals("userRole=administrator")) {
-            log.debug("Challenge Complete");
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("response.adminClub")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("response.welcomeAdmin")
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
-          }
+          log.debug("Ignoring client-supplied role cookie");
         }
         if (htmlOutput == null) {
           log.debug("Challenge Not Complete");

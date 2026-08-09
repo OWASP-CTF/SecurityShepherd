@@ -131,7 +131,10 @@ public class XxeChallenge1OldWebService extends HttpServlet {
     String result;
 
     DocumentBuilder dBuilder =
-        XmlDocumentBuilder.xmlDocBuilder(false, true, true, true, true, true);
+        // Disallow doctype declarations outright — that single feature blocks almost every XML
+        // entity attack — and turn off external general/parameter entities, external DTD loading,
+        // XInclude and entity expansion so nothing can reach the filesystem or the network.
+        XmlDocumentBuilder.xmlDocBuilder(true, false, false, false, false, false);
     InputSource is = new InputSource(xmlEmail);
 
     try {

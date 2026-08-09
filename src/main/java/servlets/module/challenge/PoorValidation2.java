@@ -79,16 +79,18 @@ public class PoorValidation2 extends HttpServlet {
         int bananaAmount = validateAmount(Integer.parseInt(request.getParameter("bananaAmount")));
         log.debug("bananaAmount - " + bananaAmount);
 
-        // Working out costs
-        int pineappleCost = pineappleAmount * 30;
-        int orangeCost = orangeAmount * 3000;
-        int appleCost = appleAmount * 45;
-        int bananaCost = bananaAmount * 15;
+        // Working out costs. validateAmount already rejects negatives, but the multiplication was
+        // still done in int: a large enough quantity overflows and wraps around to a negative line
+        // cost, reaching a negative total by a different route. long arithmetic removes the wrap.
+        long pineappleCost = (long) pineappleAmount * 30;
+        long orangeCost = (long) orangeAmount * 3000;
+        long appleCost = (long) appleAmount * 45;
+        long bananaCost = (long) bananaAmount * 15;
 
         htmlOutput = new String();
 
         // Work Out Final Cost
-        int finalCost = pineappleCost + orangeCost + bananaCost + appleCost;
+        long finalCost = pineappleCost + orangeCost + bananaCost + appleCost;
 
         // Output Order
         htmlOutput =

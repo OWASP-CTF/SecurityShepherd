@@ -101,6 +101,13 @@ public class Login extends HttpServlet {
         {
           token.setSecure(true);
         }
+        // No script reads this cookie: pages receive the token rendered into the markup via
+        // Validate.getToken, so withholding it from document.cookie costs nothing and denies it to
+        // injected script.
+        token.setHttpOnly(true);
+        // Without an explicit path the cookie is scoped to the request path, while Logout clears it
+        // at "/". That mismatch can leave the token behind after signing out.
+        token.setPath("/");
         response.addCookie(token);
         mustRedirect = true;
 

@@ -8,8 +8,34 @@ public class ShepherdLogManager {
 
   private static final Logger log = LogManager.getLogger(ShepherdLogManager.class);
 
+  /** Upper bound on a logged address, long enough for a chain of forwarded hops. */
+  private static final int MAX_ADDRESS_LENGTH = 256;
+
+  /**
+   * Makes an address safe to interpolate into a log line.
+   *
+   * <p>The forwarded address is taken from the X-Forwarded-For request header, which is entirely
+   * requester controlled, and log4j2 renders it into the prefix of every line through
+   * %X{ctx:RemoteAddress}. Without stripping control characters a requester can terminate the
+   * current record and append further ones, forging arbitrary log entries.
+   *
+   * @param value Untrusted value destined for the log prefix
+   * @return The value with control characters removed and its length capped
+   */
+  private static String sanitiseForLog(String value) {
+    if (value == null) {
+      return null;
+    }
+
+    String sanitised = value.replaceAll("\\p{Cntrl}", "");
+    if (sanitised.length() > MAX_ADDRESS_LENGTH) {
+      sanitised = sanitised.substring(0, MAX_ADDRESS_LENGTH);
+    }
+    return sanitised;
+  }
+
   public static void setRequestIp(String theIp) {
-    ThreadContext.put("RemoteAddress", theIp);
+    ThreadContext.put("RemoteAddress", sanitiseForLog(theIp));
   }
 
   public static void logEvent(String theIp, String theMessage) {
@@ -18,13 +44,16 @@ public class ShepherdLogManager {
   }
 
   public static void setRequestIp(String theIp, String theForwardedIp) {
-    if (theForwardedIp != null
-        && !theForwardedIp.isEmpty()) // If string is not null and not empty set normal message
+    String safeIp = sanitiseForLog(theIp);
+    String safeForwardedIp = sanitiseForLog(theForwardedIp);
+
+    if (safeForwardedIp != null
+        && !safeForwardedIp.isEmpty()) // If string is not null and not empty set normal message
     {
-      ThreadContext.put("RemoteAddress", theIp + " from " + theForwardedIp);
+      ThreadContext.put("RemoteAddress", safeIp + " from " + safeForwardedIp);
     } else // No Forward Header detected so Log that
     {
-      ThreadContext.put("RemoteAddress", theIp + " from ?.?.?.?");
+      ThreadContext.put("RemoteAddress", safeIp + " from ?.?.?.?");
     }
   }
 
@@ -62,13 +91,18 @@ public class ShepherdLogManager {
    */
   public static void setRequestIp(String theIp, String theForwardedIp, String userName) {
 
-    if (theForwardedIp != null
-        && !theForwardedIp.isEmpty()) // If string is not null and not empty set normal message
+    String safeIp = sanitiseForLog(theIp);
+    String safeForwardedIp = sanitiseForLog(theForwardedIp);
+    String safeUserName = sanitiseForLog(userName);
+
+    if (safeForwardedIp != null
+        && !safeForwardedIp.isEmpty()) // If string is not null and not empty set normal message
     {
-      ThreadContext.put("RemoteAddress", userName + " at " + theIp + " from " + theForwardedIp);
+      ThreadContext.put(
+          "RemoteAddress", safeUserName + " at " + safeIp + " from " + safeForwardedIp);
     } else // No Forward Header detected so Log that
     {
-      ThreadContext.put("RemoteAddress", userName + " at " + theIp + " from ?.?.?.?");
+      ThreadContext.put("RemoteAddress", safeUserName + " at " + safeIp + " from ?.?.?.?");
     }
   }
 }

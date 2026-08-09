@@ -9,6 +9,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import utils.ScoreboardStatus;
+import utils.Validate;
 
 @WebServlet("/api/scoreboard")
 public class Scoreboard extends HttpServlet {
@@ -21,7 +22,13 @@ public class Scoreboard extends HttpServlet {
     PrintWriter out = response.getWriter();
     out.print(getServletInfo());
     HttpSession ses = request.getSession(true);
-    if (ScoreboardStatus.canSeeScoreboard((String) ses.getAttribute("userRole"))) {
+
+    // A public scoreboard is deliberately readable without signing in, so an anonymous caller is
+    // still allowed through as a null role. What must not happen is trusting a role attribute from
+    // a session that no longer validates, so only a validated session contributes a role.
+    String userRole = Validate.validateSession(ses) ? (String) ses.getAttribute("userRole") : null;
+
+    if (ScoreboardStatus.canSeeScoreboard(userRole)) {
       out.write("true");
     } else {
       // Return 403

@@ -75,16 +75,25 @@ public class PoorValidation1 extends HttpServlet {
         int bananaAmount = Integer.parseInt(request.getParameter("bananaAmount"));
         log.debug("bananaAmount - " + bananaAmount);
 
-        // Working out costs
-        int pineappleCost = pineappleAmount * 30;
-        int orangeCost = orangeAmount * 3000;
-        int appleCost = appleAmount * 45;
-        int bananaCost = bananaAmount * 15;
+        // Reject quantities the shop cannot actually sell. Without this a negative amount produces
+        // a negative line cost, so ordering "-100" oranges credits the basket instead of charging
+        // it — the total can be driven below zero.
+        pineappleAmount = validateAmount(pineappleAmount);
+        orangeAmount = validateAmount(orangeAmount);
+        appleAmount = validateAmount(appleAmount);
+        bananaAmount = validateAmount(bananaAmount);
+
+        // Working out costs. The multiplications are done in long arithmetic so a very large
+        // quantity cannot overflow int and wrap around to a negative cost.
+        long pineappleCost = (long) pineappleAmount * 30;
+        long orangeCost = (long) orangeAmount * 3000;
+        long appleCost = (long) appleAmount * 45;
+        long bananaCost = (long) bananaAmount * 15;
 
         htmlOutput = new String();
 
         // Work Out Final Cost
-        int finalCost = pineappleCost + appleCost + bananaCost + orangeCost;
+        long finalCost = pineappleCost + appleCost + bananaCost + orangeCost;
 
         // Output Order
         htmlOutput =
@@ -121,5 +130,16 @@ public class PoorValidation1 extends HttpServlet {
     } else {
       log.error(levelName + " servlet accessed with no session");
     }
+  }
+
+  /**
+   * @param amount Quantity submitted by the customer
+   * @return The quantity, with anything below zero treated as zero
+   */
+  private static int validateAmount(int amount) {
+    if (amount < 0) {
+      amount = 0;
+    }
+    return amount;
   }
 }

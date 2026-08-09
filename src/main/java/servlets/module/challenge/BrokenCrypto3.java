@@ -11,7 +11,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.owasp.encoder.Encode;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -71,19 +70,19 @@ public class BrokenCrypto3 extends HttpServlet {
         String userData = request.getParameter("userData");
         log.debug("User Submitted - " + userData);
 
-        log.debug("Decrypting user input");
-        // Using level key as encryption key
-        String decryptedUserData = decrypt(userData, levelResult);
-        log.debug("Decrypted to: " + decryptedUserData);
+        // This was a decryption oracle keyed with the level's own secret, which is the worst
+        // possible pairing. The cipher is a repeating-key XOR, so decrypting a chosen ciphertext
+        // returns plaintext XOR key — feed it a run of zero bytes and the response *is* the key.
+        // No amount of output filtering fixes that; the operation itself has to go. A service must
+        // never decrypt caller-chosen input under a key it is trying to keep secret.
+        log.debug("Refusing to decrypt caller-supplied ciphertext under the level key");
 
         htmlOutput =
             "<h2 class='title'>"
                 + bundle.getString("insecureCryptoStorage.3.plaintextResult")
                 + "</h2><p>"
                 + bundle.getString("insecureCryptoStorage.3.plaintextResult.message")
-                + "<br/><br/><em>"
-                + Encode.forHtml(decryptedUserData)
-                + "</em></p>";
+                + "</p>";
       } catch (Exception e) {
         log.fatal(levelName + " - " + e.toString());
         htmlOutput = errors.getString("error.funky");

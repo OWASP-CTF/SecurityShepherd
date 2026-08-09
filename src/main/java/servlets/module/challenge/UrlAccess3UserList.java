@@ -90,11 +90,13 @@ public class UrlAccess3UserList extends HttpServlet {
         String ApplicationRoot = getServletContext().getRealPath("");
         Connection conn = Database.getChallengeConnection(ApplicationRoot, "UrlAccessThree");
         PreparedStatement callstmt;
+        // The name comes from a cookie the client controls and was concatenated into the statement
+        // text, so it could close the quoted literal and rewrite the WHERE clause. Using
+        // PreparedStatement is not the protection — binding the value is.
         callstmt =
             conn.prepareStatement(
-                "SELECT userName FROM users WHERE userRole = \"admin\" OR userName = \""
-                    + currentUser
-                    + "\";");
+                "SELECT userName FROM users WHERE userRole = \"admin\" OR userName = ?;");
+        callstmt.setString(1, currentUser);
         log.debug("Getting User List");
         htmlOutput = new String();
         ResultSet rs = callstmt.executeQuery();

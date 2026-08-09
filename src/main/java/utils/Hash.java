@@ -132,7 +132,7 @@ public class Hash {
     psn1.nextBytes(byteArray);
     BigInteger bigInt = new BigInteger(byteArray);
     result = bigInt.toString();
-    log.debug("Generated String = " + result);
+    // The generated value becomes the CSRF token cookie, so it is deliberately not logged.
 
     return result;
   }

@@ -75,6 +75,17 @@ public class DirectObjectBankTransfer extends HttpServlet {
       try {
         String senderAccountNumber = request.getParameter("senderAccountNumber");
         log.debug("Sender Account Number - " + senderAccountNumber);
+
+        // The account money leaves must be the one this session signed in to. The sender was taken
+        // straight from the request, so anyone could move funds out of any account simply by
+        // putting somebody else's number in the form — the receiver may be any account, but the
+        // sender may not. DirectObjectBankLogin records the signed-in account on the session.
+        Object signedInAccount = ses.getAttribute("directObjectBankAccount");
+        if (signedInAccount == null || !signedInAccount.equals(senderAccountNumber)) {
+          log.error("Rejected transfer from an account this session is not signed in to");
+          out.write(errors.getString("error.funky"));
+          return;
+        }
         String receiverAccountNumber = request.getParameter("receiverAccountNumber");
         log.debug("Receiver Account Number - " + receiverAccountNumber);
         String transferAmountString = request.getParameter("transferAmount");

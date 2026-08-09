@@ -7,6 +7,7 @@ import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -72,7 +73,16 @@ public class CsrfChallengeTargetOne extends HttpServlet {
         String plusId = request.getParameter("userid");
         log.debug("User Submitted - " + plusId);
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId)) {
+        // Require the request to carry the session's CSRF token. Without this the counter can be
+        // incremented by any page the victim visits, which is exactly the forgery this level
+        // demonstrates: the session cookie alone is not proof of intent.
+        Cookie tokenCookie = Validate.getToken(request.getCookies());
+        Object tokenParmeter = request.getParameter("csrfToken");
+        // Credit only the session's own user. The counter was credited to whatever userId the
+        // request named, so a page the victim merely visited could hand the increment to somebody
+        // else — that cross-user effect is the whole point of forging the request. Requiring the
+        // two to match removes it; the token check above stays as the second line of defence.
+        if (userId.equals(plusId) && Validate.validateTokens(tokenCookie, tokenParmeter)) {
           String ApplicationRoot = getServletContext().getRealPath("");
           String userName = (String) ses.getAttribute("userName");
           String attackerName = Getter.getUserName(ApplicationRoot, plusId);

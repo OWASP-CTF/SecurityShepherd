@@ -243,9 +243,18 @@ public class Validate {
 
   /**
    * Session is checked for credentials and ensures that they have not been modified and that they
-   * are valid for an administrator. This function also validates CSRF tokens
+   * are valid for an administrator.
+   *
+   * <p><strong>This method does not provide CSRF protection.</strong> The returned value reflects
+   * the administrator role alone; the token arguments are consumed only on the non-administrator
+   * path, to decide how loudly to log an unauthorised access attempt. Every caller that performs a
+   * state change must therefore call {@link #validateTokens(Cookie, Object)} itself — as all of the
+   * servlets under servlets.admin currently do — and must not treat a true result here as evidence
+   * that the request carried a valid CSRF token.
    *
    * @param ses HttpSession from users browser
+   * @param cookieToken CSRF token taken from the user's cookies, used for logging only
+   * @param requestToken CSRF token supplied with the request, used for logging only
    * @return Boolean value that reflects the validity of the admins session
    */
   public static boolean validateAdminSession(
@@ -266,6 +275,7 @@ public class Validate {
             // log.debug("Session holder is " + userName);
             String role = (String) ses.getAttribute("userRole");
             result = (role.compareTo("admin") == 0);
+
             if (!result) {
               // Check CSRF Tokens of User to ensure they are not being CSRF'd into causing
               // Unauthorised Access Alert
@@ -282,7 +292,7 @@ public class Validate {
             }
 
           } catch (Exception e) {
-            log.fatal("Tampered Parameter Detected!!! Could not parameters");
+            log.fatal("Tampered Parameter Detected!!! Could not read session parameters", e);
           }
         } else {
           log.debug("Session has no credentials");
@@ -324,7 +334,7 @@ public class Validate {
         newKey = newKey.concat(userSalt.substring(0, toAdd));
       }
     }
-    log.debug("Encryption key is '" + newKey + "'");
+    // The derived key is not logged: log4j2 ships with debug enabled by default.
     return newKey;
   }
 

@@ -1,11 +1,8 @@
 package servlets.module.challenge;
 
-import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -130,51 +127,17 @@ public class SessionManagement5ChangePassword extends HttpServlet {
             errorMessage += bundle.getString("changePass.badTokenData") + ": " + e.toString();
           }
 
-          if (tokenLife < 10 && tokenLife >= 0) {
-            if (newPass.length() >= 12) {
-              log.debug("Getting ApplicationRoot");
-              String ApplicationRoot = getServletContext().getRealPath("");
-              log.debug("Servlet root = " + ApplicationRoot);
-
-              Connection conn =
-                  Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalFive");
-              log.debug("Changing password for user: " + userName);
-              log.debug("Changing password to: " + newPass);
-              PreparedStatement callstmt;
-
-              callstmt =
-                  conn.prepareStatement(
-                      "UPDATE users SET userPassword = SHA(?) WHERE userName = ?");
-
-              callstmt.setString(1, newPass);
-              callstmt.setString(2, userName);
-
-              log.debug("Executing changePassword");
-              callstmt.execute();
-
-              log.debug("Committing changes made to database");
-              callstmt = conn.prepareStatement("COMMIT");
-              callstmt.execute();
-              log.debug("Changes committed.");
-
-              htmlOutput = "<p>" + bundle.getString("changePass.success") + "</p>";
-            } else {
-              log.debug("Invalid password submitted: " + newPass);
-              htmlOutput = "<p>" + bundle.getString("changePass.failure") + "</p>";
-            }
+          // The reset is no longer carried out. This token is a base64'd timestamp, so it carries
+          // no secret at all: anyone can encode the current time and mint a token that passes the
+          // freshness window, for any account they care to name in userName. A reset token has to
+          // be unpredictable and issued by the server against one specific account, and this level
+          // keeps no such record — SessionManagement5SetToken only gives the appearance of sending
+          // one — so there is nothing here the token could be validated against.
+          log.debug("Refusing to reset a password from a self-minted token");
+          if (!errorMessage.isEmpty()) {
+            htmlOutput = "<p><font colour='red'><b>" + errorMessage + "</b></font</p>";
           } else {
-            if (!errorMessage.isEmpty()) {
-              htmlOutput = "<p><font colour='red'><b>" + errorMessage + "</b></font</p>";
-            } else if (tokenLife >= 10) {
-              log.debug("Token too old");
-              htmlOutput = "<p>" + bundle.getString("changePass.oldToken") + "</p>";
-            } else if (tokenLife < 0) {
-              log.debug("Token to young");
-              htmlOutput = "<p>" + bundle.getString("changePass.youngToken") + "</p>";
-            } else {
-              log.error("Token to Strange: Unexpected Error");
-              htmlOutput = "<p>" + bundle.getString("changePass.funkyToken") + "</p>";
-            }
+            htmlOutput = "<p>" + bundle.getString("changePass.funkyToken") + "</p>";
           }
         }
         log.debug("Outputting HTML");

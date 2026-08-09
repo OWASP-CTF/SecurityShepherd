@@ -87,7 +87,10 @@ public class SqlInjection6 extends HttpServlet {
         Connection conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSix");
         log.debug("Looking for users");
         PreparedStatement prepstmt =
-            conn.prepareStatement("SELECT userName FROM users WHERE userPin = '" + userPin + "'");
+            // Using PreparedStatement is not enough on its own: the value still has to be bound.
+            // Concatenating it into the statement text leaves the parser looking at attacker input.
+            conn.prepareStatement("SELECT userName FROM users WHERE userPin = ?");
+        prepstmt.setString(1, userPin);
         ResultSet users = prepstmt.executeQuery();
         try {
           if (users.next()) {
