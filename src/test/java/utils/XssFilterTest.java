@@ -90,9 +90,18 @@ class XssFilterTest {
   }
 
   @Test
-  void encodeForHtml_restoresFirstQuote() {
+  void encodeForHtml_keepsQuotesEncoded() {
+    // Quotes must stay HTML-encoded so a value reflected into an HTML attribute (e.g.
+    // href="...") cannot break out of the attribute and inject new attributes/handlers.
     String result = XssFilter.encodeForHtml("\"test\"");
-    assertTrue(result.startsWith("\""));
+    assertFalse(result.contains("\""));
+    assertTrue(result.startsWith("&#34;") || result.startsWith("&quot;"));
+  }
+
+  @Test
+  void encodeForHtml_encodesMixedCaseOnHandler() {
+    String result = XssFilter.encodeForHtml("oNmouseover");
+    assertFalse(result.toLowerCase().contains("on"));
   }
 
   @Test

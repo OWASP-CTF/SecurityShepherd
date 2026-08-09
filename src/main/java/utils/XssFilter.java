@@ -100,10 +100,12 @@ public class XssFilter {
     log.debug("Filtering input at XSS white list");
 
     input = Encode.forHtml(input);
-    // Decode quotes to open a security hole in Encoder
-    input = input.replaceFirst("&#34;", "\"");
-    // Encode lower-case "on" and upper-case "on" to complicate the required attack vectors to pass
-    return input.replaceAll("on", "&#x6f;&#x6e;").replaceAll("ON", "&#x4f;&#x4e;");
+    // Quotes are intentionally left HTML-encoded here (no longer decoded back to a raw
+    // double-quote) so that reflecting this value inside an HTML attribute (e.g. href="...")
+    // can no longer be used to break out of the attribute and inject new attributes/handlers.
+    // Encode every case-variant of "on" (on/On/oN/ON) as defence-in-depth against inline event
+    // handlers, since HTML attribute names are matched case-insensitively by browsers.
+    return input.replaceAll("(?i)on", "&#x6f;&#x6e;");
   }
 
   /**
