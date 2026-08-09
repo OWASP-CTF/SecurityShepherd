@@ -78,7 +78,9 @@ public class DirectObjectLesson extends HttpServlet {
         if (userName.equalsIgnoreCase("guest")) {
           log.debug("Guest Profile Found");
           htmlOutput = htmlGuest(bundle);
-        } else if (userName.equalsIgnoreCase("admin")) {
+        } else if (userName.equalsIgnoreCase("admin") && Validate.validateAdminSession(ses)) {
+          // A name in the request is a reference to a profile and grants nothing by itself, so the
+          // administrator's profile is served only to a session that already holds that role.
           // Get key and add it to the output
           String userKey =
               Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));

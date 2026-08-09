@@ -130,8 +130,14 @@ public class XxeChallenge1OldWebService extends HttpServlet {
     Document doc;
     String result;
 
+    // Refusing the document type declaration removes the declaration external entities live in,
+    // so a submitted document cannot name a server path and have its contents read back.
     DocumentBuilder dBuilder =
-        XmlDocumentBuilder.xmlDocBuilder(false, true, true, true, true, true);
+        XmlDocumentBuilder.xmlDocBuilder(true, false, false, false, false, false);
+    if (dBuilder == null) {
+      log.error("Could not build an XML parser that refuses document type declarations");
+      return null;
+    }
     InputSource is = new InputSource(xmlEmail);
 
     try {
