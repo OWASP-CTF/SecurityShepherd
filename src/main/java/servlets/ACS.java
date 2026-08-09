@@ -262,6 +262,7 @@ public class ACS extends HttpServlet {
               {
                 token.setSecure(true);
               }
+              token.setHttpOnly(true);
 
               // We must set the path because the ACS servlet is in a subdir...
               token.setPath("/");

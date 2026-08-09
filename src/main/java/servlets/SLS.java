@@ -101,6 +101,7 @@ public class SLS extends HttpServlet {
           // Remove cookie
           Cookie emptyCookie = new Cookie("token", "");
           emptyCookie.setPath("/");
+          emptyCookie.setHttpOnly(true);
           response.addCookie(emptyCookie);
           log.debug("User Logged Out");
           response.sendRedirect("../login.jsp");
