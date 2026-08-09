@@ -1,9 +1,12 @@
 package servlets.module.challenge;
 
+import dbProcs.Getter;
+import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Locale;
-import java.util.Random;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -12,6 +15,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -77,11 +81,8 @@ public class CsrfChallengeTargetFive extends HttpServlet {
         if (ses.getAttribute("csrfChallengeFiveNonce") == null
             || ses.getAttribute("csrfChallengeFiveNonce").toString().isEmpty()) {
           log.debug("No CSRF Token associated with user");
-          Random random = new Random();
-          int newToken = random.nextInt(3);
-          out.write(csrfGenerics.getString("target.noTokenNewToken") + " " + newToken + "<br><br>");
-          storedToken = "" + newToken;
-          ses.setAttribute("csrfChallengeFiveNonce", newToken);
+          storedToken = Hash.randomString();
+          ses.setAttribute("csrfChallengeFiveNonce", storedToken);
         } else {
           storedToken = "" + ses.getAttribute("csrfChallengeFiveNonce");
         }
@@ -94,12 +95,23 @@ public class CsrfChallengeTargetFive extends HttpServlet {
         log.debug("csrfToken Submitted - " + csrfToken);
 
         if (!userId.equals(plusId)) {
-          if (csrfToken.equalsIgnoreCase(storedToken)) {
-            // The nonce guarding this request only had three possible values, so it could be
-            // guessed by an off site page and proved nothing about the user's intent. A request
-            // can also name any user, and nothing in it establishes that the named user meant
-            // this to happen, so state is no longer changed on behalf of anybody else.
-            log.error(levelName + " refused a state change requested on behalf of another user");
+          if (MessageDigest.isEqual(
+              storedToken.getBytes(StandardCharsets.UTF_8),
+              csrfToken.getBytes(StandardCharsets.UTF_8))) {
+            log.debug("Valid Nonce Value Submitted");
+            String ApplicationRoot = getServletContext().getRealPath("");
+            String userName = (String) ses.getAttribute("userName");
+            String attackerName = Getter.getUserName(ApplicationRoot, plusId);
+            if (attackerName != null) {
+              log.debug(userName + " is been CSRF'd by " + attackerName);
+
+              log.debug("Attempting to Increment ");
+              String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, levelHash);
+              result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
+              ses.setAttribute("csrfChallengeFiveNonce", Hash.randomString());
+            } else {
+              log.error("UserId '" + plusId + "' could not be found.");
+            }
           } else {
             log.debug("User " + plusId + " CSRF attack failed due to invalid nonce");
           }

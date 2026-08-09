@@ -73,10 +73,12 @@ public class CsrfChallengeSevenGetToken extends HttpServlet {
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
         String htmlOutput = new String("Your csrf Token for this Challenge is: ");
-        // The identifier to look up comes from the session, not from the request. Taking it from
-        // the request let anybody read anybody else's anti-CSRF token, and the LIKE comparison
-        // let a wildcard return every token in the table at once.
-        String userId = (String) ses.getAttribute("userStamp");
+        String userId = request.getParameter("userId");
+        String authenticatedUserId = (String) ses.getAttribute("userStamp");
+        if (userId == null || !userId.equals(authenticatedUserId)) {
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
+        }
 
         Connection conn =
             Database.getChallengeConnection(

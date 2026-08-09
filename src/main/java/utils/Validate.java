@@ -39,6 +39,9 @@ public class Validate {
   public static Cookie getSessionId(Cookie[] userCookies) {
     int i = 0;
     Cookie theSessionId = null;
+    if (userCookies == null) {
+      return null;
+    }
     for (i = 0; i < userCookies.length; i++) {
       if (userCookies[i].getName().compareTo("JSESSIONID") == 0) {
         theSessionId = userCookies[i];
@@ -57,11 +60,7 @@ public class Validate {
   public static Cookie getToken(Cookie[] userCookies) {
     int i = 0;
     Cookie theToken = null;
-    // getCookies() returns null, not an empty array, when the request carries no cookies at all.
-    // Reading length off that threw out of every caller, so a request that simply omitted its
-    // cookies took the handler down instead of being turned away for having no token.
     if (userCookies == null) {
-      log.error("No cookies were sent with the request, so no CSRF token could be read");
       return null;
     }
     for (i = 0; i < userCookies.length; i++) {
@@ -123,6 +122,9 @@ public class Validate {
    */
   public static boolean isValidEmailAddress(String email) {
     boolean result = true;
+    if (email == null) {
+      return false;
+    }
     try {
       log.debug("Validating email");
       InternetAddress emailAddr = new InternetAddress(email);
@@ -238,10 +240,8 @@ public class Validate {
                   "User " + userName + " Attempting Admin functions! (CSRF Tokens Not Checked)");
             }
           } catch (Exception e) {
-            // The verdict is only sound if the whole check ran to the end. Leaving the result
-            // as it stood lets a throw part way through decide the answer, so this refuses.
             result = false;
-            log.fatal("Could not validate the admin session: " + e.toString());
+            log.fatal("Could not validate admin session for " + userName + ": " + e.toString());
           }
         } else {
           log.debug("Session has no credentials");
@@ -292,10 +292,8 @@ public class Validate {
             }
 
           } catch (Exception e) {
-            // The verdict is only sound if the whole check ran to the end. Leaving the result
-            // as it stood lets a throw part way through decide the answer, so this refuses.
             result = false;
-            log.fatal("Could not validate the admin session: " + e.toString());
+            log.fatal("Could not validate admin session for " + userName + ": " + e.toString());
           }
         } else {
           log.debug("Session has no credentials");
@@ -431,10 +429,8 @@ public class Validate {
               }
             }
           } catch (Exception e) {
-            // The result is already true by this point and the suspension check above can
-            // throw, so swallowing the failure hands a kicked user a session that still works.
             result = false;
-            log.fatal("Could not validate the session: " + e.toString());
+            log.fatal("Could not validate session: " + e.toString());
           }
         } else {
           log.debug("Session has no credentials");
