@@ -180,17 +180,16 @@ if (request.getSession() != null)
 				});
 			});
 		</script>
-	<script src="<%= levelHash %>/couponCheck.js"></script>
-	<script>
-		$('#couponCode').change(function(){
-			if(!checkCoupon($('#couponCode').val())){
-				$('#couponCode').css("background-color", "#E06666");
-			}
-			else{
-				$('#couponCode').css("background-color", "#66E066");
-			}
-		});
-		</script>
+	<%--
+		The previous client-side "is this coupon valid" hint loaded couponCheck.js,
+		which shipped a hard-coded symmetric key/IV plus the ciphertext of every
+		valid coupon code (including a non-public one) straight to the browser.
+		Since the key travels with the ciphertext, that "encryption" gives the
+		coupon codes no real confidentiality - anyone can decrypt them client-side
+		without ever contacting the server. Coupon validity is already correctly
+		enforced server-side in the doPost handler, so this purely cosmetic
+		green/red hint is removed rather than reworked.
+	--%>
 	<% if(Analytics.googleAnalyticsOn) { %><%= Analytics.googleAnalyticsScript %>
 	<% } %>
 	<%
