@@ -1,5 +1,7 @@
 package servlets.module.challenge;
 
+import dbProcs.Getter;
+import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;
@@ -79,15 +81,14 @@ public class CsrfChallengeTargetThree extends HttpServlet {
         }
 
         String userId = (String) ses.getAttribute("userStamp");
-        Cookie tokenCookie = Validate.getToken(request.getCookies());
-        if (!userId.equals(plusId) && Validate.validateTokens(tokenCookie, csrfParam)) {
-          // A request can name any user, and nothing in it establishes that the named user
-          // meant this to happen. Acting on that identifier is what made this endpoint
-          // forgeable, so state is no longer changed on behalf of anybody else.
-          log.error(levelName + " refused a state change requested on behalf of another user");
-        } else {
-          log.debug("No valid CSRF Token found");
+        if (!userId.equals(plusId) || !Validate.validateTokens(tokenCookie, csrfParam)) {
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
         }
+        String applicationRoot = getServletContext().getRealPath("");
+        String moduleId =
+            Getter.getModuleIdFromHash(applicationRoot, CsrfChallengeThree.getLevelHash());
+        result = Setter.updateCsrfCounter(applicationRoot, moduleId, userId);
 
         if (result) {
           out.write(csrfGenerics.getString("target.incrementSuccess"));
