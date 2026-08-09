@@ -14,7 +14,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jsoup.parser.Parser;
 import org.owasp.encoder.Encode;
+import utils.CountdownHandler;
 import utils.Hash;
+import utils.InvalidCountdownStateException;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -111,9 +113,20 @@ public class FeedbackSubmit extends HttpServlet {
           if (notNull) {
             storedResult = Getter.getModuleResult(ApplicationRoot, moduleId);
           }
+          boolean isRunning = false;
+          try {
+            isRunning = CountdownHandler.isRunning();
+          } catch (InvalidCountdownStateException e) {
+            String message = "Countdown is in an invalid state: " + e.toString();
+            log.error(message);
+            throw new RuntimeException(e);
+          }
           boolean moduleOpen = false;
           if (notNull && storedResult != null) {
-            moduleOpen = Getter.isModuleOpen(ApplicationRoot, moduleId);
+            // This endpoint records a completion just as its sibling does, so it has to answer to
+            // the same countdown. Checking only whether the module is open let a held key be
+            // cashed in outside the window the event was scored in.
+            moduleOpen = Getter.isModuleOpen(ApplicationRoot, moduleId) && isRunning;
           }
           if (notNull && storedResult != null && moduleOpen) {
             boolean validKey = false;
