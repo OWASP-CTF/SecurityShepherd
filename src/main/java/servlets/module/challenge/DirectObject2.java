@@ -6,8 +6,11 @@ import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.Set;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -45,6 +48,17 @@ public class DirectObject2 extends HttpServlet {
   private static String levelName = "Insecure Direct Object Reference Challenge Two";
   public static String levelHash =
       "vc9b78627df2c032ceaf7375df1d847e47ed7abac2a4ce4cb6086646e0f313a4";
+  // The only userIds the profile-lookup UI ever exposes as options - anything else (including
+  // the hidden user's id) must be rejected server-side, since the client-side dropdown is not a
+  // real access control.
+  private static final Set<String> ALLOWED_USER_IDS =
+      new HashSet<>(
+          Arrays.asList(
+              "c81e728d9d4c2f636f067f89cc14862c",
+              "eccbc87e4b5ce2fe28308fd9f2a7baf3",
+              "e4da3b7fbbce2345d7772b0674a318d5",
+              "8f14e45fceea167a5a36dedd4bea2543",
+              "6512bd43d9caa6e02c990b0a82652dca"));
 
   /**
    * The user must abuse this functionality to reveal a hidden user. The result key is hidden in
@@ -81,11 +95,16 @@ public class DirectObject2 extends HttpServlet {
 
         Connection conn =
             Database.getChallengeConnection(ApplicationRoot, "directObjectRefChalTwo");
-        PreparedStatement prepstmt =
-            conn.prepareStatement("SELECT userName, privateMessage FROM users WHERE userId = ?");
-        prepstmt.setString(1, userId);
-        ResultSet resultSet = prepstmt.executeQuery();
-        if (resultSet.next()) {
+        ResultSet resultSet = null;
+        if (ALLOWED_USER_IDS.contains(userId)) {
+          PreparedStatement prepstmt =
+              conn.prepareStatement("SELECT userName, privateMessage FROM users WHERE userId = ?");
+          prepstmt.setString(1, userId);
+          resultSet = prepstmt.executeQuery();
+        } else {
+          log.debug("Rejected out-of-range userId: " + userId);
+        }
+        if (resultSet != null && resultSet.next()) {
           log.debug("Found user: " + resultSet.getString(1));
           String userName = resultSet.getString(1);
           String privateMessage = resultSet.getString(2);
