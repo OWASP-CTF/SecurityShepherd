@@ -95,7 +95,7 @@
 						if (!loginFailed.isEmpty()) {
 					%>
 					<p>
-						<strong><font color="red"><%=loginFailed%></font></strong>
+						<strong><font color="red"><%=Encode.forHtml(loginFailed)%></font></strong>
 					</p>
 					<%
 						}
