@@ -72,7 +72,12 @@ public class CsrfChallengeTargetOne extends HttpServlet {
         String plusId = request.getParameter("userid");
         log.debug("User Submitted - " + plusId);
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId)) {
+        String submittedToken = request.getParameter("csrfToken");
+        Object sessionToken = ses.getAttribute("csrfChallengeOneNonce");
+        if (sessionToken != null
+            && submittedToken != null
+            && sessionToken.toString().equals(submittedToken)
+            && !userId.equals(plusId)) {
           String ApplicationRoot = getServletContext().getRealPath("");
           String userName = (String) ses.getAttribute("userName");
           String attackerName = Getter.getUserName(ApplicationRoot, plusId);
