@@ -41,6 +41,7 @@ public class SessionManagement8 extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(SessionManagement8.class);
   private static String levelName = "Session Management Challenge Eight";
+
   /** Name of the server side attribute holding the role this sub application serves a session. */
   private static final String roleAttribute = "sessionManagement8Role";
 

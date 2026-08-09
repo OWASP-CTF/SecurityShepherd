@@ -39,6 +39,7 @@ public class SessionManagement1 extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(SessionManagement1.class);
   private static String levelName = "Session Management Challenge One";
+
   /** Name of the server side attribute holding the role this sub application serves a session. */
   private static final String roleAttribute = "sessionManagement1Role";
 
@@ -138,7 +139,8 @@ public class SessionManagement1 extends HttpServlet {
           byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
           String decodedCookie = new String(decodedCookieBytes, "UTF-8");
           if (!decodedCookie.equals("userRole=" + userRole)) {
-            log.error("Role cookie disagreed with the role held server side; the cookie is ignored");
+            log.error(
+                "Role cookie disagreed with the role held server side; the cookie is ignored");
           }
         }
 

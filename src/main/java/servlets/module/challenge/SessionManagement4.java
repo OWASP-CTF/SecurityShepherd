@@ -41,6 +41,7 @@ public class SessionManagement4 extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(SessionManagement4.class);
   private static String levelName = "Session Management Challenge Four";
+
   /** Name of the server side attribute holding the sub session issued to this session. */
   private static final String subSessionAttribute = "sessionManagement4SubSession";
 
