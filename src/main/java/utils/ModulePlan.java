@@ -134,14 +134,10 @@ public class ModulePlan {
       throw new RuntimeException(e);
     }
 
-    applyModuleLayout(theModuleLayout);
-  }
-
-  static void applyModuleLayout(String theModuleLayout) {
     if (theModuleLayout.equals("open")) {
       openFloor = true;
       incrementalFloor = false;
-      tournamentFloor = false;
+      tournamentFloor = true;
     } else if (theModuleLayout.equals("ctf")) {
       openFloor = false;
       incrementalFloor = true;
