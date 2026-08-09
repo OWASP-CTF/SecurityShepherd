@@ -180,6 +180,17 @@ if (request.getSession() != null)
 				});
 			});
 		</script>
+	<script src="<%= levelHash %>/couponCheck.js"></script>
+	<script>
+		$('#couponCode').change(function(){
+			if(!checkCoupon($('#couponCode').val())){
+				$('#couponCode').css("background-color", "#E06666");
+			}
+			else{
+				$('#couponCode').css("background-color", "#66E066");
+			}
+		});
+		</script>
 	<% if(Analytics.googleAnalyticsOn) { %><%= Analytics.googleAnalyticsScript %>
 	<% } %>
 	<%
