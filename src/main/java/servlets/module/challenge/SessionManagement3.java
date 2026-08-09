@@ -84,6 +84,10 @@ public class SessionManagement3 extends HttpServlet {
       String htmlOutput = new String();
       log.debug(levelName + " Servlet Accessed");
       Connection conn = null;
+      out.write(
+          "<a>"
+              + Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"))
+              + "</a>");
       try {
         log.debug("Getting Challenge Parameters");
         Object nameObj = request.getParameter("subUserName");
