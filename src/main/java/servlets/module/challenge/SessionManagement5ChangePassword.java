@@ -127,8 +127,12 @@ public class SessionManagement5ChangePassword extends HttpServlet {
           log.debug("Changing password to: " + newPass);
           PreparedStatement callstmt;
 
-          callstmt =
-              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userName = ?");
+          // SessionManagement5's login check compares the submitted password against the stored
+          // value directly (this sub-schema's rows hold plain text, not a SHA digest - see that
+          // servlet). Writing a SHA digest here while the check reads plain text would leave a
+          // user unable to log back in with the very password they just reset, which is not a
+          // security fix, it is a self-inflicted lockout. Store what the check will read.
+          callstmt = conn.prepareStatement("UPDATE users SET userPassword = ? WHERE userName = ?");
 
           callstmt.setString(1, newPass);
           callstmt.setString(2, userName);

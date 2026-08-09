@@ -137,8 +137,12 @@ public class SessionManagement3ChangePassword extends HttpServlet {
           log.debug("Changing password to: " + subNewPass);
           PreparedStatement callstmt;
 
-          callstmt =
-              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userName = ?");
+          // SessionManagement3's login check now compares the submitted password against the
+          // stored value directly (this sub-schema's rows hold plain text, not a SHA digest -
+          // see that servlet). Writing a SHA digest here while the check reads plain text would
+          // leave a user unable to log back in with the very password they just set, which is
+          // not a security fix, it is a self-inflicted lockout. Store what the check will read.
+          callstmt = conn.prepareStatement("UPDATE users SET userPassword = ? WHERE userName = ?");
           callstmt.setString(1, subNewPass);
           callstmt.setString(2, subName);
           log.debug("Executing changePassword");
