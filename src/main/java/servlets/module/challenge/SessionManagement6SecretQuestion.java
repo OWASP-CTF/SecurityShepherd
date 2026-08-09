@@ -10,6 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.regex.Pattern;
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
@@ -49,6 +50,14 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
   private static String levelName = "Session Management Challenge Six (Secret Question)";
   private static String levelHash =
       "b5e1020e3742cf2c0880d4098146c4dde25ebd8ceab51807bad88ff47c316ece";
+
+  // The lookup takes an address, so it is matched against one. InternetAddress accepts a quoted
+  // local part, which carries quotes and semicolons into a database lookup.
+  private static final Pattern ADDRESS_FORMAT =
+      Pattern.compile("[A-Za-z0-9][A-Za-z0-9._%+-]*@[A-Za-z0-9][A-Za-z0-9.-]*\\.[A-Za-z]{2,63}");
+
+  private static final String BAD_ANSWERS = "sessionManagement6BadAnswers";
+  private static final int BAD_ANSWER_LIMIT = 3;
 
   /**
    * A user submits a username and answer, these values are checked against the DB to see if they
@@ -92,7 +101,15 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
 
         String ApplicationRoot = getServletContext().getRealPath("");
         try {
-          if (Validate.isValidEmailAddress(subEmail) && subAns.length() > 5) {
+          if (badAnswers(ses) >= BAD_ANSWER_LIMIT) {
+            log.debug("Session has spent its secret answer attempts");
+            htmlOutput =
+                new String(
+                    "<h2 class='title'>"
+                        + bundle.getString("question.badAnswer")
+                        + "</h2><p>"
+                        + bundle.getString("question.noAttemptsLeft"));
+          } else if (Validate.isValidEmailAddress(subEmail) && subAns.length() > 5) {
             Connection conn =
                 Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalSix");
             log.debug("Checking Secret Answer");
@@ -124,6 +141,7 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
                       + "</p>";
             } else {
               log.debug("Bad Answer Submitted");
+              ses.setAttribute(BAD_ANSWERS, badAnswers(ses) + 1);
               htmlOutput =
                   new String(
                       "<h2 class='title'>"
@@ -211,7 +229,7 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
 
             String ApplicationRoot = getServletContext().getRealPath("");
             try {
-              if (subEmail.length() < 10) {
+              if (subEmail.length() < 10 || !ADDRESS_FORMAT.matcher(subEmail).matches()) {
                 log.debug("Invalid data submitted");
                 htmlOutput =
                     new String(
@@ -225,10 +243,8 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
                         ApplicationRoot, "BrokenAuthAndSessMangChalSix");
                 log.debug("Getting Secret Question");
                 PreparedStatement callstmt =
-                    conn.prepareStatement(
-                        "SELECT secretQuestion FROM users WHERE userAddress = \""
-                            + subEmail
-                            + "\"");
+                    conn.prepareStatement("SELECT secretQuestion FROM users WHERE userAddress = ?");
+                callstmt.setString(1, subEmail);
                 ResultSet rs = callstmt.executeQuery();
                 if (rs.next()) {
                   log.debug("'Valid' User Detected");
@@ -244,9 +260,8 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
                 Database.closeConnection(conn);
               }
             } catch (SQLException e) {
-              log.debug(levelName + " SQL Error: " + e.toString());
-              log.debug("Outputting error to user");
-              htmlOutput = new String(e.toString());
+              log.error(levelName + " SQL Error: " + e.toString());
+              htmlOutput = bundle.getString("question.noQuestion");
             }
           } else {
             log.debug("Tampered cookie detected");
@@ -265,5 +280,10 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
     } else {
       log.error(levelName + " servlet accessed with no session");
     }
+  }
+
+  private static int badAnswers(HttpSession ses) {
+    Object counted = ses.getAttribute(BAD_ANSWERS);
+    return counted instanceof Integer ? (Integer) counted : 0;
   }
 }
