@@ -66,13 +66,17 @@ public class PoorValidation1 extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
       try {
-        int pineappleAmount = Integer.parseInt(request.getParameter("pineappleAmount"));
+        int pineappleAmount =
+            rejectNegativeAmount(Integer.parseInt(request.getParameter("pineappleAmount")));
         log.debug("pineappleAmount - " + pineappleAmount);
-        int orangeAmount = Integer.parseInt(request.getParameter("orangeAmount"));
+        int orangeAmount =
+            rejectNegativeAmount(Integer.parseInt(request.getParameter("orangeAmount")));
         log.debug("orangeAmount - " + orangeAmount);
-        int appleAmount = Integer.parseInt(request.getParameter("appleAmount"));
+        int appleAmount =
+            rejectNegativeAmount(Integer.parseInt(request.getParameter("appleAmount")));
         log.debug("appleAmount - " + appleAmount);
-        int bananaAmount = Integer.parseInt(request.getParameter("bananaAmount"));
+        int bananaAmount =
+            rejectNegativeAmount(Integer.parseInt(request.getParameter("bananaAmount")));
         log.debug("bananaAmount - " + bananaAmount);
 
         // Working out costs
@@ -121,5 +125,17 @@ public class PoorValidation1 extends HttpServlet {
     } else {
       log.error(levelName + " servlet accessed with no session");
     }
+  }
+
+  /**
+   * Rejects negative order quantities so the cart total cannot be driven to zero or below by
+   * submitting negative amounts, which previously let the order "cost" go negative and trigger
+   * the free-oranges response regardless of what was actually ordered.
+   */
+  private static int rejectNegativeAmount(int amount) {
+    if (amount < 0) {
+      throw new IllegalArgumentException("Amount cannot be negative: " + amount);
+    }
+    return amount;
   }
 }
