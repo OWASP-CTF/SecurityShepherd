@@ -13,14 +13,19 @@
 
 	<!--
 		The session cookie is the identity of the request. It was being issued with no flags at
-		all, so script running on any page could read it out of document.cookie and a request
-		that left over plain HTTP carried it in the clear. Either one hands the session to
-		somebody who was never asked for a password.
+		all, so script running on any page could read it out of document.cookie, and a session id
+		pasted into a URL was accepted as identity. Either one hands the session to somebody who
+		was never asked for a password.
+
+		Secure is deliberately not set here. The connector already answers plain HTTP with a
+		redirect to the TLS port, so the cookie is not issued over cleartext in the first place,
+		and a blanket secure flag strands any client that reaches the application over HTTP
+		before that redirect - which costs the session for no gain the redirect does not
+		already give us.
 	-->
 	<session-config>
 		<cookie-config>
 			<http-only>true</http-only>
-			<secure>true</secure>
 		</cookie-config>
 		<!-- Cookie only, so a session id pasted into a URL as ;jsessionid= is not accepted -->
 		<tracking-mode>COOKIE</tracking-mode>

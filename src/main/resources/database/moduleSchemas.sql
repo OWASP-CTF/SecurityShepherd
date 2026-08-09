@@ -528,7 +528,10 @@ USE `SqlChalSix` ;
 CREATE TABLE IF NOT EXISTS `SqlChalSix`.`users` (
   `idusers` INT NOT NULL,
   `userName` VARCHAR(45) NOT NULL,
-  `userPin` VARCHAR(16) NOT NULL,
+  -- Wide enough for the SHA-256 digest the pin is stored as. At sixteen the digest update below
+  -- aborted the whole script, the database container exited, and the application came up with no
+  -- database behind it.
+  `userPin` VARCHAR(64) NOT NULL,
   `userQuestion` VARCHAR(128) NOT NULL,
   `userAnswer` VARCHAR(191) NOT NULL,
   `userAge` VARCHAR(16) NOT NULL,

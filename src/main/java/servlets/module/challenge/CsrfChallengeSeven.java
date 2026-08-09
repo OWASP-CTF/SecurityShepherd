@@ -16,6 +16,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import utils.ShepherdLogManager;
 import utils.Validate;
+import utils.XssFilter;
 
 /**
  * Cross Site Request Forgery Challenge Seven - Does not return result Key <br>
@@ -75,7 +76,10 @@ public class CsrfChallengeSeven extends HttpServlet {
         if (Validate.validateTokens(tokenCookie, tokenParameter)) {
           String myMessage = request.getParameter("myMessage");
           log.debug("User Submitted - " + myMessage);
-          myMessage = Validate.makeValidUrl(myMessage);
+          // The stored message is rendered back into an img src for every other player, so it has
+          // to be a link and nothing else. makeValidUrl only prefixed "http" onto whatever it was
+          // handed, which left the value free to be anything at all.
+          myMessage = XssFilter.safeHttpUrl(myMessage);
 
           log.debug("Updating User's Stored Message");
           String ApplicationRoot = getServletContext().getRealPath("");

@@ -66,6 +66,7 @@ public class SqlInjection5 extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
       String applicationRoot = getServletContext().getRealPath("");
+      Connection conn = null;
 
       try {
         int pineappleAmount =
@@ -91,8 +92,7 @@ public class SqlInjection5 extends HttpServlet {
         int perCentOffBanana = 0; // Will search for coupons in DB and update this int
 
         htmlOutput = new String();
-        Connection conn =
-            Database.getChallengeConnection(applicationRoot, "SqlInjectionChallenge5Shop");
+        conn = Database.getChallengeConnection(applicationRoot, "SqlInjectionChallenge5Shop");
         log.debug("Looking for Coupons");
         PreparedStatement prepstmt =
             conn.prepareStatement(
@@ -125,7 +125,6 @@ public class SqlInjection5 extends HttpServlet {
         } catch (Exception e) {
           log.debug("Could Not Find Coupon: " + e.toString());
         }
-        conn.close();
 
         // Work Out Final Cost
         pineappleCost = applyDiscount(pineappleCost, perCentOffPineapple);
@@ -156,6 +155,10 @@ public class SqlInjection5 extends HttpServlet {
       } catch (Exception e) {
         log.debug("Didn't complete order: " + e.toString());
         htmlOutput += "<p>" + bundle.getString("response.orderFailed") + "</p>";
+      } finally {
+        // A bad order amount throws before the old close() was reached, which left the shop's
+        // connection out of the pool for good.
+        Database.closeConnection(conn);
       }
       try {
         Thread.sleep(1000);

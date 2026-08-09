@@ -413,12 +413,23 @@ public class Setup extends HttpServlet {
       Properties prop = getDBProps();
 
       if (prop != null) {
+        // An instance that has been configured is installed. Whether the database happens to
+        // answer this second is a different question, and answering it here was the wrong one
+        // to ask: a database that is merely slow to start, or briefly unreachable, made the
+        // application declare itself uninstalled and hand every caller the installer - the one
+        // unauthenticated page that can repoint a running instance at a different database.
+        // A configured instance therefore stays installed and a database that is down surfaces
+        // as the error it is, on the request that needed it.
+        installed = true;
         try (Connection coreConnection = Database.getCoreConnection(null)) {
-          if (coreConnection != null) {
-            installed = true;
+          if (coreConnection == null) {
+            log.info("isInstalled: configured, but the core connection came back null");
           }
         } catch (SQLException e) {
-          log.info("isInstalled got SQL exception " + e.toString() + ", assuming not installed.");
+          log.info(
+              "isInstalled got SQL exception "
+                  + e.toString()
+                  + ", the instance is configured so it stays installed.");
         }
       }
 

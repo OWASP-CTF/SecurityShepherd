@@ -76,6 +76,7 @@ public class SessionManagement3ChangePassword extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
       log.debug(levelName + " - Change Password - Servlet");
+      Connection conn = null;
       try {
         log.debug("Getting Challenge Parameters");
         Object passNewObj = request.getParameter("newPassword");
@@ -93,8 +94,7 @@ public class SessionManagement3ChangePassword extends HttpServlet {
           log.debug("Getting ApplicationRoot");
           String ApplicationRoot = getServletContext().getRealPath("");
 
-          Connection conn =
-              Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalThree");
+          conn = Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalThree");
           log.debug("Changing password for user: " + subName);
           log.debug("Changing password to: " + subNewPass);
           PreparedStatement callstmt;
@@ -121,6 +121,10 @@ public class SessionManagement3ChangePassword extends HttpServlet {
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - Change Password - " + e.toString());
+      } finally {
+        // Nothing ever handed this connection back. Twenty requests emptied the challenge pool
+        // and the module stopped answering anybody.
+        Database.closeConnection(conn);
       }
     } else {
       log.error(levelName + " servlet accessed with no session");

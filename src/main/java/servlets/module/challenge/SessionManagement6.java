@@ -79,15 +79,19 @@ public class SessionManagement6 extends HttpServlet {
 
       String htmlOutput = new String();
       log.debug(levelName + " Servlet Accessed");
+      Connection conn = null;
       try {
         log.debug("Getting Cookies");
+        // A request that carries no cookies at all hands back null here, not an empty array.
+        // Walking it unguarded threw out of the check instead of failing it.
         Cookie userCookies[] = request.getCookies();
-        int i = 0;
         Cookie theCookie = null;
-        for (i = 0; i < userCookies.length; i++) {
-          if (userCookies[i].getName().compareTo("ac") == 0) {
-            theCookie = userCookies[i];
-            break; // End Loop, because we found the token
+        if (userCookies != null) {
+          for (int i = 0; i < userCookies.length; i++) {
+            if (userCookies[i].getName().compareTo("ac") == 0) {
+              theCookie = userCookies[i];
+              break; // End Loop, because we found the token
+            }
           }
         }
         if (theCookie != null) {
@@ -116,8 +120,7 @@ public class SessionManagement6 extends HttpServlet {
             log.debug("Getting ApplicationRoot");
             String ApplicationRoot = getServletContext().getRealPath("");
 
-            Connection conn =
-                Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalSix");
+            conn = Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalSix");
             log.debug("Checking credentials");
             PreparedStatement callstmt;
 
@@ -166,7 +169,6 @@ public class SessionManagement6 extends HttpServlet {
               userAddress = "" + bundle.getString("response.badUser") + "<br/>";
               htmlOutput = makeTable(userAddress, bundle);
             }
-            Database.closeConnection(conn);
             log.debug("Outputting HTML");
           } else {
             log.debug("Tampered cookie detected");
@@ -180,6 +182,11 @@ public class SessionManagement6 extends HttpServlet {
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
+      } finally {
+        // The close used to sit inside the try. Anything that threw after the connection was
+        // taken - the query, the module lookup, the key derivation - kept it for good, and
+        // twenty of those emptied the challenge pool.
+        Database.closeConnection(conn);
       }
     } else {
       log.error(levelName + " servlet accessed with no session");

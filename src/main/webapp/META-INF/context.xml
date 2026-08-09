@@ -3,9 +3,14 @@
 	<!--
 		Cookies were being issued with no SameSite attribute, so the browser attached them to
 		requests a third party site made on the user's behalf. That is what makes a cross site
-		request forgery work at all: the forged request arrives already authenticated. Marking
-		them strict means a request that did not start on this site carries no identity.
+		request forgery work at all: the forged request arrives already authenticated.
+
+		Lax, not strict. Lax already withholds the cookie from every vector a forgery has to
+		use - a cross site form POST, and a subresource GET such as the img tag the CSRF
+		challenges are built around - because neither is a top level navigation. Strict goes
+		further and drops the cookie on an ordinary link into the site from anywhere else,
+		which logs the user out of their own session for no additional defence here.
 	-->
 	<CookieProcessor className="org.apache.tomcat.util.http.Rfc6265CookieProcessor"
-		sameSiteCookies="strict" />
+		sameSiteCookies="lax" />
 </Context>
