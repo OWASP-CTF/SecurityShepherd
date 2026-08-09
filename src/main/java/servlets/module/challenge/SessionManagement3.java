@@ -126,7 +126,7 @@ public class SessionManagement3 extends HttpServlet {
           callstmt =
               conn.prepareStatement(
                   "SELECT userName, userAddress, userRole FROM users WHERE userName = ? AND"
-                      + " userPassword = SHA(?)");
+                      + " userPassword = ?");
           callstmt.setString(1, subName);
           callstmt.setString(2, subPass);
           log.debug("Executing authUser");
