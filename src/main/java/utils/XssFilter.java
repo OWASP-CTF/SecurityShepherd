@@ -77,8 +77,20 @@ public class XssFilter {
                     .replaceAll("#", "&#x23;")
                     .replaceAll("<", "&#x3c;")
                     .replaceAll(">", "&#x3e;")
-                    .replaceFirst("\"", "&quot;"));
-        input = theUrl.toString();
+                    // Every double quote must be neutralised, not just the first one - this value
+                    // is dropped straight into a double-quoted href="" attribute, so a second,
+                    // un-encoded quote lets an attacker close the attribute early and append a
+                    // brand new attribute (e.g. an onmouseover/onclick handler) to the <a> tag.
+                    .replaceAll("\"", "&quot;"));
+        // Only genuine http/https links should ever come out of a "URL validator" - reject
+        // anything else in case URL parsing/normalisation ever produces another scheme.
+        String protocol = theUrl.getProtocol();
+        if ("http".equalsIgnoreCase(protocol) || "https".equalsIgnoreCase(protocol)) {
+          input = theUrl.toString();
+        } else {
+          log.debug("Rejected non-HTTP(S) protocol after parsing: " + protocol);
+          input = howToMakeAUrlUrl;
+        }
       } catch (MalformedURLException e) {
         log.debug("Could not Cast URL from input: " + e.toString());
         input = howToMakeAUrlUrl;
