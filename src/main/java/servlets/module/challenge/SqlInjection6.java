@@ -77,17 +77,26 @@ public class SqlInjection6 extends HttpServlet {
       try {
         String userPin = (String) request.getParameter("pinNumber");
         log.debug("userPin - " + userPin);
-        userPin =
-            userPin.replaceAll("\\\\", "\\\\\\\\").replaceAll("'", ""); // Escape single quotes
-        log.debug("userPin scrubbed - " + userPin);
-        userPin =
-            java.net.URLDecoder.decode(
-                userPin.replaceAll("\\\\\\\\x", "%"), "UTF-8"); // Decode \x encoding
-        log.debug("searchTerm decoded to - " + userPin);
+        // The pin is bound below, so it is used exactly as submitted. The pair of steps that
+        // stood here scrubbed the quotes out and then ran a decode that turned an encoded
+        // quote back into a real one, handing back the character the scrub had just removed.
+        // A pin is four digits. Anything else is not a pin that could ever match a row, so it
+        // is turned away here rather than being sent to the database to find that out.
+        if (!userPin.matches("\\d{4}")) {
+          log.debug("Rejecting a pin that is not four digits");
+          out.write(
+              "<h3>"
+                  + bundle.getString("response.incorrectCreds")
+                  + "</h3><p>"
+                  + bundle.getString("response.carefulNow")
+                  + "</p>");
+          return;
+        }
         Connection conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSix");
         log.debug("Looking for users");
         PreparedStatement prepstmt =
-            conn.prepareStatement("SELECT userName FROM users WHERE userPin = '" + userPin + "'");
+            conn.prepareStatement("SELECT userName FROM users WHERE userPin = ?");
+        prepstmt.setString(1, userPin);
         ResultSet users = prepstmt.executeQuery();
         try {
           if (users.next()) {
