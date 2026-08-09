@@ -70,12 +70,6 @@ public class SqlInjection7 extends HttpServlet {
 
       Connection conn = null;
       try {
-        out.write(
-            "<a>"
-                + Hash.generateUserSolution(
-                    Getter.getModuleResultFromHash(applicationRoot, levelHash),
-                    (String) ses.getAttribute("userName"))
-                + "</a>");
         String subEmail = Validate.validateParameter(request.getParameter("subEmail"), 60);
         log.debug("subEmail - " + subEmail.replaceAll("\n", " \\\\n ")); // Escape \n's
         String subPassword = Validate.validateParameter(request.getParameter("subPassword"), 40);
