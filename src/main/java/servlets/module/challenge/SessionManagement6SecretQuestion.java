@@ -43,6 +43,8 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(SessionManagement6SecretQuestion.class);
   private static String levelName = "Session Management Challenge Six (Secret Question)";
+  private static final String FAILED_ANSWERS = "sessionManagement6FailedAnswers";
+  private static final int MAX_FAILED_ANSWERS = 10;
   private static String levelHash =
       "b5e1020e3742cf2c0880d4098146c4dde25ebd8ceab51807bad88ff47c316ece";
 
@@ -85,11 +87,23 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
         Object ansObj = request.getParameter("subAnswer");
         String subAns = Validate.validateParameter(ansObj, 128);
         log.debug("subAnswer = " + subAns);
+        Integer failedAnswers = (Integer) ses.getAttribute(FAILED_ANSWERS);
+        if (failedAnswers == null) {
+          failedAnswers = 0;
+        }
 
         String ApplicationRoot = getServletContext().getRealPath("");
         Connection conn = null;
         try {
-          if (Validate.isValidEmailAddress(subEmail) && subAns.length() > 5) {
+          if (failedAnswers >= MAX_FAILED_ANSWERS) {
+            log.debug("Too many failed answers on this session");
+            htmlOutput =
+                new String(
+                    "<h2 class='title'>"
+                        + bundle.getString("question.badAnswer")
+                        + "</h2><p>"
+                        + bundle.getString("question.whoAreYou"));
+          } else if (Validate.isValidEmailAddress(subEmail) && subAns.length() > 5) {
             conn = Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalSix");
             log.debug("Checking Secret Answer");
             PreparedStatement callstmt =
@@ -103,9 +117,11 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
             // guessed answer still never discloses the user name or signs the account in
             if (rs.next()) {
               log.debug("Correct Answer Submitted");
+              ses.removeAttribute(FAILED_ANSWERS);
               htmlOutput = "<h2 class='title'>" + bundle.getString("response.welcome") + "</h2>";
             } else {
               log.debug("Bad Answer Submitted");
+              ses.setAttribute(FAILED_ANSWERS, failedAnswers + 1);
               htmlOutput =
                   new String(
                       "<h2 class='title'>"
