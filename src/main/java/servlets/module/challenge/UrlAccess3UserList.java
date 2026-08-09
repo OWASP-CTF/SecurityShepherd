@@ -9,12 +9,10 @@ import java.sql.ResultSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
@@ -70,38 +68,25 @@ public class UrlAccess3UserList extends HttpServlet {
       String htmlOutput = new String();
 
       try {
-        Cookie userCookies[] = request.getCookies();
-        int i = 0;
-        Cookie theCookie = null;
-        for (i = 0; i < userCookies.length; i++) {
-          if (userCookies[i].getName().compareTo("currentPerson") == 0) {
-            theCookie = userCookies[i];
-            break; // End Loop, because we found the token
-          }
-        }
-        String currentUser = new String("aGuest");
-        if (theCookie != null) {
-          log.debug("Cookie value: " + theCookie.getValue());
-          byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
-          String decodedCookie = new String(decodedCookieBytes, "UTF-8");
-          log.debug("Decoded Cookie: " + decodedCookie);
-          currentUser = decodedCookie;
-        }
+        // This directory lookup used to take its identity from the client-supplied
+        // "currentPerson" cookie and concatenate it straight into the SQL text, so anyone could
+        // both inject arbitrary SQL through the cookie and, even without injecting anything,
+        // enumerate every "admin" account in the sub-schema (including hints toward the real
+        // super admin) purely by asking. A request to this endpoint has no legitimate reason to
+        // see anyone's row but the fixed public guest entry, so the lookup identity below is a
+        // hardcoded constant - never derived from request/cookie input - and the query no longer
+        // has a clause that discloses privileged accounts at all.
+        final String publicDirectoryEntry = "aGuest";
         String ApplicationRoot = getServletContext().getRealPath("");
         Connection conn = Database.getChallengeConnection(ApplicationRoot, "UrlAccessThree");
         PreparedStatement callstmt;
-        callstmt =
-            conn.prepareStatement(
-                "SELECT userName FROM users WHERE userRole = \"admin\" OR userName = ?;");
-        callstmt.setString(1, currentUser);
+        callstmt = conn.prepareStatement("SELECT userName FROM users WHERE userName = ?;");
+        callstmt.setString(1, publicDirectoryEntry);
         log.debug("Getting User List");
         htmlOutput = new String();
         ResultSet rs = callstmt.executeQuery();
         while (rs.next()) {
           htmlOutput += Encode.forHtml(rs.getString(1)) + "<br>";
-          if (rs.getString(1).equalsIgnoreCase("MrJohnReillyTheSecond")) {
-            log.debug("Super Admin contained in response");
-          }
         }
       } catch (Exception e) {
         htmlOutput = new String(errors.getString("error.funky"));

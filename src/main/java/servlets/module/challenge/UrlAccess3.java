@@ -1,6 +1,5 @@
 package servlets.module.challenge;
 
-import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;
@@ -14,7 +13,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -41,18 +39,20 @@ public class UrlAccess3 extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(UrlAccess3.class);
   private static String levelName = "Failure to Restrict URL Access 3";
-  private static String levelHash =
-      "e40333fc2c40b8e0169e433366350f55c77b82878329570efa894838980de5b4";
 
   /**
-   * Users must take advance of the broken session management in this application by modifying the
-   * tracking cookie "currentPerson" which is encoded in Base64. They must modify this cookie to be
-   * equal a super admin to access the result key.
+   * The "currentPerson" cookie is nothing more than client-supplied, unsigned state: the browser
+   * sets it with plain JavaScript and nothing on the server ever issues, signs, or otherwise
+   * vouches for its value. Because of that it must never be trusted to answer an authorization
+   * question - not even when it happens to spell out a privileged-sounding name - so this servlet
+   * no longer branches on its content at all. There is no legitimate, server-verified way for a
+   * request to actually be the sub-schema's super admin, so that response is simply unreachable
+   * now rather than gated behind an easily-forged claim.
    *
    * @param userId Red herring that is pre set to d3d9446802a44259755d38e6d163e820
    * @param secure Red herring that is pre set to true
    * @param adminDetected Red herring
-   * @param currentPerson Cookie encoded base64 that manages who is signed in to the sub schema
+   * @param currentPerson Untrusted, client-controlled cookie retained only for logging
    */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -94,35 +94,16 @@ public class UrlAccess3 extends HttpServlet {
           String decodedCookie = new String(decodedCookieBytes, "UTF-8");
           log.debug("Decoded Cookie: " + decodedCookie);
 
-          if (decodedCookie.equals("MrJohnReillyTheSecond") && Validate.validateAdminSession(ses)) {
-            log.debug("Super Admin Cookie detected");
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(
-                    Getter.getModuleResultFromHash(getServletContext().getRealPath(""), levelHash),
-                    (String) ses.getAttribute("userName"));
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("admin.superAdminClub")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("admin.superAdminClub.keyMessage")
-                    + " "
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
-          } else if (decodedCookie.equals("MrJohnReillyTheSecond")) {
-            // Claiming to be the super admin via a client-supplied cookie is not enough:
-            // the caller's real, server-side session role must actually be privileged.
+          if (!decodedCookie.equals("aGuest")) {
+            // Whatever the cookie claims - including the super admin's name - it is only ever
+            // an unverified assertion from the client. It is logged for visibility but it can
+            // never unlock anything beyond the plain guest view.
             log.fatal(
                 "User "
                     + ses.getAttribute("userName")
-                    + " attempted super admin privilege escalation via forged currentPerson"
-                    + " cookie without holding an admin session!");
-            htmlOutput = "<!-- " + bundle.getString("response.invalidUser") + " -->";
-          } else if (!decodedCookie.equals("aGuest")) {
-            log.debug("Tampered role cookie detected: " + decodedCookie);
+                    + " submitted a forged currentPerson cookie claiming to be '"
+                    + decodedCookie
+                    + "'; ignoring it, no privileged view exists to grant.");
             htmlOutput = "<!-- " + bundle.getString("response.invalidUser") + " -->";
           } else {
             log.debug("No change to role cookie submitted");
