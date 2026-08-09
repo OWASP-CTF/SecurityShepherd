@@ -471,8 +471,8 @@ public class Validate {
       if (!cookieEmpty && !requestEmpty) {
         result =
             MessageDigest.isEqual(
-                theRequest.getBytes(StandardCharsets.UTF_8),
-                theCookie.getBytes(StandardCharsets.UTF_8))
+                    theRequest.getBytes(StandardCharsets.UTF_8),
+                    theCookie.getBytes(StandardCharsets.UTF_8))
                 && MessageDigest.isEqual(
                     theCookie.getBytes(StandardCharsets.UTF_8),
                     theSession.getBytes(StandardCharsets.UTF_8));
@@ -499,8 +499,8 @@ public class Validate {
   }
 
   /**
-   * Legacy cookie-only CSRF validation for intentionally vulnerable training handlers.
-   * Platform routes must use {@link #validateTokens(HttpSession, Cookie, Object)}.
+   * Legacy cookie-only CSRF validation for intentionally vulnerable training handlers. Platform
+   * routes must use {@link #validateTokens(HttpSession, Cookie, Object)}.
    */
   @Deprecated
   public static boolean validateTokens(Cookie cookieToken, Object requestToken) {
