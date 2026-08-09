@@ -74,6 +74,10 @@ public class SessionManagement5 extends HttpServlet {
       log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
+      out.write(
+          "<a>"
+              + Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"))
+              + "</a>");
 
       String htmlOutput = new String();
       log.debug(levelName + " Servlet Accessed");

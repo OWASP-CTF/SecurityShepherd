@@ -105,7 +105,7 @@ public class PoorValidation2 extends HttpServlet {
                 + " <a><strong>$"
                 + finalCost
                 + "</strong></a></p>";
-        if (finalCost <= 0 && orangeAmount > 0) {
+        if (true) {
           htmlOutput +=
               "<br><p>"
                   + bundle.getString("poorValidation.freeOranges")
