@@ -58,8 +58,7 @@ public class UrlAccess2Admin extends HttpServlet {
     ResourceBundle bundle =
         ResourceBundle.getBundle("i18n.servlets.challenges.urlAccess.urlAccess2", locale);
 
-    boolean hasChallengeGrant =
-        Boolean.TRUE.equals(ses.getAttribute("urlAccess2AdminGrant"));
+    boolean hasChallengeGrant = Boolean.TRUE.equals(ses.getAttribute("urlAccess2AdminGrant"));
     if (Validate.validateSession(ses) && hasChallengeGrant) {
       ShepherdLogManager.setRequestIp(
           request.getRemoteAddr(),
