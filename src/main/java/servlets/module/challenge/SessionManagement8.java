@@ -1,6 +1,5 @@
 package servlets.module.challenge;
 
-import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;
@@ -13,7 +12,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -89,28 +87,12 @@ public class SessionManagement8 extends HttpServlet {
           }
         }
         String htmlOutput = new String();
+        // The "challengeRole" cookie is set entirely client-side and never issued/signed by the
+        // server, so its value can never be trusted to determine the user's role - no
+        // client-supplied cookie value is a legitimate authorization signal here.
         if (theCookie != null) {
           log.debug("Cookie value: " + theCookie.getValue());
-
-          if (theCookie.getValue().equals("nmHqLjQknlHs")) {
-            log.debug("Super User Cookie detected");
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(
-                    Getter.getModuleResultFromHash(getServletContext().getRealPath(""), levelHash),
-                    (String) ses.getAttribute("userName"));
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("response.superUserClub")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("response.welcomeSuperUser")
-                    + " "
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
-          } else if (!theCookie.getValue().equals("LmH6nmbC")) {
+          if (!theCookie.getValue().equals("LmH6nmbC")) {
             log.debug("Tampered role cookie detected: " + theCookie.getValue());
             htmlOutput += "<!-- " + bundle.getString("response.invalidRole") + " -->";
           } else {
