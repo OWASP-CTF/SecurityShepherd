@@ -2,12 +2,14 @@ package servlets.module.challenge;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.Arrays;
 import java.security.GeneralSecurityException;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.crypto.Cipher;
-import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -127,14 +129,23 @@ public class BrokenCrypto3 extends HttpServlet {
    * @throws GeneralSecurityException If the key or the cipher text is not usable
    */
   public static String decrypt(String cipherText, String key) throws GeneralSecurityException {
-    byte[] raw = key.getBytes(Charset.forName("US-ASCII"));
-    if (raw.length != 16) {
-      throw new IllegalArgumentException("Invalid key size.");
+    if (cipherText == null || key == null) {
+      throw new GeneralSecurityException("Encrypted input is required");
     }
-    SecretKeySpec skeySpec = new SecretKeySpec(raw, "AES");
-    Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-    cipher.init(Cipher.DECRYPT_MODE, skeySpec, new IvParameterSpec(new byte[16]));
-    byte[] original = cipher.doFinal(Base64.decodeBase64(cipherText));
-    return new String(original, Charset.forName("US-ASCII"));
-  }
-}
+    byte[] envelope = java.util.Base64.getDecoder().decode(cipherText);
+    final int nonceLength = 12;
+    if (envelope.length <= nonceLength + 16) {
+      throw new GeneralSecurityException("Encrypted input is incomplete");
+    }
+    byte[] nonce = Arrays.copyOfRange(envelope, 0, nonceLength);
+    byte[] authenticatedCipherText = Arrays.copyOfRange(envelope, nonceLength, envelope.length);
+    byte[] keyMaterial =
+        MessageDigest.getInstance("SHA-256").digest(key.getBytes(StandardCharsets.UTF_8));
+    Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+    cipher.init(
+        Cipher.DECRYPT_MODE,
+        new SecretKeySpec(keyMaterial, "AES"),
+        new GCMParameterSpec(128, nonce));
+    return new String(cipher.doFinal(authenticatedCipherText), StandardCharsets.UTF_8);
+  }}
+
