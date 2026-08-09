@@ -68,7 +68,6 @@ public class SqlInjection7 extends HttpServlet {
       String htmlOutput = new String();
       String applicationRoot = getServletContext().getRealPath("");
 
-      Connection conn = null;
       try {
         String subEmail = Validate.validateParameter(request.getParameter("subEmail"), 60);
         log.debug("subEmail - " + subEmail.replaceAll("\n", " \\\\n ")); // Escape \n's
@@ -76,15 +75,16 @@ public class SqlInjection7 extends HttpServlet {
         log.debug("subPassword - " + subPassword);
         boolean validEmail =
             Validate.isValidEmailAddress(subEmail.replaceAll("\n", "")); // Ignore \n 's
-        if (!subEmail.isEmpty() && !subPassword.isEmpty() && validEmail) {
-          conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSeven");
+        if (!subPassword.isEmpty() && !subPassword.isEmpty() && validEmail) {
+          Connection conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSeven");
           try {
             log.debug("Signing in with subitted details");
             PreparedStatement prepstmt =
                 conn.prepareStatement(
-                    "SELECT userName FROM users WHERE userEmail = ? AND userPassword = SHA(?);");
-            prepstmt.setString(1, subEmail);
-            prepstmt.setString(2, subPassword);
+                    "SELECT userName FROM users WHERE userEmail = '"
+                        + subEmail
+                        + "' AND userPassword = ?;");
+            prepstmt.setString(1, subPassword);
             ResultSet users = prepstmt.executeQuery();
             if (users.next()) {
               htmlOutput =
@@ -122,6 +122,7 @@ public class SqlInjection7 extends HttpServlet {
               log.error("Failed to Pause: " + e1.toString());
             }
           }
+          conn.close();
         } else {
           htmlOutput = new String("Invalid data submitted");
           if (!validEmail) {
@@ -136,8 +137,6 @@ public class SqlInjection7 extends HttpServlet {
         } catch (Exception e2) {
           log.error("Failed to Pause: " + e2.toString());
         }
-      } finally {
-        Database.closeConnection(conn);
       }
       log.debug("*** " + levelName + " End ***");
       out.write(htmlOutput);

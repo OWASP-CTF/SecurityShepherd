@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.CallableStatement;
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Locale;
 import java.util.ResourceBundle;
@@ -73,23 +72,14 @@ public class DirectObjectBankTransfer extends HttpServlet {
       boolean performTransfer = false;
       String errorMessage = new String();
       String applicationRoot = getServletContext().getRealPath("");
-      Connection conn = null;
       try {
-        // Funds may only be sent from the account signed into this session
-        Object bankAccount = ses.getAttribute("directObjectBankAccount");
-        if (bankAccount == null) {
-          log.debug("No bank account signed into this session");
-          out.write(errors.getString("error.noSession"));
-          return;
-        }
-        String senderAccountNumber = bankAccount.toString();
+        String senderAccountNumber = request.getParameter("senderAccountNumber");
         log.debug("Sender Account Number - " + senderAccountNumber);
         String receiverAccountNumber = request.getParameter("receiverAccountNumber");
         log.debug("Receiver Account Number - " + receiverAccountNumber);
         String transferAmountString = request.getParameter("transferAmount");
         log.debug("Transfer Amount - " + transferAmountString);
-        // Parsed and compared as a double: a long balance loses precision in a float
-        double tranferAmount = Double.parseDouble(transferAmountString);
+        float tranferAmount = Float.parseFloat(transferAmountString);
 
         // Data Validation
         // Positive Transfer Amount?
@@ -119,25 +109,15 @@ public class DirectObjectBankTransfer extends HttpServlet {
         String htmlOutput = new String();
         if (performTransfer) {
           log.debug("Valid Data Submitted, transfering Funds...");
-          conn = Database.getChallengeConnection(applicationRoot, "directObjectBank");
+          Connection conn = Database.getChallengeConnection(applicationRoot, "directObjectBank");
           CallableStatement callstmt = conn.prepareCall("CALL transferFunds(?, ?, ?)");
           callstmt.setString(1, senderAccountNumber);
           callstmt.setString(2, receiverAccountNumber);
-          callstmt.setDouble(3, tranferAmount);
-          // The procedure re-checks the balance inside the transaction that debits it, so two
-          // concurrent transfers cannot both pass the check above and overdraw the account
-          ResultSet transferResult = callstmt.executeQuery();
-          if (transferResult.next() && transferResult.getInt(1) > 0) {
-            log.debug("Successfully ran Transfer Funds procedure.");
-            htmlOutput = bundle.getString("transfer.success");
-          } else {
-            log.debug("Transfer rejected, sender had insufficient funds");
-            htmlOutput =
-                bundle.getString("transfer.error.occurred")
-                    + " "
-                    + bundle.getString("transfer.error.notEnoughCash");
-          }
-          transferResult.close();
+          callstmt.setFloat(3, tranferAmount);
+          callstmt.execute();
+          log.debug("Successfully ran Transfer Funds procedure.");
+          htmlOutput = bundle.getString("transfer.success");
+          Database.closeConnection(conn);
         } else {
           log.debug("Invalid Data Detected: " + errorMessage);
           htmlOutput = bundle.getString("transfer.error.occurred") + " " + errorMessage;
@@ -153,8 +133,6 @@ public class DirectObjectBankTransfer extends HttpServlet {
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
-      } finally {
-        Database.closeConnection(conn);
       }
     } else {
       log.error(levelName + " servlet accessed with no session");
