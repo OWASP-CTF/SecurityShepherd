@@ -65,6 +65,16 @@ public class UrlAccess2Admin extends HttpServlet {
           ses.getAttribute("userName").toString());
       log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
       PrintWriter out = response.getWriter();
+
+      if (!Validate.validateAdminSession(ses)) {
+        log.fatal(
+            levelName
+                + " admin-only servlet accessed by non-admin user: "
+                + ses.getAttribute("userName").toString());
+        response.sendError(HttpServletResponse.SC_FORBIDDEN);
+        return;
+      }
+
       out.print(getServletInfo());
       String htmlOutput = new String();
 
