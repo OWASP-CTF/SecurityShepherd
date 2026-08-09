@@ -1,7 +1,6 @@
 package servlets.module.challenge;
 
 import dbProcs.Database;
-import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -20,7 +19,6 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -49,6 +47,12 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
   private static String levelName = "Session Management Challenge Six (Secret Question)";
   private static String levelHash =
       "b5e1020e3742cf2c0880d4098146c4dde25ebd8ceab51807bad88ff47c316ece";
+
+  // The secret answer is a single low entropy factor that is stored in the clear, so the number
+  // of guesses one session may make against it is capped
+  private static final String ANSWER_ATTEMPTS = "sessionManagement6AnswerAttempts";
+
+  private static final int MAX_ANSWER_ATTEMPTS = 3;
 
   /**
    * A user submits a username and answer, these values are checked against the DB to see if they
@@ -91,10 +95,16 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
         log.debug("subAnswer = " + subAns);
 
         String ApplicationRoot = getServletContext().getRealPath("");
+        Connection conn = null;
         try {
-          if (Validate.isValidEmailAddress(subEmail) && subAns.length() > 5) {
-            Connection conn =
-                Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalSix");
+          Integer failedAnswers = (Integer) ses.getAttribute(ANSWER_ATTEMPTS);
+          if (failedAnswers == null) {
+            failedAnswers = 0;
+          }
+          if (Validate.isValidEmailAddress(subEmail)
+              && subAns.length() > 5
+              && failedAnswers < MAX_ANSWER_ATTEMPTS) {
+            conn = Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalSix");
             log.debug("Checking Secret Answer");
             PreparedStatement callstmt =
                 conn.prepareStatement(
@@ -103,35 +113,18 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
             callstmt.setString(2, subAns);
             log.debug("Running secret Answer Check");
             ResultSet rs = callstmt.executeQuery();
-            if (rs.next()) {
-              log.debug("Correct Answer Submitted");
-              // Get key and add it to the output
-              String userKey =
-                  Hash.generateUserSolution(
-                      Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
-                      (String) ses.getAttribute("userName"));
-              htmlOutput =
-                  "<h2 class='title'>"
-                      + bundle.getString("response.welcome")
-                      + " "
-                      + Encode.forHtml(rs.getString(1))
-                      + "</h2>"
-                      + "<p>"
-                      + bundle.getString("response.welcome")
-                      + " <a>"
-                      + userKey
-                      + "</a>"
-                      + "</p>";
-            } else {
-              log.debug("Bad Answer Submitted");
-              htmlOutput =
-                  new String(
-                      "<h2 class='title'>"
-                          + bundle.getString("question.badAnswer")
-                          + "</h2><p>"
-                          + bundle.getString("question.whoAreYou"));
-            }
-            Database.closeConnection(conn);
+            log.debug("Answer checked, account recovery is never granted on an answer alone");
+            // The secret answers are held in the clear beside the accounts they protect, so a
+            // matching answer is not proof of ownership and never recovers the account. The
+            // response is identical either way so it cannot be used as an oracle.
+            rs.close();
+            ses.setAttribute(ANSWER_ATTEMPTS, failedAnswers + 1);
+            htmlOutput =
+                new String(
+                    "<h2 class='title'>"
+                        + bundle.getString("question.badAnswer")
+                        + "</h2><p>"
+                        + bundle.getString("question.whoAreYou"));
           } else {
             log.debug("Invalid data submitted");
             htmlOutput = new String("<b>" + bundle.getString("question.invalidData") + ": </b>");
@@ -143,6 +136,8 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
           }
         } catch (SQLException e) {
           log.error(levelName + " SQL Error: " + e.toString());
+        } finally {
+          Database.closeConnection(conn);
         }
         log.debug("Outputting HTML");
         out.write(htmlOutput);
@@ -156,8 +151,7 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
   }
 
   /**
-   * A user submits an email address to get that user's Secret QUestion. This is vulnerable to SQL
-   * injection
+   * A user submits an email address to get that user's Secret Question
    *
    * @param subEmail Sub schema user email to search DB with
    */
@@ -210,6 +204,7 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
             log.debug("subEmail = " + subEmail);
 
             String ApplicationRoot = getServletContext().getRealPath("");
+            Connection conn = null;
             try {
               if (subEmail.length() < 10) {
                 log.debug("Invalid data submitted");
@@ -220,15 +215,13 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
                             + ": </b>"
                             + bundle.getString("question.invalidEmail"));
               } else {
-                Connection conn =
+                conn =
                     Database.getChallengeConnection(
                         ApplicationRoot, "BrokenAuthAndSessMangChalSix");
                 log.debug("Getting Secret Question");
                 PreparedStatement callstmt =
-                    conn.prepareStatement(
-                        "SELECT secretQuestion FROM users WHERE userAddress = \""
-                            + subEmail
-                            + "\"");
+                    conn.prepareStatement("SELECT secretQuestion FROM users WHERE userAddress = ?");
+                callstmt.setString(1, subEmail);
                 ResultSet rs = callstmt.executeQuery();
                 if (rs.next()) {
                   log.debug("'Valid' User Detected");
@@ -241,12 +234,12 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
                   log.debug("No question found for user");
                   htmlOutput = bundle.getString("question.noQuestion");
                 }
-                Database.closeConnection(conn);
               }
             } catch (SQLException e) {
-              log.debug(levelName + " SQL Error: " + e.toString());
-              log.debug("Outputting error to user");
-              htmlOutput = new String(e.toString());
+              log.error(levelName + " SQL Error: " + e.toString());
+              htmlOutput = bundle.getString("question.noQuestion");
+            } finally {
+              Database.closeConnection(conn);
             }
           } else {
             log.debug("Tampered cookie detected");

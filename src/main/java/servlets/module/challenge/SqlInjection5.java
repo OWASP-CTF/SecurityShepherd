@@ -68,6 +68,7 @@ public class SqlInjection5 extends HttpServlet {
       String htmlOutput = new String();
       String applicationRoot = getServletContext().getRealPath("");
 
+      Connection conn = null;
       try {
         int pineappleAmount =
             validateAmount(Integer.parseInt(request.getParameter("pineappleAmount")));
@@ -92,13 +93,12 @@ public class SqlInjection5 extends HttpServlet {
         int perCentOffBanana = 0; // Will search for coupons in DB and update this int
 
         htmlOutput = new String();
-        Connection conn =
-            Database.getChallengeConnection(applicationRoot, "SqlInjectionChallenge5Shop");
+        conn = Database.getChallengeConnection(applicationRoot, "SqlInjectionChallenge5Shop");
         log.debug("Looking for Coupons");
         PreparedStatement prepstmt =
             conn.prepareStatement(
                 "SELECT itemId, perCentOff FROM coupons WHERE couponCode = ?"
-                    + "UNION SELECT itemId, perCentOff FROM vipCoupons WHERE couponCode = ?");
+                    + " UNION SELECT itemId, perCentOff FROM vipCoupons WHERE couponCode = ?");
         prepstmt.setString(1, couponCode);
         prepstmt.setString(2, couponCode);
         ResultSet coupons = prepstmt.executeQuery();
@@ -125,7 +125,6 @@ public class SqlInjection5 extends HttpServlet {
         } catch (Exception e) {
           log.debug("Could Not Find Coupon: " + e.toString());
         }
-        conn.close();
 
         // Work Out Final Cost
         pineappleCost = pineappleCost - (pineappleCost * (perCentOffPineapple / 100));
@@ -158,6 +157,8 @@ public class SqlInjection5 extends HttpServlet {
       } catch (Exception e) {
         log.debug("Didn't complete order: " + e.toString());
         htmlOutput += "<p>" + bundle.getString("response.orderFailed") + "</p>";
+      } finally {
+        Database.closeConnection(conn);
       }
       try {
         Thread.sleep(1000);

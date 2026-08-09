@@ -69,26 +69,27 @@ public class PoorValidation2 extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
       try {
-        int pineappleAmount =
+        long pineappleAmount =
             validateAmount(Integer.parseInt(request.getParameter("pineappleAmount")));
         log.debug("pineappleAmount - " + pineappleAmount);
-        int orangeAmount = validateAmount(Integer.parseInt(request.getParameter("orangeAmount")));
+        long orangeAmount = validateAmount(Integer.parseInt(request.getParameter("orangeAmount")));
         log.debug("orangeAmount - " + orangeAmount);
-        int appleAmount = validateAmount(Integer.parseInt(request.getParameter("appleAmount")));
+        long appleAmount = validateAmount(Integer.parseInt(request.getParameter("appleAmount")));
         log.debug("appleAmount - " + appleAmount);
-        int bananaAmount = validateAmount(Integer.parseInt(request.getParameter("bananaAmount")));
+        long bananaAmount = validateAmount(Integer.parseInt(request.getParameter("bananaAmount")));
         log.debug("bananaAmount - " + bananaAmount);
 
         // Working out costs
-        int pineappleCost = pineappleAmount * 30;
-        int orangeCost = orangeAmount * 3000;
-        int appleCost = appleAmount * 45;
-        int bananaCost = bananaAmount * 15;
+        // Widened to long so that no combination of amounts can overflow the total
+        long pineappleCost = pineappleAmount * 30L;
+        long orangeCost = orangeAmount * 3000L;
+        long appleCost = appleAmount * 45L;
+        long bananaCost = bananaAmount * 15L;
 
         htmlOutput = new String();
 
         // Work Out Final Cost
-        int finalCost = pineappleCost + orangeCost + bananaCost + appleCost;
+        long finalCost = pineappleCost + orangeCost + bananaCost + appleCost;
 
         // Output Order
         htmlOutput =
@@ -126,9 +127,10 @@ public class PoorValidation2 extends HttpServlet {
     }
   }
 
-  private static int validateAmount(int amount) {
+  private static long validateAmount(int amount) {
+    // An order can never be for a negative quantity, so a negative amount buys nothing
     if (amount < 0) {
-      amount = 0;
+      return 0;
     }
     return amount;
   }

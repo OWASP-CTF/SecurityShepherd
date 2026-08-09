@@ -85,67 +85,12 @@ String levelName = "Insecure Cryptographic Storage Challenge 2";
 		<div id="resultDiv"></div>
 		</p>
 	</div>
-	<script>			
+	<script>
 		$("#leForm").submit(function(){
-			// <%= bundle.getString("insecureCryptoStorage.2.hint") %>
-			var input = $("#resultKeyAttempt").val();
-			theKey = "kpoisaijdieyjaf";
-			var theAlphabet =   "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "abcdefghijklmnopqrstuvwxyz";
-
-			// <%= bundle.getString("insecureCryptoStorage.2.commentedCode.1") %>
-			theKey = theKey.toUpperCase();
-			var theKeysLength = theKey.length;
-			var i;
-			var adjustedKey = "";
-			for(i = 0; i < theKeysLength; i ++)
-			{
-				var currentKeyChar = theAlphabet.indexOf(theKey.charAt(i));
-				if(currentKeyChar < 0)
-					continue;
-				adjustedKey += theAlphabet.charAt(currentKeyChar);
-			}
-			theKey = adjustedKey;
-			theKeysLength = theKey.length;
-
-			// <%= bundle.getString("insecureCryptoStorage.2.commentedCode.2") %>
-			var inputLength = input.length;
-			var output = "";
-			var theKeysCurrentIndex = 0;
-			for(i = 0; i < inputLength; i ++)
-			{
-				var currentChar = input.charAt(i);
-				var currentCharValue = theAlphabet.indexOf(currentChar);
-				if(currentCharValue < 0)
-				{
-					output += currentChar;
-					continue;
-				}
-				var lowercase = currentCharValue >= 26 ? true : false;
-				currentCharValue += theAlphabet.indexOf(theKey.charAt(theKeysCurrentIndex));
-				currentCharValue += 26;
-				if(lowercase)
-					currentCharValue = currentCharValue % 26 + 26;
-				else
-					currentCharValue %= 26;
-				output += theAlphabet.charAt(currentCharValue);
-				theKeysCurrentIndex =(theKeysCurrentIndex + 1) % theKeysLength;
-			}
-			
-			// <%= bundle.getString("insecureCryptoStorage.2.commentedCode.3") %>
 			$("#resultDiv").hide("fast", function(){
-				if(output == "DwsDagmwhziArpmogWaSmmckwhMoEsmgmxlivpDttfjbjdxqBwxbKbCwgwgUyam")
-					$('#resultDiv').html("<p>Yeah, that's correct</p>");
-				else
-					$('#resultDiv').html("<p>No, that's not correct</p>");
+				$('#resultDiv').text("Result keys must be validated by the server.");
 				$("#resultDiv").show("slow");
 			});
-			// <%= bundle.getString("insecureCryptoStorage.2.commentedCode.4") %>
-			/*
-			$("#resultDiv").hide("fast", function(){
-					$('#resultDiv').html("Encrypted Output: " + output);
-				$("#resultDiv").show("slow");
-			});
-			*/
 		});
 		</script>
 	<% if(Analytics.googleAnalyticsOn) { %><%= Analytics.googleAnalyticsScript %>
