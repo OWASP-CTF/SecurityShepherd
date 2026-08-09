@@ -71,7 +71,7 @@ public class SolutionSubmit extends HttpServlet {
       log.debug("Current User: " + ses.getAttribute("userName").toString());
       Cookie tokenCookie = Validate.getToken(request.getCookies());
       Object tokenParmeter = request.getParameter("csrfToken");
-      if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
+      if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
         boolean notNull = false;
         String storedResult = null;
         log.debug("Getting ApplicationRoot");

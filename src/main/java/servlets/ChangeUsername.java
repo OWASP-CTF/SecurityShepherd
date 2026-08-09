@@ -62,7 +62,7 @@ public class ChangeUsername extends HttpServlet {
       Cookie tokenCookie = Validate.getToken(request.getCookies());
 
       Object tokenParmeter = request.getParameter("csrfToken");
-      if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
+      if (Validate.validateTokens(ses, tokenCookie, tokenParmeter)) {
         log.debug("Getting Parameters");
         String userName = (String) ses.getAttribute("userName");
         String newUsername = Encode.forHtml((String) request.getParameter("newUsername"));

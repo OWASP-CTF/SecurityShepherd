@@ -1,6 +1,8 @@
 package utils;
 
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
 import javax.servlet.http.Cookie;
@@ -29,6 +31,7 @@ import org.apache.logging.log4j.Logger;
 public class Validate {
 
   private static final Logger log = LogManager.getLogger(Validate.class);
+  public static final String CSRF_TOKEN_SESSION_ATTRIBUTE = "csrfToken";
 
   /**
    * Finds JSession token from user's cookies[], validates and returns.
@@ -284,7 +287,7 @@ public class Validate {
             if (!result) {
               // Check CSRF Tokens of User to ensure they are not being CSRF'd into causing
               // Unauthorised Access Alert
-              boolean validCsrfTokens = validateTokens(cookieToken, requestToken);
+              boolean validCsrfTokens = validateTokens(ses, cookieToken, requestToken);
               if (validCsrfTokens) {
                 log.fatal(
                     "User account "
@@ -450,19 +453,25 @@ public class Validate {
    * @param requestToken CSRF request Token
    * @return A boolean value stating weather or not the tokens are valid
    */
-  public static boolean validateTokens(Cookie cookieToken, Object requestToken) {
+  public static boolean validateTokens(
+      HttpSession session, Cookie cookieToken, Object requestToken) {
     boolean result = false;
     boolean cookieNull = (cookieToken == null);
     boolean requestNull = (requestToken == null);
-    if (!cookieNull && !requestNull) {
+    Object sessionToken = session == null ? null : session.getAttribute(CSRF_TOKEN_SESSION_ATTRIBUTE);
+    if (!cookieNull && !requestNull && sessionToken instanceof String) {
 
-      String theRequest = (String) requestToken;
+      String theRequest = requestToken.toString();
       String theCookie = cookieToken.getValue();
+      String theSession = (String) sessionToken;
       boolean cookieEmpty = theCookie.isEmpty();
       boolean requestEmpty = theRequest.isEmpty();
 
       if (!cookieEmpty && !requestEmpty) {
-        result = theRequest.compareTo(theCookie) == 0;
+        result = MessageDigest.isEqual(
+                theRequest.getBytes(StandardCharsets.UTF_8), theCookie.getBytes(StandardCharsets.UTF_8))
+            && MessageDigest.isEqual(
+                theCookie.getBytes(StandardCharsets.UTF_8), theSession.getBytes(StandardCharsets.UTF_8));
       } else if (cookieEmpty) {
         log.error("Cookie Token Empty");
       } else if (requestEmpty) {
@@ -478,9 +487,25 @@ public class Validate {
         log.error("Cookie Token was Null");
       } else if (requestNull) {
         log.error("Request Token was Null");
+      } else {
+        log.error("Session CSRF Token was Null or Invalid");
       }
     }
     return result;
+  }
+
+  /**
+   * Legacy cookie-only CSRF validation for intentionally vulnerable training handlers.
+   * Platform routes must use {@link #validateTokens(HttpSession, Cookie, Object)}.
+   */
+  @Deprecated
+  public static boolean validateTokens(Cookie cookieToken, Object requestToken) {
+    if (cookieToken == null || requestToken == null) {
+      return false;
+    }
+    return MessageDigest.isEqual(
+        requestToken.toString().getBytes(StandardCharsets.UTF_8),
+        cookieToken.getValue().getBytes(StandardCharsets.UTF_8));
   }
 
   /**

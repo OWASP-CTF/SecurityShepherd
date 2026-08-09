@@ -22,6 +22,7 @@ import org.apache.logging.log4j.Logger;
 import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.UserKicker;
+import utils.Validate;
 
 /**
  * Control class for the authentication procedure. <br>
@@ -257,7 +258,9 @@ public class ACS extends HttpServlet {
               }
 
               log.debug("Setting CSRF cookie");
-              Cookie token = new Cookie("token", Hash.randomString());
+              String csrfToken = Hash.randomString();
+              ses.setAttribute(Validate.CSRF_TOKEN_SESSION_ATTRIBUTE, csrfToken);
+              Cookie token = new Cookie("token", csrfToken);
               if (request.getRequestURL().toString().startsWith("https")) // If Requested over HTTPs
               {
                 token.setSecure(true);

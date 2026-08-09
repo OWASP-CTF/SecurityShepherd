@@ -15,6 +15,7 @@ import org.json.JSONObject;
 import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.UserKicker;
+import utils.Validate;
 
 /**
  * Control class for the authentication procedure. Response tuned for Shepherd Mobile Auth <br>
@@ -90,6 +91,7 @@ public class MobileLogin extends HttpServlet {
         ses.setAttribute("userClass", user[4]);
         log.debug("Setting CSRF cookie");
         csrfToken = Hash.randomString();
+        ses.setAttribute(Validate.CSRF_TOKEN_SESSION_ATTRIBUTE, csrfToken);
         Cookie token = new Cookie("token", csrfToken);
         if (request.getRequestURL().toString().startsWith("https")) // If Requested over HTTPs
         {
