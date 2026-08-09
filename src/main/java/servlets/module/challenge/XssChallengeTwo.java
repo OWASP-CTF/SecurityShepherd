@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
 import utils.FindXSS;
 import utils.Hash;
 import utils.ShepherdLogManager;
@@ -99,6 +100,10 @@ public class XssChallengeTwo extends HttpServlet {
             log.debug(levelName + " completed");
           }
           log.debug("Adding searchTerm to Html: " + searchTerm);
+          // The blacklist filter above can be bypassed (e.g. event handlers it does not know
+          // about, such as onfocus/ontoggle), so the term must still be HTML-encoded before it
+          // is reflected back into the page. This is defence-in-depth: whatever slips past
+          // XssFilter.levelTwo is rendered as inert text instead of being parsed as markup.
           htmlOutput +=
               "<h2 class='title'>"
                   + bundle.getString("response.searchResults")
@@ -106,7 +111,7 @@ public class XssChallengeTwo extends HttpServlet {
                   + "<p>"
                   + bundle.getString("response.noResults")
                   + " "
-                  + searchTerm
+                  + Encode.forHtml(searchTerm)
                   + "</p>";
           log.debug("Outputting HTML");
           out.write(htmlOutput);
