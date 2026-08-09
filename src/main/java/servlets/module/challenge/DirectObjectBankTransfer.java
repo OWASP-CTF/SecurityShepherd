@@ -81,9 +81,14 @@ public class DirectObjectBankTransfer extends HttpServlet {
         log.debug("Transfer Amount - " + transferAmountString);
         float tranferAmount = Float.parseFloat(transferAmountString);
 
+        String ownedAccountNumber = (String) ses.getAttribute("directObjectBankAccount");
         // Data Validation
-        // Positive Transfer Amount?
-        if (tranferAmount > 0) {
+        // Sender Account belongs to the logged in bank session?
+        if (ownedAccountNumber == null || !ownedAccountNumber.equals(senderAccountNumber)) {
+          log.debug("Unauthorized transfer attempt from another account. Cancelling");
+          errorMessage = bundle.getString("transfer.error.notEnoughCash");
+        } else if (tranferAmount > 0) {
+          // Positive Transfer Amount?
           // Sender Account Has necessary funds?
           long senderFunds =
               DirectObjectBankLogin.getAccountBalance(senderAccountNumber, applicationRoot);

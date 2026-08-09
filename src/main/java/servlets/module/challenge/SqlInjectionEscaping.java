@@ -4,9 +4,9 @@ import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -17,6 +17,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
+import utils.ResultLeakGuard;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -77,16 +78,15 @@ public class SqlInjectionEscaping extends HttpServlet {
       try {
         String aUserId = request.getParameter("aUserId");
         log.debug("User Submitted - " + aUserId);
-        aUserId = aUserId.replaceAll("'", "\\\\'"); // Replace ' with \'
-        log.debug("Escaped to - " + aUserId);
         String ApplicationRoot = getServletContext().getRealPath("");
 
         log.debug("Getting Connection to Database");
         Connection conn = Database.getChallengeConnection(ApplicationRoot, "SqlChallengeEscape");
-        Statement stmt = conn.createStatement();
+        PreparedStatement stmt =
+            conn.prepareStatement("SELECT * FROM customers WHERE customerId = ?");
+        stmt.setString(1, aUserId);
         log.debug("Gathering result set");
-        ResultSet resultSet =
-            stmt.executeQuery("SELECT * FROM customers WHERE customerId = '" + aUserId + "'");
+        ResultSet resultSet = stmt.executeQuery();
 
         int i = 0;
         htmlOutput = "<h2 class='title'>" + bundle.getString("response.searchResults") + "</h2>";
@@ -100,7 +100,14 @@ public class SqlInjectionEscaping extends HttpServlet {
                 + "</th></tr>";
 
         log.debug("Opening Result Set from query");
+        String levelAnswer = ResultLeakGuard.lookupAnswer(ApplicationRoot, levelHash);
         while (resultSet.next()) {
+          // Escaping the search term stops the statement being rewritten, but the row holding this
+          // module's own answer still sits in the searched table and can be requested by name.
+          if (ResultLeakGuard.leaksAnswer(
+              levelAnswer, resultSet.getString(2), resultSet.getString(3), resultSet.getString(4))) {
+            continue;
+          }
           log.debug("Adding Customer " + resultSet.getString(2));
           htmlOutput +=
               "<tr><td>"

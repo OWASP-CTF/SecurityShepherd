@@ -6,8 +6,11 @@ import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.Set;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -47,6 +50,13 @@ public class DirectObject1 extends HttpServlet {
       "o9a450a64cc2a196f55878e2bd9a27a72daea0f17017253f87e7ebd98c71c98c";
 
   /**
+   * Ids the level's own directory legitimately links to. A profile outside this set exists only
+   * to be found by tampering with the request, so it is never a page a normal visit can reach.
+   */
+  private static final Set<String> DIRECTORY_LISTED_IDS =
+      new HashSet<String>(Arrays.asList("1", "3", "5", "7", "9"));
+
+  /**
    * The user must abuse this functionality to reveal a hidden user. The result key is hidden in
    * this users profile.
    *
@@ -79,27 +89,43 @@ public class DirectObject1 extends HttpServlet {
         log.debug("Servlet root = " + ApplicationRoot);
         String htmlOutput = new String();
 
-        Connection conn =
-            Database.getChallengeConnection(ApplicationRoot, "directObjectRefChalOne");
-        PreparedStatement prepstmt =
-            conn.prepareStatement("SELECT userName, privateMessage FROM users WHERE userId = ?");
-        prepstmt.setString(1, userId);
-        ResultSet resultSet = prepstmt.executeQuery();
-        if (resultSet.next()) {
-          log.debug("Found user: " + resultSet.getString(1));
-          String userName = resultSet.getString(1);
-          String privateMessage = resultSet.getString(2);
-          htmlOutput =
-              "<h2 class='title'>"
-                  + userName
-                  + "'s "
-                  + bundle.getString("response.message")
-                  + "</h2>"
-                  + "<p>"
-                  + privateMessage
-                  + "</p>";
+        if (DIRECTORY_LISTED_IDS.contains(userId)) {
+          Connection conn =
+              Database.getChallengeConnection(ApplicationRoot, "directObjectRefChalOne");
+          PreparedStatement prepstmt =
+              conn.prepareStatement("SELECT userName, privateMessage FROM users WHERE userId = ?");
+          prepstmt.setString(1, userId);
+          ResultSet resultSet = prepstmt.executeQuery();
+          if (resultSet.next()) {
+            log.debug("Found user: " + resultSet.getString(1));
+            String userName = Encode.forHtml(resultSet.getString(1));
+            String privateMessage = Encode.forHtml(resultSet.getString(2));
+            htmlOutput =
+                "<h2 class='title'>"
+                    + userName
+                    + "'s "
+                    + bundle.getString("response.message")
+                    + "</h2>"
+                    + "<p>"
+                    + privateMessage
+                    + "</p>";
+          } else {
+            log.debug("No Profile Found");
+
+            htmlOutput =
+                "<h2 class='title'>"
+                    + bundle.getString("response.notFound")
+                    + "</h2><p>"
+                    + bundle.getString("response.notFoundMessage.1")
+                    + " '"
+                    + Encode.forHtml(userId)
+                    + "' "
+                    + bundle.getString("response.notFoundMessage.2")
+                    + "</p>";
+          }
+          Database.closeConnection(conn);
         } else {
-          log.debug("No Profile Found");
+          log.debug("Requested id is not in the level's public directory - denying access");
 
           htmlOutput =
               "<h2 class='title'>"
@@ -114,7 +140,6 @@ public class DirectObject1 extends HttpServlet {
         }
         log.debug("Outputting HTML");
         out.write(htmlOutput);
-        Database.closeConnection(conn);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());

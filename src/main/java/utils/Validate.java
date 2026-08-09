@@ -39,6 +39,12 @@ public class Validate {
   public static Cookie getSessionId(Cookie[] userCookies) {
     int i = 0;
     Cookie theSessionId = null;
+    // A request that carries no cookies at all arrives here as a null array, not an empty one.
+    // Walking it threw before the caller ever got the chance to treat "no session" as the
+    // ordinary unauthenticated case, turning a routine first visit into a server error.
+    if (userCookies == null) {
+      return null;
+    }
     for (i = 0; i < userCookies.length; i++) {
       if (userCookies[i].getName().compareTo("JSESSIONID") == 0) {
         theSessionId = userCookies[i];
@@ -57,6 +63,11 @@ public class Validate {
   public static Cookie getToken(Cookie[] userCookies) {
     int i = 0;
     Cookie theToken = null;
+    // As above: no cookies on the request means a null array. Absence of a CSRF token is a
+    // normal condition the callers already handle; it must not surface as a crash.
+    if (userCookies == null) {
+      return null;
+    }
     for (i = 0; i < userCookies.length; i++) {
       if (userCookies[i].getName().compareTo("token") == 0) {
         theToken = userCookies[i];
@@ -116,6 +127,12 @@ public class Validate {
    */
   public static boolean isValidEmailAddress(String email) {
     boolean result = true;
+    // This method defaults to "valid" and only narrows on AddressException. A null address
+    // raises a NullPointerException instead, which escapes that catch entirely rather than
+    // being reported as invalid - so an absent address has to be rejected up front.
+    if (email == null) {
+      return false;
+    }
     try {
       log.debug("Validating email");
       InternetAddress emailAddr = new InternetAddress(email);
