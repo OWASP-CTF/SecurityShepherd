@@ -94,7 +94,7 @@ public class UrlAccess3 extends HttpServlet {
           String decodedCookie = new String(decodedCookieBytes, "UTF-8");
           log.debug("Decoded Cookie: " + decodedCookie);
 
-          if (decodedCookie.equals("MrJohnReillyTheSecond")) {
+          if (decodedCookie.equals("MrJohnReillyTheSecond") && Validate.validateAdminSession(ses)) {
             log.debug("Super Admin Cookie detected");
             // Get key and add it to the output
             String userKey =
@@ -112,6 +112,15 @@ public class UrlAccess3 extends HttpServlet {
                     + userKey
                     + "</a>"
                     + "</p>";
+          } else if (decodedCookie.equals("MrJohnReillyTheSecond")) {
+            // Claiming to be the super admin via a client-supplied cookie is not enough:
+            // the caller's real, server-side session role must actually be privileged.
+            log.fatal(
+                "User "
+                    + ses.getAttribute("userName")
+                    + " attempted super admin privilege escalation via forged currentPerson"
+                    + " cookie without holding an admin session!");
+            htmlOutput = "<!-- " + bundle.getString("response.invalidUser") + " -->";
           } else if (!decodedCookie.equals("aGuest")) {
             log.debug("Tampered role cookie detected: " + decodedCookie);
             htmlOutput = "<!-- " + bundle.getString("response.invalidUser") + " -->";
