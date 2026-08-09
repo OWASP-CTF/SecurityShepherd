@@ -6,6 +6,9 @@ import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -43,6 +46,21 @@ public class DirectObject2 extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(DirectObject2.class);
   private static String levelName = "Insecure Direct Object Reference Challenge Two";
+
+  /**
+   * The profiles this challenge publishes. Any other identifier is a direct object reference the
+   * requester was never authorised to use, so it is refused regardless of whether a matching row
+   * happens to exist.
+   */
+  private static final List<String> authorisedUserIds =
+      Collections.unmodifiableList(
+          Arrays.asList(
+              "c81e728d9d4c2f636f067f89cc14862c",
+              "eccbc87e4b5ce2fe28308fd9f2a7baf3",
+              "e4da3b7fbbce2345d7772b0674a318d5",
+              "8f14e45fceea167a5a36dedd4bea2543",
+              "6512bd43d9caa6e02c990b0a82652dca"));
+
   public static String levelHash =
       "vc9b78627df2c032ceaf7375df1d847e47ed7abac2a4ce4cb6086646e0f313a4";
 
@@ -75,46 +93,67 @@ public class DirectObject2 extends HttpServlet {
       try {
         String userId = request.getParameter("userId[]");
         log.debug("User Submitted - " + userId);
-        String ApplicationRoot = getServletContext().getRealPath("");
-        log.debug("Servlet root = " + ApplicationRoot);
+        // Indirect object mapping: the request parameter is only ever used to select one of the
+        // profile identifiers this challenge itself publishes. Any other value is refused before
+        // the database is consulted, so a guessed or enumerated identifier can never address
+        // another user's row and attacker input never reaches the query.
+        int profileIndex = userId == null ? -1 : authorisedUserIds.indexOf(userId);
         String htmlOutput = new String();
-
-        Connection conn =
-            Database.getChallengeConnection(ApplicationRoot, "directObjectRefChalTwo");
-        PreparedStatement prepstmt =
-            conn.prepareStatement("SELECT userName, privateMessage FROM users WHERE userId = ?");
-        prepstmt.setString(1, userId);
-        ResultSet resultSet = prepstmt.executeQuery();
-        if (resultSet.next()) {
-          log.debug("Found user: " + resultSet.getString(1));
-          String userName = resultSet.getString(1);
-          String privateMessage = resultSet.getString(2);
-          htmlOutput =
-              "<h2 class='title'>"
-                  + userName
-                  + "'s "
-                  + bundle.getString("response.message")
-                  + "</h2>"
-                  + "<p>"
-                  + privateMessage
-                  + "</p>";
-        } else {
-          log.debug("No Profile Found");
-
+        if (profileIndex < 0) {
+          log.debug("Refusing profile the user is not authorised to read");
           htmlOutput =
               "<h2 class='title'>"
                   + bundle.getString("response.notFound")
                   + "</h2><p>"
                   + bundle.getString("response.notFoundMessage.1")
                   + " '"
-                  + Encode.forHtml(userId)
+                  + Encode.forHtml(userId == null ? "" : userId)
                   + "' "
                   + bundle.getString("response.notFoundMessage.2")
                   + "</p>";
+        } else {
+          // Only the server-side canonical identifier is bound into the query
+          String canonicalUserId = authorisedUserIds.get(profileIndex);
+          String ApplicationRoot = getServletContext().getRealPath("");
+          log.debug("Servlet root = " + ApplicationRoot);
+
+          Connection conn =
+              Database.getChallengeConnection(ApplicationRoot, "directObjectRefChalTwo");
+          PreparedStatement prepstmt =
+              conn.prepareStatement("SELECT userName, privateMessage FROM users WHERE userId = ?");
+          prepstmt.setString(1, canonicalUserId);
+          ResultSet resultSet = prepstmt.executeQuery();
+          if (resultSet.next()) {
+            log.debug("Found user: " + resultSet.getString(1));
+            String userName = resultSet.getString(1);
+            String privateMessage = resultSet.getString(2);
+            htmlOutput =
+                "<h2 class='title'>"
+                    + userName
+                    + "'s "
+                    + bundle.getString("response.message")
+                    + "</h2>"
+                    + "<p>"
+                    + privateMessage
+                    + "</p>";
+          } else {
+            log.debug("No Profile Found");
+
+            htmlOutput =
+                "<h2 class='title'>"
+                    + bundle.getString("response.notFound")
+                    + "</h2><p>"
+                    + bundle.getString("response.notFoundMessage.1")
+                    + " '"
+                    + Encode.forHtml(canonicalUserId)
+                    + "' "
+                    + bundle.getString("response.notFoundMessage.2")
+                    + "</p>";
+          }
+          Database.closeConnection(conn);
         }
         log.debug("Outputting HTML");
         out.write(htmlOutput);
-        Database.closeConnection(conn);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());

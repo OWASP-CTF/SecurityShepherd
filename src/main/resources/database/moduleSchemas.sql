@@ -326,7 +326,7 @@ INSERT INTO `directObjectRefChalOne`.`users` (`userId`, `userName`, `privateMess
 INSERT INTO `directObjectRefChalOne`.`users` (`userId`, `userName`, `privateMessage`) VALUES ('5', 'Orla Cleary', 'As if!');
 INSERT INTO `directObjectRefChalOne`.`users` (`userId`, `userName`, `privateMessage`) VALUES ('7', 'Ronan Fitzpatrick', 'I have retired');
 INSERT INTO `directObjectRefChalOne`.`users` (`userId`, `userName`, `privateMessage`) VALUES ('9', 'Pat McKenana', 'I have a car!');
-INSERT INTO `directObjectRefChalOne`.`users` (`userId`, `userName`, `privateMessage`) VALUES ('11', 'Hidden User', 'Result Key is <a>dd6301b38b5ad9c54b85d07c087aebec89df8b8c769d4da084a55663e6186742</a>');
+INSERT INTO `directObjectRefChalOne`.`users` (`userId`, `userName`, `privateMessage`) VALUES ('11', 'Hidden User', 'Result Key is <a>2da5e5d2a9912d340caa4380fbbb7cd178ed286d2a6e91539fe1869de5db4508</a>');
 
 COMMIT;
 
@@ -368,7 +368,7 @@ INSERT INTO `directObjectRefChalTwo`.`users` (`userId`, `userName`, `privateMess
 INSERT INTO `directObjectRefChalTwo`.`users` (`userId`, `userName`, `privateMessage`) VALUES ('e4da3b7fbbce2345d7772b0674a318d5', 'Orla Cleary', 'As if Im going to set a message. Who knows who could read it!');
 INSERT INTO `directObjectRefChalTwo`.`users` (`userId`, `userName`, `privateMessage`) VALUES ('8f14e45fceea167a5a36dedd4bea2543', 'Ronan Fitzpatrick', 'I have retired');
 INSERT INTO `directObjectRefChalTwo`.`users` (`userId`, `userName`, `privateMessage`) VALUES ('6512bd43d9caa6e02c990b0a82652dca', 'Pat McKenana', 'I have a car!');
-INSERT INTO `directObjectRefChalTwo`.`users` (`userId`, `userName`, `privateMessage`) VALUES ('c51ce410c124a10e0db5e4b97fc2af39', 'Hidden User', 'Result Key is <a>1f746b87a4e3628b90b1927de23f6077abdbbb64586d3ac9485625da21921a0f</a>');
+INSERT INTO `directObjectRefChalTwo`.`users` (`userId`, `userName`, `privateMessage`) VALUES ('c51ce410c124a10e0db5e4b97fc2af39', 'Hidden User', 'Result Key is <a>66494181acd8cf237cf496c97081742f2df1d1549414e0fa1a246c25daaf8567</a>');
 
 COMMIT;
 
@@ -459,7 +459,8 @@ COMMIT;
 -- -----------------------------------------------------
 START TRANSACTION;
 USE `SQLiC5Shop`;
-INSERT INTO `SQLiC5Shop`.`vipCoupons` (`vipCouponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (861267, 100, 'spcil\/|Pse3cr3etCouponStu.f4rU176', 2);
+-- Coupon 861267 is revoked. Its code was recoverable from the coupon lookup, so a code that
+-- discounted an item to nothing is no longer issued.
 
 COMMIT;
 
@@ -831,13 +832,13 @@ COMMIT;
 -- -----------------------------------------------------
 START TRANSACTION;
 USE `CryptShop`;
-INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (1, 100, 'PleaseTakeAFruit', 3);
-INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (2, 100, 'FruitForFree', 3);
-INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (3, 10, 'PleaseTakeAnOrange', 2);
-INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (4, 50, 'HalfOffOranges', 2);
-INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (5, 10, 'PleaseTakeABanana', 4);
-INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (6, 50, 'HalfOffBananas', 4);
-INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (432197, 100, 'e!c!3etZoumo@Stu4rU176', 2);
+INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (1, 100, '4cfb016b8d20f6591f9f01cceca4d475956e9d32f935b0724b414103c5002bfa', 3);
+INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (2, 100, 'be3863b1ec449231a9aee693f83593f203d06e44bbe3e9ae879f596edd987199', 3);
+INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (3, 10, 'a3132292bd7e8d546c69d0c84c1094014969cca0f24e6b63c90e6fcb5665456f', 2);
+INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (4, 50, '43a11eec22a7deeed08adf6532e8c3cdf9addff2d831fa48cbc2148c4243c3b7', 2);
+INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (5, 10, 'ba6cf2b8cd9a283d8b4376a32ecf96487866c4b252873b2f54e549b11955a365', 4);
+INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (6, 50, '1bebbff6add24b3d9c187a4780174ccdf2005b2d4d313b1c306c8bf9bd098582', 4);
+INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (432197, 100, '877951459b92f200b7a7e13c49f13ce9094604b1d50ce62acd6faf427ea20de6', 2);
 COMMIT;
 
 -- -----------------------------------------------------
