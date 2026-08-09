@@ -6,6 +6,7 @@ import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -119,23 +120,47 @@ public class SessionManagement3ChangePassword extends HttpServlet {
 
           Connection conn =
               Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalThree");
-          log.debug("Changing password for user: " + subName);
-          log.debug("Changing password to: " + subNewPass);
           PreparedStatement callstmt;
 
-          callstmt =
-              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userName = ?");
-          callstmt.setString(1, subNewPass);
-          callstmt.setString(2, subName);
-          log.debug("Executing changePassword");
-          callstmt.execute();
+          // The target account name comes entirely from a client-editable, unsigned "current"
+          // cookie - it is never tied back to any authenticated identity for this sub
+          // application. Blindly trusting it would let anyone repoint the cookie at a
+          // privileged account name (e.g. "admin") and take it over with a self-chosen
+          // password. Look the target account's role up first and refuse to touch privileged
+          // accounts through this unauthenticated flow; ordinary/guest accounts (the only
+          // accounts the legitimate front-end ever targets) are unaffected.
+          log.debug("Checking role of password-reset target: " + subName);
+          callstmt = conn.prepareStatement("SELECT userRole FROM users WHERE userName = ?");
+          callstmt.setString(1, subName);
+          ResultSet resultSet = callstmt.executeQuery();
+          boolean isPrivilegedTarget =
+              resultSet.next() && "admin".equalsIgnoreCase(resultSet.getString(1));
 
-          log.debug("Committing changes made to database");
-          callstmt = conn.prepareStatement("COMMIT");
-          callstmt.execute();
-          log.debug("Changes committed.");
+          if (isPrivilegedTarget) {
+            log.warn(
+                levelName
+                    + " - refused unauthenticated password reset targeting privileged account: "
+                    + subName);
+            htmlOutput = "<p>" + bundle.getString("reset.failed") + "</p>";
+          } else {
+            log.debug("Changing password for user: " + subName);
+            log.debug("Changing password to: " + subNewPass);
 
-          htmlOutput = "<p>" + bundle.getString("reset.password") + "</p>";
+            callstmt =
+                conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userName = ?");
+            callstmt.setString(1, subNewPass);
+            callstmt.setString(2, subName);
+            log.debug("Executing changePassword");
+            callstmt.execute();
+
+            log.debug("Committing changes made to database");
+            callstmt = conn.prepareStatement("COMMIT");
+            callstmt.execute();
+            log.debug("Changes committed.");
+
+            htmlOutput = "<p>" + bundle.getString("reset.password") + "</p>";
+          }
+          Database.closeConnection(conn);
         } else {
           log.debug("invalid password submitted: " + subNewPass);
           htmlOutput = "<p>" + bundle.getString("reset.failed") + "</p>";
