@@ -19,10 +19,9 @@ import org.springframework.mock.web.MockServletConfig;
 import testUtils.TestProperties;
 
 /**
- * Regression coverage for the "Failure to Restrict URL Access 2" challenge. The admin-only
- * function must reject any session that is not actually holding the admin role, even when the
- * caller already knows (or has guessed/reverse-engineered) the hidden request parameters the
- * admin action expects.
+ * Regression coverage for the "Failure to Restrict URL Access 2" challenge. The admin-only function
+ * must reject any session that is not actually holding the admin role, even when the caller already
+ * knows (or has guessed/reverse-engineered) the hidden request parameters the admin action expects.
  */
 public class UrlAccess2AdminIT {
 
