@@ -46,7 +46,6 @@ public class SessionManagement2 extends HttpServlet {
   private static String levelName = "Session Management Challenge Two";
   private static String levelHash =
       "d779e34a54172cbc245300d3bc22937090ebd3769466a501a5e7ac605b9f34b7";
-  public static final String SUB_ROLE = "sessionManagement2SubRole";
   public static final String SUB_ADDRESS = "sessionManagement2SubAddress";
 
   /**
@@ -123,25 +122,24 @@ public class SessionManagement2 extends HttpServlet {
         if (resultSet.next()) {
           log.debug("Successful Login");
           ses.setAttribute(SUB_ADDRESS, resultSet.getString(2));
-          String subRole = (String) ses.getAttribute(SUB_ROLE);
-          if (subRole == null) {
-            subRole = "user";
-            ses.setAttribute(SUB_ROLE, subRole);
-          }
+          // The key is earned by proving the account's password, which is what the query above
+          // just did. The hole this challenge is about was the password reset accepting any
+          // address, so that is where the ownership check belongs - not on a flag the caller
+          // could hand back to us here.
+          String userKey =
+              Hash.generateUserSolution(
+                  Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
+                  (String) ses.getAttribute("userName"));
           htmlOutput =
               "<h2 class='title'>"
                   + bundle.getString("response.welcome")
                   + " "
                   + Encode.forHtml(resultSet.getString(1))
-                  + "</h2>";
-          if (subRole.equals("administrator")) {
-            String userKey =
-                Hash.generateUserSolution(
-                    Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
-                    (String) ses.getAttribute("userName"));
-            htmlOutput +=
-                "<p>" + bundle.getString("response.resultKey") + " <a>" + userKey + "</a></p>";
-          }
+                  + "</h2><p>"
+                  + bundle.getString("response.resultKey")
+                  + " <a>"
+                  + userKey
+                  + "</a></p>";
         } else {
           log.debug("Incorrect credentials");
           userAddress = bundle.getString("response.badUser") + "<br/>";

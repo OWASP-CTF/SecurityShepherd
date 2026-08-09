@@ -46,7 +46,6 @@ public class SessionManagement5 extends HttpServlet {
   public static String levelHash =
       "7aed58f3a00087d56c844ed9474c671f8999680556c127a19ee79fa5d7a132e1";
   private static String levelResult = "a15b8ea0b8a3374a1dedc326dfbe3dbae26";
-  public static final String SUB_ROLE = "sessionManagement5SubRole";
 
   /**
    * Users must use this functionality to sign in as an administrator to retrieve the result key.
@@ -119,23 +118,21 @@ public class SessionManagement5 extends HttpServlet {
         if (resultSet.next()) {
           if (resultSet.getString(2).equalsIgnoreCase("admin")) {
             log.debug("Successful Admin Login");
-            String subRole = (String) ses.getAttribute(SUB_ROLE);
-            if (subRole == null) {
-              subRole = "user";
-              ses.setAttribute(SUB_ROLE, subRole);
-            }
+            // The privilege is read off the row this request just authenticated against. What
+            // was wrong before was taking it from the caller, not having roles at all, so the
+            // decision belongs here - on stored data, after the password has been proven.
+            String userKey =
+                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
             htmlOutput =
                 "<h2 class='title'>"
                     + bundle.getString("response.welcome")
                     + " "
                     + Encode.forHtml(resultSet.getString(1))
-                    + "</h2>";
-            if (subRole.equals("administrator")) {
-              String userKey =
-                  Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
-              htmlOutput +=
-                  "<p>" + bundle.getString("response.resultKey") + " <a>" + userKey + "</a></p>";
-            }
+                    + "</h2><p>"
+                    + bundle.getString("response.resultKey")
+                    + " <a>"
+                    + userKey
+                    + "</a></p>";
           } else {
             log.debug("Successful Pleb Login");
             htmlOutput =

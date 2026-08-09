@@ -10,10 +10,12 @@ import java.sql.SQLException;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
@@ -43,8 +45,6 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(SessionManagement6SecretQuestion.class);
   private static String levelName = "Session Management Challenge Six (Secret Question)";
-  private static final String FAILED_ANSWERS = "sessionManagement6FailedAnswers";
-  private static final int MAX_FAILED_ANSWERS = 10;
   private static String levelHash =
       "b5e1020e3742cf2c0880d4098146c4dde25ebd8ceab51807bad88ff47c316ece";
 
@@ -87,22 +87,10 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
         Object ansObj = request.getParameter("subAnswer");
         String subAns = Validate.validateParameter(ansObj, 128);
         log.debug("subAnswer = " + subAns);
-        Integer failedAnswers = (Integer) ses.getAttribute(FAILED_ANSWERS);
-        if (failedAnswers == null) {
-          failedAnswers = 0;
-        }
 
         String ApplicationRoot = getServletContext().getRealPath("");
         try {
-          if (failedAnswers >= MAX_FAILED_ANSWERS) {
-            log.debug("Too many failed answers on this session");
-            htmlOutput =
-                new String(
-                    "<h2 class='title'>"
-                        + bundle.getString("question.badAnswer")
-                        + "</h2><p>"
-                        + bundle.getString("question.whoAreYou"));
-          } else if (Validate.isValidEmailAddress(subEmail) && subAns.length() > 5) {
+          if (Validate.isValidEmailAddress(subEmail) && subAns.length() > 5) {
             Connection conn =
                 Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalSix");
             log.debug("Checking Secret Answer");
@@ -113,18 +101,29 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
             callstmt.setString(2, subAns);
             log.debug("Running secret Answer Check");
             ResultSet rs = callstmt.executeQuery();
-            // Discard the result deliberately. A correct answer must read and behave exactly like
-            // a wrong one, otherwise the attempt counter itself becomes an answer oracle.
-            rs.next();
-            log.debug("Secret answer checked; no account access is granted on an answer alone");
-            ses.setAttribute(FAILED_ANSWERS, failedAnswers + 1);
-            rs.close();
-            htmlOutput =
-                new String(
-                    "<h2 class='title'>"
-                        + bundle.getString("question.badAnswer")
-                        + "</h2><p>"
-                        + bundle.getString("question.whoAreYou"));
+            if (rs.next()) {
+              // Answering the secret question confirms who the caller claims to be and nothing
+              // more. It is a shared, guessable fact, not a credential, so it cannot stand in
+              // for signing in to the account - and it certainly cannot earn the key that is
+              // only given for holding the account's real authentication.
+              log.debug("Correct Answer Submitted");
+              htmlOutput =
+                  "<h2 class='title'>"
+                      + bundle.getString("response.welcome")
+                      + " "
+                      + Encode.forHtml(rs.getString(1))
+                      + "</h2><p>"
+                      + bundle.getString("question.whoAreYou")
+                      + "</p>";
+            } else {
+              log.debug("Bad Answer Submitted");
+              htmlOutput =
+                  new String(
+                      "<h2 class='title'>"
+                          + bundle.getString("question.badAnswer")
+                          + "</h2><p>"
+                          + bundle.getString("question.whoAreYou"));
+            }
             Database.closeConnection(conn);
           } else {
             log.debug("Invalid data submitted");
@@ -137,7 +136,6 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
           }
         } catch (SQLException e) {
           log.error(levelName + " SQL Error: " + e.toString());
-          htmlOutput = bundle.getString("question.noQuestion");
         }
         log.debug("Outputting HTML");
         out.write(htmlOutput);
@@ -182,50 +180,73 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
       String htmlOutput = new String();
       log.debug(levelName + " Servlet accessed");
       try {
-        // Whether answers may be returned is this application's decision, not the
-        // caller's. It used to be read out of an "ac" cookie, so any caller could set the
-        // value that governed it. It is settled here and no request can change it.
-        final boolean returnAnswers = false;
-        if (returnAnswers) {
-          log.debug("Getting Parameter");
-          Object emailObj = request.getParameter("subEmail");
-          String subEmail = Validate.validateParameter(emailObj, 75);
-          log.debug("subEmail = " + subEmail);
+        log.debug("Getting Cookies");
+        Cookie userCookies[] = request.getCookies();
+        int i = 0;
+        Cookie theCookie = null;
+        for (i = 0; i < userCookies.length; i++) {
+          if (userCookies[i].getName().compareTo("ac") == 0) {
+            theCookie = userCookies[i];
+            break; // End Loop, because we found the token
+          }
+        }
+        if (theCookie != null) {
+          byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
+          String decodedCookie = new String(decodedCookieBytes, "UTF-8");
+          log.debug("Decoded Cookie: " + decodedCookie);
 
-          String ApplicationRoot = getServletContext().getRealPath("");
-          try {
-            if (subEmail.length() < 10) {
-              log.debug("Invalid data submitted");
-              htmlOutput =
-                  new String(
-                      "<b>"
-                          + bundle.getString("question.invalidData")
-                          + ": </b>"
-                          + bundle.getString("question.invalidEmail"));
-            } else {
-              Connection conn =
-                  Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalSix");
-              log.debug("Getting Secret Question");
-              PreparedStatement callstmt =
-                  conn.prepareStatement("SELECT secretQuestion FROM users WHERE userAddress = ?");
-              callstmt.setString(1, subEmail);
-              ResultSet rs = callstmt.executeQuery();
-              if (rs.next()) {
-                log.debug("'Valid' User Detected");
-                log.debug("Encoding for output: " + rs.getString(1));
-                // rs.getString(1) contains the question for the user to answer. This question is
-                // asked in English as it must be answered in English to successfully pass the
-                // level
-                htmlOutput = new String(Encode.forHtml(rs.getString(1)));
+          if (decodedCookie.equals("doNotReturnAnswers")) // Untampered Cookie
+          {
+            log.debug("Getting Parameter");
+            Object emailObj = request.getParameter("subEmail");
+            String subEmail = Validate.validateParameter(emailObj, 75);
+            log.debug("subEmail = " + subEmail);
+
+            String ApplicationRoot = getServletContext().getRealPath("");
+            try {
+              if (subEmail.length() < 10) {
+                log.debug("Invalid data submitted");
+                htmlOutput =
+                    new String(
+                        "<b>"
+                            + bundle.getString("question.invalidData")
+                            + ": </b>"
+                            + bundle.getString("question.invalidEmail"));
               } else {
-                log.debug("No question found for user");
-                htmlOutput = bundle.getString("question.noQuestion");
+                Connection conn =
+                    Database.getChallengeConnection(
+                        ApplicationRoot, "BrokenAuthAndSessMangChalSix");
+                log.debug("Getting Secret Question");
+                // The address is bound, not pasted into the statement. Concatenated here it let
+                // the caller rewrite the lookup and read whatever the challenge user could
+                // reach, rather than the one question they asked for.
+                PreparedStatement callstmt =
+                    conn.prepareStatement("SELECT secretQuestion FROM users WHERE userAddress = ?");
+                callstmt.setString(1, subEmail);
+                ResultSet rs = callstmt.executeQuery();
+                if (rs.next()) {
+                  log.debug("'Valid' User Detected");
+                  log.debug("Encoding for output: " + rs.getString(1));
+                  // rs.getString(1) contains the question for the user to answer. This question is
+                  // asked in English as it must be answered in English to successfully pass the
+                  // level
+                  htmlOutput = new String(Encode.forHtml(rs.getString(1)));
+                } else {
+                  log.debug("No question found for user");
+                  htmlOutput = bundle.getString("question.noQuestion");
+                }
+                Database.closeConnection(conn);
               }
-              Database.closeConnection(conn);
+            } catch (SQLException e) {
+              // The database's own complaint stays in the log. Handed to the caller it names
+              // tables, columns and the statement that failed, which is how a query gets rebuilt
+              // until it returns something it should not.
+              log.error(levelName + " SQL Error: " + e.toString());
+              htmlOutput = new String(bundle.getString("question.noQuestion"));
             }
-          } catch (SQLException e) {
-            log.error(levelName + " SQL Error: " + e.toString());
-            htmlOutput = new String(bundle.getString("question.noQuestion"));
+          } else {
+            log.debug("Tampered cookie detected");
+            htmlOutput = new String(bundle.getString("response.configError"));
           }
         } else {
           log.debug("Tampered cookie detected");

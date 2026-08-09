@@ -47,7 +47,6 @@ public class SessionManagement3 extends HttpServlet {
       "t193c6634f049bcf65cdcac72269eeac25dbb2a6887bdb38873e57d0ef447bc3";
   private static String levelResult = "e62008dc47f5eb065229d48963";
   public static final String SUB_USER = "sessionManagement3User";
-  public static final String SUB_ROLE = "sessionManagement3SubRole";
 
   public static String getLevelHash() {
     return levelHash;
@@ -126,23 +125,21 @@ public class SessionManagement3 extends HttpServlet {
           ses.setAttribute(SUB_USER, resultSet.getString(1));
           if (resultSet.getString(3).equalsIgnoreCase("admin")) {
             log.debug("Successful Admin Login");
-            String subRole = (String) ses.getAttribute(SUB_ROLE);
-            if (subRole == null) {
-              subRole = "user";
-              ses.setAttribute(SUB_ROLE, subRole);
-            }
+            // The privilege is read off the row this request just authenticated against. What
+            // was wrong before was taking it from the caller, not having roles at all, so the
+            // decision belongs here - on stored data, after the password has been proven.
+            String userKey =
+                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
             htmlOutput =
                 "<h2 class='title'>"
                     + bundle.getString("response.welcome")
                     + " "
                     + Encode.forHtml(resultSet.getString(1))
-                    + "</h2>";
-            if (subRole.equals("administrator")) {
-              String userKey =
-                  Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
-              htmlOutput +=
-                  "<p>" + bundle.getString("response.resultKey") + " <a>" + userKey + "</a></p>";
-            }
+                    + "</h2><p>"
+                    + bundle.getString("response.resultKey")
+                    + " <a>"
+                    + userKey
+                    + "</a></p>";
           } else {
             log.debug("Successful Guest Login");
             htmlOutput =
