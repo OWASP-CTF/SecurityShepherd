@@ -88,7 +88,10 @@ public class SessionManagement2ChangePassword extends HttpServlet {
         String authenticatedUser = (String) ses.getAttribute("sessionManagement2User");
         String authenticatedAddress = (String) ses.getAttribute("sessionManagement2Address");
         if (authenticatedUser == null || !subEmail.equals(authenticatedAddress)) {
-          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          // The reset is refused, but the refusal is part of this level's own page rather than a
+          // bare error status, so the module still answers as itself
+          log.debug("Reset requested for an address this session is not signed in as");
+          out.write("<p>" + bundle.getString("response.badUser") + "</p>");
           return;
         }
 
