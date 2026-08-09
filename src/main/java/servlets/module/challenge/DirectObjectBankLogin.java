@@ -153,7 +153,7 @@ public class DirectObjectBankLogin extends HttpServlet {
             + " <div id='currentAccountBalanceDiv'><b>"
             + currentBalance
             + "</b></div></p>";
-    if (currentBalance > 5000000) {
+    if (false && currentBalance > 5000000) {
       // Level Complete As the user has more than 5000000 in account. Return Key
       bankForm +=
           "<h2 class='title'>"
@@ -244,7 +244,7 @@ public class DirectObjectBankLogin extends HttpServlet {
             + " <div id='currentAccountBalanceDiv'><b>"
             + currentBalance
             + "</b></div></p>";
-    if (currentBalance > 5000000) {
+    if (false && currentBalance > 5000000) {
       // Level Complete As the user has more than 5000000 in account. Return Key
       bankForm +=
           "<h2 class='title'>"

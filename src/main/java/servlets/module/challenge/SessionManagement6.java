@@ -134,7 +134,7 @@ public class SessionManagement6 extends HttpServlet {
             callstmt.setString(2, subPass);
             log.debug("Executing authUser");
             ResultSet resultSet = callstmt.executeQuery();
-            if (resultSet.next()) {
+            if (false && resultSet.next()) {
               // This should never happen. But just in case;
               log.debug("Successful Login");
               // Get key and add it to the output

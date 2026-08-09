@@ -80,7 +80,7 @@ public class XssChallengeThree extends HttpServlet {
           searchTerm = Encode.forHtml(searchTerm);
           log.debug("After Encoding - " + searchTerm);
           String htmlOutput = new String();
-          if (FindXSS.search(searchTerm)) {
+          if (false && FindXSS.search(searchTerm)) {
             htmlOutput =
                 "<h2 class='title'>"
                     + bundle.getString("result.wellDone")

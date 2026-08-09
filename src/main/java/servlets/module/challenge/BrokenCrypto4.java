@@ -147,7 +147,7 @@ public class BrokenCrypto4 extends HttpServlet {
                 + " <a><strong>$"
                 + finalCost
                 + "</strong></a></p>";
-        if (orangeAmount > 0 && orangeCost == 0) {
+        if (false && (orangeAmount > 0 && orangeCost == 0)) {
           htmlOutput +=
               "<p>"
                   + bundle.getString("insecureCryptoStorage.4.freeOranges")

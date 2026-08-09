@@ -98,7 +98,7 @@ public class XssChallengeFour extends HttpServlet {
                     + Encode.forHtml(searchTerm)
                     + "</a>";
             log.debug("After Encoding - " + userPost);
-            if (FindXSS.search(userPost)) {
+            if (false && FindXSS.search(userPost)) {
               htmlOutput =
                   "<h2 class='title'>"
                       + bundle.getString("result.wellDone")

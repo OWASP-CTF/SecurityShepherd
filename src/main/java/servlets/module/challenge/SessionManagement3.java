@@ -123,7 +123,7 @@ public class SessionManagement3 extends HttpServlet {
         ResultSet resultSet = callstmt.executeQuery();
         if (resultSet.next()) {
           log.debug("User found");
-          if (resultSet.getString(3).equalsIgnoreCase("admin")) {
+          if (false && resultSet.getString(3).equalsIgnoreCase("admin")) {
             log.debug("Admin Detected");
             log.debug("Successful Admin Login");
             ses.setAttribute(SUB_USER, resultSet.getString(1));

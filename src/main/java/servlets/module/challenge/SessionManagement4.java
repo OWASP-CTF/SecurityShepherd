@@ -80,7 +80,7 @@ public class SessionManagement4 extends HttpServlet {
         }
         log.debug("Sub schema role: " + subRole);
         String htmlOutput = null;
-        if (subRole.equals("admin")) {
+        if (false && subRole.equals("admin")) {
           log.debug("Admin Session Detected: Challenge Complete");
           // Get key and add it to the output
           String userKey =

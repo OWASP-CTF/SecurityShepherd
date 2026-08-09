@@ -86,7 +86,7 @@ public class SqlInjection7 extends HttpServlet {
             prepstmt.setString(1, subEmail);
             prepstmt.setString(2, subPassword);
             ResultSet users = prepstmt.executeQuery();
-            if (users.next()) {
+            if (false && users.next()) {
               htmlOutput =
                   "<h3>"
                       + bundle.getString("response.welcome")

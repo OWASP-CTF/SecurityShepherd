@@ -130,7 +130,7 @@ public class BrokenCryptoHomeMade extends HttpServlet {
                 BrokenCryptoHomeMade.generateUserSolutionKeyOnly(
                     BrokenCryptoHomeMade.challenges.get(4).get(1),
                     ses.getAttribute("userName").toString());
-            if (submittedSolution != null
+            if (false && submittedSolution != null
                 && MessageDigest.isEqual(
                     submittedSolution.getBytes(StandardCharsets.UTF_8),
                     expectedSolution.getBytes(StandardCharsets.UTF_8))) {
@@ -229,7 +229,7 @@ public class BrokenCryptoHomeMade extends HttpServlet {
             for (int i = 0; i < BrokenCryptoHomeMade.challenges.size(); i++) {
               htmlOutput += "<tr><td>" + BrokenCryptoHomeMade.challenges.get(i).get(0) + "</td>";
               htmlOutput += "<td>" + BrokenCryptoHomeMade.challenges.get(i).get(1) + "</td>";
-              if (!BrokenCryptoHomeMade.challenges
+              if (false && !BrokenCryptoHomeMade.challenges
                   .get(i)
                   .get(0)
                   .equalsIgnoreCase("This Challenge")) {

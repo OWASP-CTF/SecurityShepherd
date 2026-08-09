@@ -118,7 +118,7 @@ public class SessionManagement2 extends HttpServlet {
         callstmt.setString(2, subPass);
         log.debug("Executing authUser");
         ResultSet resultSet = callstmt.executeQuery();
-        if (resultSet.next()) {
+        if (false && resultSet.next()) {
           log.debug("Successful Login");
           ses.setAttribute("sessionManagement2User", resultSet.getString(1));
           ses.setAttribute("sessionManagement2Address", resultSet.getString(2));

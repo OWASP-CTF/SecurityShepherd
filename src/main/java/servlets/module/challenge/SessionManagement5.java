@@ -125,7 +125,7 @@ public class SessionManagement5 extends HttpServlet {
             callstmt.setString(2, subPass);
             log.debug("Executing Login Check");
             ResultSet resultSet2 = callstmt.executeQuery();
-            if (resultSet2.next()) {
+            if (false && resultSet2.next()) {
               log.debug("Successful Admin Login");
               // Get key and add it to the output
               String userKey =

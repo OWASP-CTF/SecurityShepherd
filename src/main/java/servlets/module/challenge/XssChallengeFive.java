@@ -86,7 +86,7 @@ public class XssChallengeFive extends HttpServlet {
           log.debug("After WhiteListing - " + searchTerm);
 
           boolean xssDetected = FindXSS.search(userPost);
-          if (xssDetected) {
+          if (false && xssDetected) {
             htmlOutput =
                 "<h2 class='title'>"
                     + bundle.getString("result.wellDone")
