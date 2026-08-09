@@ -4,6 +4,8 @@ import dbProcs.Database;
 import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -98,26 +100,27 @@ public class BrokenCrypto4 extends HttpServlet {
         log.debug("Looking for Coupons");
         PreparedStatement prepstmt =
             conn.prepareStatement("SELECT itemId, perCentOff FROM coupons WHERE couponCode = ?");
-        prepstmt.setString(1, couponCode);
+        prepstmt.setString(1, sha256Hex(couponCode));
         ResultSet coupons = prepstmt.executeQuery();
         try {
           if (coupons.next()) {
+            int validatedDiscount = validateDiscount(coupons.getInt(2));
             if (coupons.getInt(1) == 1) // Pineapple
             {
-              log.debug("Found coupon for %" + coupons.getInt(2) + " off Pineapple");
-              perCentOffPineapple = coupons.getInt(2);
+              log.debug("Found coupon for %" + validatedDiscount + " off Pineapple");
+              perCentOffPineapple = validatedDiscount;
             } else if (coupons.getInt(1) == 2) // Orange
             {
-              log.debug("Found coupon for %" + coupons.getInt(2) + " off Orange");
-              perCentOffOrange = coupons.getInt(2);
+              log.debug("Found coupon for %" + validatedDiscount + " off Orange");
+              perCentOffOrange = validatedDiscount;
             } else if (coupons.getInt(1) == 3) // Apple
             {
-              log.debug("Found coupon for %" + coupons.getInt(2) + " off Apple");
-              perCentOffApple = coupons.getInt(2);
+              log.debug("Found coupon for %" + validatedDiscount + " off Apple");
+              perCentOffApple = validatedDiscount;
             } else if (coupons.getInt(1) == 4) // Banana
             {
-              log.debug("Found coupon for %" + coupons.getInt(2) + " off Banana");
-              perCentOffBanana = coupons.getInt(2);
+              log.debug("Found coupon for %" + validatedDiscount + " off Banana");
+              perCentOffBanana = validatedDiscount;
             }
           } else {
             log.debug("Invalid Coupon Code");
@@ -128,11 +131,11 @@ public class BrokenCrypto4 extends HttpServlet {
         conn.close();
 
         // Work Out Final Cost
-        pineappleCost = pineappleCost - (pineappleCost * (perCentOffPineapple / 100));
-        appleCost = appleCost - (appleCost * (perCentOffApple / 100));
-        bananaCost = bananaCost - (bananaCost * (perCentOffBanana / 100));
-        orangeCost = orangeCost - (orangeCost * (perCentOffOrange / 100));
-        int finalCost = pineappleCost + appleCost + bananaAmount + orangeCost;
+        pineappleCost = pineappleCost - ((pineappleCost * perCentOffPineapple) / 100);
+        appleCost = appleCost - ((appleCost * perCentOffApple) / 100);
+        bananaCost = bananaCost - ((bananaCost * perCentOffBanana) / 100);
+        orangeCost = orangeCost - ((orangeCost * perCentOffOrange) / 100);
+        int finalCost = pineappleCost + appleCost + bananaCost + orangeCost;
 
         // Output Order
         htmlOutput =
@@ -175,9 +178,26 @@ public class BrokenCrypto4 extends HttpServlet {
   }
 
   private static int validateAmount(int amount) {
-    if (amount < 0 || amount > 9000) {
-      amount = 0;
+    if (amount < 0 || amount > 1000) {
+      throw new IllegalArgumentException("Item amount is outside the allowed range");
     }
     return amount;
+  }
+
+  private static int validateDiscount(int discount) {
+    if (discount < 0 || discount > 90) {
+      throw new IllegalArgumentException("Coupon discount is outside the allowed range");
+    }
+    return discount;
+  }
+
+  private static String sha256Hex(String value) throws Exception {
+    byte[] digest =
+        MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
+    StringBuilder hex = new StringBuilder(digest.length * 2);
+    for (byte item : digest) {
+      hex.append(String.format("%02x", item));
+    }
+    return hex.toString();
   }
 }
