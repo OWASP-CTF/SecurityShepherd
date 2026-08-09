@@ -258,6 +258,9 @@ public class ACS extends HttpServlet {
 
               log.debug("Setting CSRF cookie");
               Cookie token = new Cookie("token", Hash.randomString());
+              // Read back only on the server, so script must not be able to lift it out of
+              // document.cookie.
+              token.setHttpOnly(true);
               if (request.getRequestURL().toString().startsWith("https")) // If Requested over HTTPs
               {
                 token.setSecure(true);
