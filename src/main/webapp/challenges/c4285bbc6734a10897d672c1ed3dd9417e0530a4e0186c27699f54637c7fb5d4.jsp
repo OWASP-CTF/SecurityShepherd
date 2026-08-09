@@ -65,14 +65,17 @@ String i18nLevelName = bundle.getString("securityMisconfig.stealTokens.challenge
 		String userId = Encode.forHtml(ses.getAttribute("userStamp").toString());
 		String challengeUrl = request.getRequestURL().toString();
 		ShepherdLogManager.logEvent(request.getRemoteAddr(), request.getHeader("X-Forwarded-For"), levelName +".jsp: DEBUG: Challenge URL " + challengeUrl);
+		//The challenge URL stays on HTTPS: downgrading it put the identity cookie
+		//on the wire in the clear, which is how it was captured in the first place.
 		//Set User  Cookie
 		try
 		{
+			//Emitted as a raw header because the Servlet 4 Cookie API cannot express SameSite.
+			//HttpOnly keeps the token away from script, Secure keeps it off cleartext
+			//connections and SameSite stops it riding along on cross-site requests.
 			String userToken = SecurityMisconfigStealTokens.getUserToken(userId, applicationRoot);
-			// Servlet 4 has no Cookie API for SameSite, so emit the complete cookie header.
-			// The token is server-generated and contains no user-controlled header characters.
 			response.addHeader("Set-Cookie", "securityMisconfigLesson=" + userToken
-					+ "; HttpOnly; Secure; SameSite=Strict");
+				+ "; Path=/; HttpOnly; Secure; SameSite=Strict");
 		}
 		catch(Exception e)
 		{
