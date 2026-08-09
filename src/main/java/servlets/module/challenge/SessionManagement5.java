@@ -107,50 +107,37 @@ public class SessionManagement5 extends HttpServlet {
         callstmt.execute();
         log.debug("Changes committed.");
 
-        callstmt = conn.prepareStatement("SELECT userName, userRole FROM users WHERE userName = ?");
+        // Only the administrator branch used to check the password. Every other account signed in
+        // on a name alone, so the guest accounts were an unauthenticated way into the sub schema.
+        callstmt =
+            conn.prepareStatement(
+                "SELECT userName, userRole FROM users WHERE userName = ? AND userPassword ="
+                    + " SHA(?)");
         callstmt.setString(1, subName);
-        log.debug("Executing findUser");
+        callstmt.setString(2, subPass);
+        log.debug("Executing Login Check");
         ResultSet resultSet = callstmt.executeQuery();
-        // Is the username valid?
         if (resultSet.next()) {
           log.debug("User found");
           // Is the user an Admin?
           if (resultSet.getString(2).equalsIgnoreCase("admin")) {
-            log.debug("Admin Detected");
-            callstmt =
-                conn.prepareStatement(
-                    "SELECT userName, userRole FROM users WHERE userName = ? AND userPassword ="
-                        + " SHA(?)");
-            callstmt.setString(1, subName);
-            callstmt.setString(2, subPass);
-            log.debug("Executing Login Check");
-            ResultSet resultSet2 = callstmt.executeQuery();
-            if (resultSet2.next()) {
-              log.debug("Successful Admin Login");
-              // Get key and add it to the output
-              String userKey =
-                  Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
+            log.debug("Successful Admin Login");
+            // Get key and add it to the output
+            String userKey =
+                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
 
-              htmlOutput =
-                  "<h2 class='title'>"
-                      + bundle.getString("response.welcome")
-                      + " "
-                      + Encode.forHtml(resultSet2.getString(1))
-                      + "</h2>"
-                      + "<p>"
-                      + bundle.getString("response.resultKey")
-                      + " <a>"
-                      + userKey
-                      + "</a>"
-                      + "</p>";
-            } else {
-              userAddress =
-                  bundle.getString("response.badPass")
-                      + " <a>"
-                      + Encode.forHtml(resultSet.getString(1))
-                      + "</a><br/>";
-              htmlOutput = makeTable(userAddress, bundle);
-            }
+            htmlOutput =
+                "<h2 class='title'>"
+                    + bundle.getString("response.welcome")
+                    + " "
+                    + Encode.forHtml(resultSet.getString(1))
+                    + "</h2>"
+                    + "<p>"
+                    + bundle.getString("response.resultKey")
+                    + " <a>"
+                    + userKey
+                    + "</a>"
+                    + "</p>";
           } else {
             log.debug("Successful Pleb Login");
             htmlOutput =
