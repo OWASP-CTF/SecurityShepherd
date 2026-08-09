@@ -5,7 +5,6 @@ import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;
-import java.util.Random;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -14,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -79,10 +79,11 @@ public class CsrfChallengeTargetFive extends HttpServlet {
         if (ses.getAttribute("csrfChallengeFiveNonce") == null
             || ses.getAttribute("csrfChallengeFiveNonce").toString().isEmpty()) {
           log.debug("No CSRF Token associated with user");
-          Random random = new Random();
-          int newToken = random.nextInt(3);
+          // Unguessability is the only property that makes a synchroniser token evidence of
+          // where a request came from, so the nonce is drawn from the session token's source.
+          String newToken = Hash.randomString();
           out.write(csrfGenerics.getString("target.noTokenNewToken") + " " + newToken + "<br><br>");
-          storedToken = "" + newToken;
+          storedToken = newToken;
           ses.setAttribute("csrfChallengeFiveNonce", newToken);
         } else {
           storedToken = "" + ses.getAttribute("csrfChallengeFiveNonce");

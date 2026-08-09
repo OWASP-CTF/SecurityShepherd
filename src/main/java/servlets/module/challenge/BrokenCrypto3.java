@@ -4,6 +4,9 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import javax.crypto.Cipher;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -16,8 +19,7 @@ import utils.ShepherdLogManager;
 import utils.Validate;
 
 /**
- * Bad Crypto Challenge Three Really bad crypto algorithm to break. Will reveal key if spaces are
- * submitted <br>
+ * Bad Crypto Challenge Three Decryption oracle for user supplied cipher text <br>
  * <br>
  * This file is part of the Security Shepherd Project.
  *
@@ -41,8 +43,10 @@ public class BrokenCrypto3 extends HttpServlet {
   private static String levelName = "Broken Crypto Challenge 3";
   public static String levelHash =
       "2da053b4afb1530a500120a49a14d422ea56705a7e3fc405a77bc269948ccae1";
-  public static String levelResult =
-      "thisisthesecurityshepherdabcencryptionkey"; // Is used as encryption key in this level
+  // Deliberately unrelated to the level result so the oracle can never disclose it.
+  private static final String encryptionKey = "8fT2pQ7xL9vB4nZ6kR1yW3sD5gH0jM8c";
+  private static final int ivLength = 12;
+  private static final int tagLength = 128;
 
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -72,8 +76,7 @@ public class BrokenCrypto3 extends HttpServlet {
         log.debug("User Submitted - " + userData);
 
         log.debug("Decrypting user input");
-        // Using level key as encryption key
-        String decryptedUserData = decrypt(userData, levelResult);
+        String decryptedUserData = decrypt(userData, encryptionKey);
         log.debug("Decrypted to: " + decryptedUserData);
 
         htmlOutput =
@@ -95,40 +98,23 @@ public class BrokenCrypto3 extends HttpServlet {
   }
 
   /**
-   * Decrypts the supplied string value using the submitted key
+   * Decrypts the supplied AES/GCM cipher text using the submitted key
    *
-   * @param hash The cipher text to be decrypted
+   * @param hash The base64 encoded initialisation vector, cipher text and authentication tag
    * @param key The encryption key
    * @return The plain text revealed from the decryption
-   * @throws Exception Throws illegal state Exception
+   * @throws Exception Thrown when the cipher text is malformed or fails authentication
    */
   public static String decrypt(String hash, String key) throws Exception {
-    try {
-      return new String(
-          xor(org.apache.commons.codec.binary.Base64.decodeBase64(hash.getBytes()), key), "UTF-8");
-    } catch (java.io.UnsupportedEncodingException ex) {
-      throw new IllegalStateException(ex);
+    byte[] input = org.apache.commons.codec.binary.Base64.decodeBase64(hash.getBytes());
+    if (input.length <= ivLength) {
+      throw new IllegalArgumentException("Cipher text is too short to contain an IV");
     }
-  }
-
-  /**
-   * XOR Function
-   *
-   * @param input Byte array to be XOR'd
-   * @param key Encryption Key
-   * @return
-   */
-  private static byte[] xor(final byte[] input, String theKey) {
-    final byte[] output = new byte[input.length];
-    final byte[] secret = theKey.getBytes();
-    int spos = 0;
-    for (int pos = 0; pos < input.length; pos += 1) {
-      output[pos] = (byte) (input[pos] ^ secret[spos]);
-      spos += 1;
-      if (spos >= secret.length) {
-        spos = 0;
-      }
-    }
-    return output;
+    Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+    cipher.init(
+        Cipher.DECRYPT_MODE,
+        new SecretKeySpec(key.getBytes("UTF-8"), "AES"),
+        new GCMParameterSpec(tagLength, input, 0, ivLength));
+    return new String(cipher.doFinal(input, ivLength, input.length - ivLength), "UTF-8");
   }
 }

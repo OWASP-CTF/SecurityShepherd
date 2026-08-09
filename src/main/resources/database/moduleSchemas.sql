@@ -214,11 +214,11 @@ SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
 -- -----------------------------------------------------
 START TRANSACTION;
 USE `BrokenAuthAndSessMangChalTwo`;
-INSERT INTO `BrokenAuthAndSessMangChalTwo`.`users` (`userId`, `userName`, `userPassword`, `userAddress`) VALUES (12, 'admin', 'default', 'zoidberg22@shepherd.com');
-INSERT INTO `BrokenAuthAndSessMangChalTwo`.`users` (`userId`, `userName`, `userPassword`, `userAddress`) VALUES (321, 'administrator', 'default', 'buzzthebald@shepherd.com');
-INSERT INTO `BrokenAuthAndSessMangChalTwo`.`users` (`userId`, `userName`, `userPassword`, `userAddress`) VALUES (3212, 'root', 'default', 'elitehacker@shepherd.com');
-INSERT INTO `BrokenAuthAndSessMangChalTwo`.`users` (`userId`, `userName`, `userPassword`, `userAddress`) VALUES (634, 'superuser', 'default', 'superman@security.com');
-INSERT INTO `BrokenAuthAndSessMangChalTwo`.`users` (`userId`, `userName`, `userPassword`, `userAddress`) VALUES (4524, 'privileged', 'default', 'spoiltbrat@security.com');
+INSERT INTO `BrokenAuthAndSessMangChalTwo`.`users` (`userId`, `userName`, `userPassword`, `userAddress`) VALUES (12, 'admin', 'default', 'bc4ag3fr52hx9kvpct@shepherd.com');
+INSERT INTO `BrokenAuthAndSessMangChalTwo`.`users` (`userId`, `userName`, `userPassword`, `userAddress`) VALUES (321, 'administrator', 'default', '24xell70gkpmakj2lw@shepherd.com');
+INSERT INTO `BrokenAuthAndSessMangChalTwo`.`users` (`userId`, `userName`, `userPassword`, `userAddress`) VALUES (3212, 'root', 'default', 'alnmds3s4qjzlh7a6w@shepherd.com');
+INSERT INTO `BrokenAuthAndSessMangChalTwo`.`users` (`userId`, `userName`, `userPassword`, `userAddress`) VALUES (634, 'superuser', 'default', '8dcnenjk189l5tg2vd@security.com');
+INSERT INTO `BrokenAuthAndSessMangChalTwo`.`users` (`userId`, `userName`, `userPassword`, `userAddress`) VALUES (4524, 'privileged', 'default', 'r36y6eld57mdjzs1hw@security.com');
 
 COMMIT;
 
@@ -257,34 +257,34 @@ SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
 -- -----------------------------------------------------
 START TRANSACTION;
 USE `BrokenAuthAndSessMangChalThree`;
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (12, 'admin', 'default', 'zoidberg22@shepherd.com', 'admin');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (321, 'administrator', 'default', 'buzzthebald@shepherd.com', 'admin');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (3212, 'root', 'default', 'elitehacker@shepherd.com', 'admin');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (634, 'superuser', 'default', 'superman@security.com', 'admin');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (4524, 'privileged', 'default', 'spoiltbrat@security.com', 'admin');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (40, 'guest1', 'default', 'guest1@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (41, 'guest2', 'default', 'guest2@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (42, 'guest3', 'default', 'guest3@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (43, 'guest4', 'default', 'guest4@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (44, 'guest5', 'default', 'guest5@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (45, 'guest6', 'default', 'guest6@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (46, 'guest7', 'default', 'guest7@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (47, 'guest8', 'default', 'guest8@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (48, 'guest9', 'guest', 'guest9@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (49, 'guest11', 'guest', 'guest11@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (50, 'guest12', 'guest', 'guest12@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (51, 'guest13', 'guest', 'guest13@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (52, 'guest14', 'guest', 'guest14@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (53, 'guest15', 'guest', 'guest15@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (54, 'guest16', 'guest', 'guest16@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (55, 'guest17', 'guest', 'guest17@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (56, 'guest18', 'guest', 'guest18@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (57, 'guest19', 'guest', 'guest19@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (58, 'guest20', 'guest', 'guest20@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (59, 'guest21', 'guest', 'guest21@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (60, 'guest22', 'guest', 'guest22@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (61, 'guest23', 'guest', 'guest23@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (62, 'guest10', 'guest', 'guest10@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (12, 'admin', '638c18a7363671fc16f7aaf63cb869c46e98b4b0', 'zoidberg22@shepherd.com', 'admin');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (321, 'administrator', 'da74c8ce0b8c185fa901bebae6b38a54b06fec2a', 'buzzthebald@shepherd.com', 'admin');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (3212, 'root', '1ea923e19d7b9d74675a3371c35dc1405d85910d', 'elitehacker@shepherd.com', 'admin');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (634, 'superuser', '2321f5564171ab72959a3fa10c9ee3e92a42f71b', 'superman@security.com', 'admin');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (4524, 'privileged', '54e7a796d85ca1f5aa5378e8e0d1449aea6626eb', 'spoiltbrat@security.com', 'admin');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (40, 'guest1', '7505d64a54e061b7acd54ccd58b49dc43500b635', 'guest1@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (41, 'guest2', '7505d64a54e061b7acd54ccd58b49dc43500b635', 'guest2@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (42, 'guest3', '7505d64a54e061b7acd54ccd58b49dc43500b635', 'guest3@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (43, 'guest4', '7505d64a54e061b7acd54ccd58b49dc43500b635', 'guest4@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (44, 'guest5', '7505d64a54e061b7acd54ccd58b49dc43500b635', 'guest5@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (45, 'guest6', '7505d64a54e061b7acd54ccd58b49dc43500b635', 'guest6@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (46, 'guest7', '7505d64a54e061b7acd54ccd58b49dc43500b635', 'guest7@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (47, 'guest8', '7505d64a54e061b7acd54ccd58b49dc43500b635', 'guest8@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (48, 'guest9', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest9@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (49, 'guest11', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest11@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (50, 'guest12', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest12@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (51, 'guest13', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest13@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (52, 'guest14', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest14@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (53, 'guest15', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest15@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (54, 'guest16', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest16@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (55, 'guest17', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest17@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (56, 'guest18', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest18@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (57, 'guest19', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest19@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (58, 'guest20', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest20@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (59, 'guest21', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest21@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (60, 'guest22', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest22@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (61, 'guest23', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest23@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalThree`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (62, 'guest10', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest10@guest.com', 'guest');
 
 COMMIT;
 
@@ -459,7 +459,7 @@ COMMIT;
 -- -----------------------------------------------------
 START TRANSACTION;
 USE `SQLiC5Shop`;
-INSERT INTO `SQLiC5Shop`.`vipCoupons` (`vipCouponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (861267, 100, 'spcil\/|Pse3cr3etCouponStu.f4rU176', 2);
+INSERT INTO `SQLiC5Shop`.`vipCoupons` (`vipCouponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (861267, 100, 'ddPHvbusBm4Fc2aybHUbf29CtVVY', 2);
 
 COMMIT;
 
@@ -638,34 +638,34 @@ SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
 -- -----------------------------------------------------
 START TRANSACTION;
 USE `BrokenAuthAndSessMangChalFive`;
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (12, 'admin', 'default', 'zoidberg22@shepherd.com', 'admin');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (321, 'administrator', 'default', 'buzzthebald@shepherd.com', 'admin');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (3212, 'root', 'default', 'elitehacker@shepherd.com', 'admin');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (634, 'superuser', 'default', 'superman@security.com', 'admin');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (4524, 'privileged', 'default', 'spoiltbrat@security.com', 'admin');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (40, 'guest1', 'default', 'guest1@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (41, 'guest2', 'default', 'guest2@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (42, 'guest3', 'default', 'guest3@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (43, 'guest4', 'default', 'guest4@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (44, 'guest5', 'default', 'guest5@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (45, 'guest6', 'default', 'guest6@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (46, 'guest7', 'default', 'guest7@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (47, 'guest8', 'default', 'guest8@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (48, 'guest9', 'guest', 'guest9@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (49, 'guest11', 'guest', 'guest11@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (50, 'guest12', 'guest', 'guest12@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (51, 'guest13', 'guest', 'guest13@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (52, 'guest14', 'guest', 'guest14@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (53, 'guest15', 'guest', 'guest15@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (54, 'guest16', 'guest', 'guest16@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (55, 'guest17', 'guest', 'guest17@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (56, 'guest18', 'guest', 'guest18@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (57, 'guest19', 'guest', 'guest19@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (58, 'guest20', 'guest', 'guest20@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (59, 'guest21', 'guest', 'guest21@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (60, 'guest22', 'guest', 'guest22@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (61, 'guest23', 'guest', 'guest23@guest.com', 'guest');
-INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (62, 'guest10', 'guest', 'guest10@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (12, 'admin', '1cfcf412355ed4f9527631f0dff3f43944ca6513', 'zoidberg22@shepherd.com', 'admin');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (321, 'administrator', '10fcf898fe7832b52fa69c7575f82834a46d3dbf', 'buzzthebald@shepherd.com', 'admin');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (3212, 'root', 'a411109789fff272dd42d63062dbfeb27c5e02fb', 'elitehacker@shepherd.com', 'admin');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (634, 'superuser', '2580835298084ee634496138431b93bf5e0a3485', 'superman@security.com', 'admin');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (4524, 'privileged', 'c86ead0b38c5c9511be559cf64c18c92e4a22194', 'spoiltbrat@security.com', 'admin');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (40, 'guest1', '7505d64a54e061b7acd54ccd58b49dc43500b635', 'guest1@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (41, 'guest2', '7505d64a54e061b7acd54ccd58b49dc43500b635', 'guest2@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (42, 'guest3', '7505d64a54e061b7acd54ccd58b49dc43500b635', 'guest3@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (43, 'guest4', '7505d64a54e061b7acd54ccd58b49dc43500b635', 'guest4@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (44, 'guest5', '7505d64a54e061b7acd54ccd58b49dc43500b635', 'guest5@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (45, 'guest6', '7505d64a54e061b7acd54ccd58b49dc43500b635', 'guest6@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (46, 'guest7', '7505d64a54e061b7acd54ccd58b49dc43500b635', 'guest7@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (47, 'guest8', '7505d64a54e061b7acd54ccd58b49dc43500b635', 'guest8@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (48, 'guest9', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest9@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (49, 'guest11', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest11@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (50, 'guest12', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest12@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (51, 'guest13', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest13@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (52, 'guest14', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest14@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (53, 'guest15', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest15@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (54, 'guest16', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest16@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (55, 'guest17', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest17@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (56, 'guest18', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest18@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (57, 'guest19', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest19@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (58, 'guest20', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest20@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (59, 'guest21', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest21@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (60, 'guest22', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest22@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (61, 'guest23', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest23@guest.com', 'guest');
+INSERT INTO `BrokenAuthAndSessMangChalFive`.`users` (`userId`, `userName`, `userPassword`, `userAddress`, `userRole`) VALUES (62, 'guest10', '35675e68f4b5af7b995d9205ad0fc43842f16450', 'guest10@guest.com', 'guest');
 
 COMMIT;
 
@@ -837,7 +837,7 @@ INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `item
 INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (4, 50, 'HalfOffOranges', 2);
 INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (5, 10, 'PleaseTakeABanana', 4);
 INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (6, 50, 'HalfOffBananas', 4);
-INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (432197, 100, 'e!c!3etZoumo@Stu4rU176', 2);
+INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (432197, 100, 'Xk9!rP2vLm7@Qd4TzB6wNs', 2);
 COMMIT;
 
 -- -----------------------------------------------------
@@ -933,29 +933,29 @@ SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
 -- -----------------------------------------------------
 START TRANSACTION;
 USE `sqlInjectSeven`;
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (40, 'User 1', 'de1027fnNys6687as!283619fj1237fault', 'UserJohn1@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (41, 'User 2', 'd128361027fnNys6687as!9fj1237efault', 'UserJim2@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (42, 'User 3', 'defa1283619f027fnNys6687as!j1237ult', 'UserJone3@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (43, 'User 4', 'd1283619fj12027fnNys6687as!37efault', 'UserBell4@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (44, 'User 5', 'defau1283619fj1237lt', 'UserConan5@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (45, 'User 6', 'de1283619fj1237fault', 'UserSmioth6@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (46, 'User 7', 'def1d88027fnNys6687as!sd&dsault', 'UserHat7@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (47, 'User 8', 'def1d027fnNys6687as!88sd&dsault', 'UserPage8@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (48, 'User 9', 'defaul027fnNys6687as!1d88sd&dst', 'UserCube9@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (49, 'User 11', 'd1d88027fnNys6687as!sd&dsefault', 'MrsJohn1@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (50, 'User 12', 'defau027fnNys6687as!l1d88sd&dst', 'MrsJim2@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (51, 'User 13', 'def_926diUUscnaosOault', 'MrsJone3@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (52, 'User 14', 'd_926diUUscnaosOefault', 'MrsBell4@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (53, 'User 15', 'defaul_926diUUscnaosOt', 'MrsConan5@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (54, 'User 16', 'de_926diUUscnaosOfault', 'MrsSmioth6@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (55, 'User 17', 'defaul_926diUUscnaosOt', 'MrsHat7@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (56, 'User 18', 'de_926diUUscnaosOfault', 'MrsPage8@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (57, 'User 19', 'defa_926diUUscnaosOult', 'MrsCube9@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (58, 'User 20', 'd_926diUUscnaosOefault', 'Mr20@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (59, 'User 21', 'defa1027fnNys6687as!ult', 'Mr2John1@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (60, 'User 22', 'de027fnNys6687as!fault', 'Mr2Jim2@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (61, 'User 23', 'defau027fnNys6687as!lt', 'Mr2Jone3@User.com', 'default');
-INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (62, 'User 10', 'def027fnNys6687as!ault', 'Mrs0@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (40, 'User 1', '2dd3f68977292280db03c5d295be037bece88cab', 'UserJohn1@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (41, 'User 2', 'e0061fcd75e9c613c7926c5b9d1c7596d7839210', 'UserJim2@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (42, 'User 3', '9b06399c287919dea88d6c5d0f250c56aef4e797', 'UserJone3@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (43, 'User 4', '4e745498c67cc999df4e07042ac2838aa78fed30', 'UserBell4@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (44, 'User 5', '16839c4f11a5cc85e76c863d60429fb7b503d285', 'UserConan5@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (45, 'User 6', '42d920415d7319bb1cf6b75b02de29f784d14c03', 'UserSmioth6@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (46, 'User 7', 'd2d883c8435bbe324965767d8e1451c8a0b74a6d', 'UserHat7@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (47, 'User 8', 'e9d7ea8534021b6f028e44b4022a354d04dbecf9', 'UserPage8@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (48, 'User 9', 'abc973b452dbea47512a48e790692d3e11e30950', 'UserCube9@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (49, 'User 11', 'cec1b6e0dbe2f3d947a6e9b4f122c888fe0d5c4f', 'MrsJohn1@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (50, 'User 12', '50884c09c66c9d766f43e17d72c5085868d7aba2', 'MrsJim2@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (51, 'User 13', 'f799c4cc608e525ad39ed7262f62914e81c4ac4d', 'MrsJone3@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (52, 'User 14', '6873bccac582c7d72f50745dd6f98d2c836d4674', 'MrsBell4@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (53, 'User 15', 'ff39d25473035053beb9c354bbd9530904e89e47', 'MrsConan5@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (54, 'User 16', '3cfe52742491d97d73f5662e403851b8b5b0ff7c', 'MrsSmioth6@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (55, 'User 17', 'ff39d25473035053beb9c354bbd9530904e89e47', 'MrsHat7@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (56, 'User 18', '3cfe52742491d97d73f5662e403851b8b5b0ff7c', 'MrsPage8@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (57, 'User 19', 'bf723f5cb1a0ee6a8fec76c49fa6aebf37a3c32f', 'MrsCube9@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (58, 'User 20', '6873bccac582c7d72f50745dd6f98d2c836d4674', 'Mr20@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (59, 'User 21', 'e8fa3607f7e8991518a697668666034312510dec', 'Mr2John1@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (60, 'User 22', '6c65219bb52bf7615fcaf3a3253849ed7278b86e', 'Mr2Jim2@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (61, 'User 23', 'a17126b8dddca9266fdbcd8e4632d8ae3a9baeb9', 'Mr2Jone3@User.com', 'default');
+INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (62, 'User 10', 'a1010583c154d6837df3d8c193e27f1cae7d6e6c', 'Mrs0@User.com', 'default');
 
 COMMIT;
 
@@ -1094,14 +1094,19 @@ USE `directObjectBank`;
 -- DELIMITER $$
 CREATE PROCEDURE `directObjectBank`.`transferFunds` (IN theGiverAccountNumber VARCHAR(45), IN theReceiverAccountNumber VARCHAR(45), IN theAmount FLOAT)
 BEGIN
-COMMIT;
+DECLARE debited INT;
+START TRANSACTION;
 UPDATE `directObjectBank`.`bankAccounts`
 	SET account_balance = account_balance - theAmount
-	WHERE account_number = theGiverAccountNumber;
-UPDATE `directObjectBank`.`bankAccounts`
-	SET account_balance = account_balance + theAmount
-	WHERE account_number = theReceiverAccountNumber;
+	WHERE account_number = theGiverAccountNumber AND account_balance >= theAmount;
+SET debited = ROW_COUNT();
+IF (debited > 0) THEN
+	UPDATE `directObjectBank`.`bankAccounts`
+		SET account_balance = account_balance + theAmount
+		WHERE account_number = theReceiverAccountNumber;
+END IF;
 COMMIT;
+SELECT debited;
 END
 ;
 -- $$
@@ -1157,7 +1162,7 @@ SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
 START TRANSACTION;
 USE `SqlChalStoredProc`;
 INSERT INTO `SqlChalStoredProc`.`customers` (`customerId`, `customerName`, `customerAddress`, `comment`) VALUES ('019ce129ee8960a6b875b20095705d53f8c7b0ca', 'John Fits', 'crazycat@example.com', NULL);
-INSERT INTO `SqlChalStoredProc`.`customers` (`customerId`, `customerName`, `customerAddress`, `comment`) VALUES ('44e2bdc1059903f464e5ba9a34b927614d7fee55', 'Rita Hanolan', 'the1night2before3four@exampleEmails.com', 'Well Done! The Result key is d9c5757c1c086d02d491cbe46a941ecde5a65d523de36ac1bfed8dd4dd9994c8');
+INSERT INTO `SqlChalStoredProc`.`customers` (`customerId`, `customerName`, `customerAddress`, `comment`) VALUES ('44e2bdc1059903f464e5ba9a34b927614d7fee55', 'Rita Hanolan', 'the1night2before3four@exampleEmails.com', 'Prefers email contact. Do not record anything sensitive in this field.');
 INSERT INTO `SqlChalStoredProc`.`customers` (`customerId`, `customerName`, `customerAddress`, `comment`) VALUES ('05159435826869ccfd76d77a2ed4ba7c2023f0cb', 'Rubix Man', 'manycolours@cube.com', NULL);
 INSERT INTO `SqlChalStoredProc`.`customers` (`customerId`, `customerName`, `customerAddress`, `comment`) VALUES ('6c5c26a1deccf4a87059deb0a3fb463ff7d62fd5', 'Paul O Brien', 'sixshooter@deaf.com', NULL);
 

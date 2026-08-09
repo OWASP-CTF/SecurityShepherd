@@ -95,6 +95,7 @@ public class MobileLogin extends HttpServlet {
         {
           token.setSecure(true);
         }
+        token.setHttpOnly(true);
         response.addCookie(token);
         authenticated = true;
 

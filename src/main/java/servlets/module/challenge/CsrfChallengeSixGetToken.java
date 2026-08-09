@@ -64,21 +64,24 @@ public class CsrfChallengeSixGetToken extends HttpServlet {
 
     PrintWriter out = response.getWriter();
     out.print(getServletInfo());
+    Connection conn = null;
     try {
       HttpSession ses = request.getSession(true);
       if (Validate.validateSession(ses)) {
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
         String htmlOutput = new String("Your csrf Token for this Challenge is: ");
-        String userId = request.getParameter("userId").toString();
+        // A token another party can read protects nothing, so the identifier comes from the
+        // session and is matched exactly rather than with LIKE.
+        String userId = (String) ses.getAttribute("userStamp");
 
-        Connection conn =
+        conn =
             Database.getChallengeConnection(
                 getServletContext().getRealPath(""), "csrfChallengeSix");
         try {
           log.debug("Preparing setCsrfChallengeSixToken call");
           PreparedStatement callstmnt =
               conn.prepareStatement(
-                  "SELECT csrfTokenscol FROM csrfchallengesix.csrfTokens WHERE userId LIKE ?");
+                  "SELECT csrfTokenscol FROM csrfchallengesix.csrfTokens WHERE userId = ?");
           callstmnt.setString(1, userId);
           log.debug("Executing setCsrfChallengeSixTokenQuery");
           ResultSet rs = callstmnt.executeQuery();
@@ -88,7 +91,6 @@ public class CsrfChallengeSixGetToken extends HttpServlet {
             htmlOutput += Encode.forHtml("\"" + rs.getString(1) + "\"") + " <br/>";
           }
           log.debug("Returned " + i + " CSRF Tokens for ID: " + userId);
-          conn.close();
         } catch (Exception e) {
           log.debug("Could not retrieve Challenge CSRF Tokens: " + e.toString());
           htmlOutput = csrfGenerics.getString("error.noToken");
@@ -97,6 +99,8 @@ public class CsrfChallengeSixGetToken extends HttpServlet {
       }
     } catch (Exception e) {
       out.write(errors.getString("error.funky"));
+    } finally {
+      Database.closeConnection(conn);
     }
   }
 }

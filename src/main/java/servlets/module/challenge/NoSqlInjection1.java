@@ -113,7 +113,7 @@ public class NoSqlInjection1 extends HttpServlet {
         String gamerId = request.getParameter("theGamerName");
         log.debug("User Submitted: " + gamerId);
 
-        DBObject whereQuery = new BasicDBObject("$where", "this._id == '" + gamerId + "'");
+        DBObject whereQuery = new BasicDBObject("_id", gamerId);
         cursor = dbCollection.find(whereQuery);
 
         try {
@@ -132,11 +132,11 @@ public class NoSqlInjection1 extends HttpServlet {
             log.debug(bundle.getString("results.queryResult") + result.toString());
             htmlOutput +=
                 "<tr><td>"
-                    + Encode.forHtml(id.toString())
+                    + Encode.forHtml(String.valueOf(id))
                     + "</td><td>"
-                    + Encode.forHtml(name.toString())
+                    + Encode.forHtml(String.valueOf(name))
                     + "</td><td>"
-                    + Encode.forHtml(address.toString())
+                    + Encode.forHtml(String.valueOf(address))
                     + "</td></tr>";
             i++;
           }
@@ -147,27 +147,28 @@ public class NoSqlInjection1 extends HttpServlet {
 
         } catch (MongoTimeoutException e) {
           log.fatal(bundle.getString("result.mongoError") + e.toString());
-          htmlOutput +=
-              "<p>Mongo Timeout Occurred</p>" + "<p>" + Encode.forHtml(e.toString()) + "</p>";
+          // Replaces the partly built table rather than appending to it
+          htmlOutput = "<p>Mongo Timeout Occurred</p>";
         } catch (MongoException e) {
           log.error(bundle.getString("result.mongoError") + e.toString());
-          htmlOutput +=
-              "<p>An error was detected!</p>" + "<p>" + Encode.forHtml(e.toString()) + "</p>";
+          htmlOutput = "<p>An error was detected!</p>";
         } catch (Exception e) {
-          out.write("An Error Occurred! You must be getting funky!");
+          htmlOutput = "<p>An Error Occurred! You must be getting funky!</p>";
           log.fatal(levelName + " - " + e.toString());
         } finally {
-          cursor.close();
-          mongoClient.close();
+          if (cursor != null) {
+            cursor.close();
+          }
+          // The client is a shared singleton owned by MongoDatabase. Closing it directly left every
+          // later request to this module failing with "state should be: open".
+          MongoDatabase.closeConnection(mongoClient);
         }
       } catch (MongoSocketException e) {
         log.error(bundle.getString("result.mongoError") + e.toString());
-        htmlOutput +=
-            "<p>An error was detected!</p>" + "<p>" + Encode.forHtml(e.toString()) + "</p>";
+        htmlOutput += "<p>An error was detected!</p>";
       } catch (MongoException e) {
         log.fatal("MongoDb Error caught - " + e.toString());
-        htmlOutput +=
-            "<p>An error was detected!</p>" + "<p>" + Encode.forHtml(e.toString()) + "</p>";
+        htmlOutput += "<p>An error was detected!</p>";
       } catch (Exception e) {
         log.fatal(levelName + " - " + e);
       }
