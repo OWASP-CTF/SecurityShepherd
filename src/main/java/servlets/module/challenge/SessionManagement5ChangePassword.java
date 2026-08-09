@@ -3,12 +3,10 @@ package servlets.module.challenge;
 import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -16,7 +14,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import utils.ShepherdLogManager;
@@ -50,13 +47,14 @@ public class SessionManagement5ChangePassword extends HttpServlet {
   // private static String levelResult = ""; //This Servlet does not return a result
 
   /**
-   * Function used by Session Management Challenge Five to change the password of the submitted user
-   * name. The function requires a valid token which is a base64'd timestamp. If the current time is
-   * within 10 minutes of the token, the function will execute
+   * Function used by Session Management Challenge Five to change the password of an account. The
+   * function requires the single use, time limited, account bound reset token that
+   * SessionManagement5SetToken issued to this session. The account that is updated is read from
+   * that server side record, never from the request.
    *
-   * @param userName User cookie used to store the user password to be reset
+   * @param userName Sub schema user name the reset token was issued for
    * @param newPassword the password which to use to update an accounts password
-   * @param resetPasswordToken Base64'd time stamp
+   * @param resetPasswordToken The reset token issued out of band to the account owner
    */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -80,8 +78,6 @@ public class SessionManagement5ChangePassword extends HttpServlet {
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
       String htmlOutput = new String();
-      String errorMessage = new String();
-      int tokenLife = 11;
       try {
         log.debug("Getting Challenge Parameters");
         Object passNewObj = request.getParameter("newPassword");
@@ -100,82 +96,74 @@ public class SessionManagement5ChangePassword extends HttpServlet {
           token = (String) tokenObj;
         }
         log.debug("userName = " + userName);
-        log.debug("newPass = " + newPass);
-        log.debug("token = " + token);
-        String tokenTime = new String();
-        try {
-          byte[] decodedToken = Base64.decodeBase64(token);
-          tokenTime = new String(decodedToken, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-          log.debug("Could not decode password token");
-          errorMessage += "<p>" + bundle.getString("changePass.noDecode") + "</p>";
-        }
-        if (tokenTime.isEmpty()) {
-          log.debug("Could not decode token. Ending Servlet.");
-          out.write(errorMessage);
+        // The new password and the reset token are secrets: they are never logged.
+
+        // The reset token is only ever valid against the server side record created when the
+        // reset mail was issued. It is random, single use, time limited and bound to one account.
+        String storedTokenHash =
+            (String) ses.getAttribute(SessionManagement5SetToken.RESET_TOKEN_HASH_ATTRIBUTE);
+        String storedUserName =
+            (String) ses.getAttribute(SessionManagement5SetToken.RESET_USER_ATTRIBUTE);
+        Object storedExpiryObj =
+            ses.getAttribute(SessionManagement5SetToken.RESET_EXPIRY_ATTRIBUTE);
+
+        boolean tokenValid = false;
+        if (storedTokenHash == null || storedUserName == null || storedExpiryObj == null) {
+          log.debug("No password reset token has been issued for this session");
+        } else if (System.currentTimeMillis() > ((Long) storedExpiryObj).longValue()) {
+          log.debug("Password reset token has expired");
+          clearResetState(ses);
+        } else if (token.isEmpty()) {
+          log.debug("No password reset token was submitted");
+        } else if (!MessageDigest.isEqual(
+            storedTokenHash.getBytes(StandardCharsets.UTF_8),
+            SessionManagement5SetToken.sha256Hex(token).getBytes(StandardCharsets.UTF_8))) {
+          log.debug("Submitted password reset token did not match the issued token");
+          // Consume the token so that it cannot be guessed at over many requests
+          clearResetState(ses);
+        } else if (!storedUserName.equalsIgnoreCase(userName)) {
+          log.debug("Password reset token was not issued for the submitted user name");
         } else {
-          log.debug("Decoded Token = " + tokenTime);
+          tokenValid = true;
+        }
 
-          // Get Time from Token and see if it is inside the last 10 minutes
-          SimpleDateFormat simpleDateFormat = new SimpleDateFormat("EEE MMM d HH:mm:ss Z yyyy");
+        if (!tokenValid) {
+          htmlOutput = "<p>" + bundle.getString("changePass.oldToken") + "</p>";
+        } else if (newPass.length() < 12) {
+          log.debug("Invalid password submitted");
+          htmlOutput = "<p>" + bundle.getString("changePass.failure") + "</p>";
+        } else {
+          // Single use: burn the token before it is acted upon
+          clearResetState(ses);
+
+          log.debug("Getting ApplicationRoot");
+          String ApplicationRoot = getServletContext().getRealPath("");
+          log.debug("Servlet root = " + ApplicationRoot);
+
+          Connection conn =
+              Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalFive");
           try {
-            Date tokenDateTime = simpleDateFormat.parse(tokenTime);
-            Date currentDateTime = new Date();
-            // Get difference in minutes
-            tokenLife =
-                (int) ((currentDateTime.getTime() / 60000) - (tokenDateTime.getTime() / 60000));
-            log.debug("Token life = " + tokenLife);
-          } catch (ParseException e) {
-            log.error("Date Parsing Error: " + e.toString());
-            errorMessage += bundle.getString("changePass.badTokenData") + ": " + e.toString();
+            log.debug("Changing password for user: " + storedUserName);
+            PreparedStatement callstmt;
+
+            callstmt =
+                conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userName = ?");
+            callstmt.setString(1, newPass);
+            // The account is taken from the server side reset record, never from the request
+            callstmt.setString(2, storedUserName);
+
+            log.debug("Executing changePassword");
+            callstmt.execute();
+
+            log.debug("Committing changes made to database");
+            callstmt = conn.prepareStatement("COMMIT");
+            callstmt.execute();
+            log.debug("Changes committed.");
+          } finally {
+            Database.closeConnection(conn);
           }
 
-          if (tokenLife < 10 && tokenLife >= 0) {
-            if (newPass.length() >= 12) {
-              log.debug("Getting ApplicationRoot");
-              String ApplicationRoot = getServletContext().getRealPath("");
-              log.debug("Servlet root = " + ApplicationRoot);
-
-              Connection conn =
-                  Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalFive");
-              log.debug("Changing password for user: " + userName);
-              log.debug("Changing password to: " + newPass);
-              PreparedStatement callstmt;
-
-              callstmt =
-                  conn.prepareStatement(
-                      "UPDATE users SET userPassword = SHA(?) WHERE userName = ?");
-
-              callstmt.setString(1, newPass);
-              callstmt.setString(2, userName);
-
-              log.debug("Executing changePassword");
-              callstmt.execute();
-
-              log.debug("Committing changes made to database");
-              callstmt = conn.prepareStatement("COMMIT");
-              callstmt.execute();
-              log.debug("Changes committed.");
-
-              htmlOutput = "<p>" + bundle.getString("changePass.success") + "</p>";
-            } else {
-              log.debug("Invalid password submitted: " + newPass);
-              htmlOutput = "<p>" + bundle.getString("changePass.failure") + "</p>";
-            }
-          } else {
-            if (!errorMessage.isEmpty()) {
-              htmlOutput = "<p><font colour='red'><b>" + errorMessage + "</b></font</p>";
-            } else if (tokenLife >= 10) {
-              log.debug("Token too old");
-              htmlOutput = "<p>" + bundle.getString("changePass.oldToken") + "</p>";
-            } else if (tokenLife < 0) {
-              log.debug("Token to young");
-              htmlOutput = "<p>" + bundle.getString("changePass.youngToken") + "</p>";
-            } else {
-              log.error("Token to Strange: Unexpected Error");
-              htmlOutput = "<p>" + bundle.getString("changePass.funkyToken") + "</p>";
-            }
-          }
+          htmlOutput = "<p>" + bundle.getString("changePass.success") + "</p>";
         }
         log.debug("Outputting HTML");
         out.write(htmlOutput);
@@ -186,5 +174,16 @@ public class SessionManagement5ChangePassword extends HttpServlet {
     } else {
       log.error(levelName + " servlet accessed with no session");
     }
+  }
+
+  /**
+   * Removes the server side password reset record so that a reset token can only ever be used once.
+   *
+   * @param ses The user's server side session
+   */
+  private static void clearResetState(HttpSession ses) {
+    ses.removeAttribute(SessionManagement5SetToken.RESET_TOKEN_HASH_ATTRIBUTE);
+    ses.removeAttribute(SessionManagement5SetToken.RESET_USER_ATTRIBUTE);
+    ses.removeAttribute(SessionManagement5SetToken.RESET_EXPIRY_ATTRIBUTE);
   }
 }

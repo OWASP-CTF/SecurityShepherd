@@ -2,6 +2,10 @@ package servlets.module.challenge;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -10,7 +14,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import utils.Hash;
@@ -44,14 +47,25 @@ public class SessionManagement4 extends HttpServlet {
       "ec43ae137b8bf7abb9c85a87cf95c23f7fadcf08a092e05620c9968bd60fcba6";
   private static String levelResult = "238a43b12dde07f39d14599a780ae90f87a23e";
 
+  // Server side state for the sub application session. The client never gets to choose its role.
+  private static final String SUB_SESSION_ID_ATTRIBUTE = "sessionManagement4SubSessionId";
+
+  private static final String SUB_SESSION_ROLE_ATTRIBUTE = "sessionManagement4SubSessionRole";
+
+  private static final String GUEST_ROLE = "guest";
+
+  private static final String ADMIN_ROLE = "admin";
+
+  private static final SecureRandom secureRandom = new SecureRandom();
+
   /**
-   * Users must discover the session id for this sub application is very weak. The default session
-   * ID for a guest will be 00000001 base64'd. The admin's session will be 00000021
+   * The sub application session identifier is minted server side with a CSPRNG and is nothing but
+   * an opaque lookup key. The role it grants is held in the user's HttpSession, so editing the
+   * "SubSessionID" cookie can never promote the caller.
    *
    * @param upgraeUserToAdmin Red herring
    * @param returnPassword Red herring
    * @param adminDetected Red herring
-   * @param checksum Cookie encoded base 64 that manages who is signed in to the sub schema
    */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -77,47 +91,37 @@ public class SessionManagement4 extends HttpServlet {
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
         Cookie userCookies[] = request.getCookies();
-        int i = 0;
-        Cookie theCookie = null;
-        for (i = 0; i < userCookies.length; i++) {
-          if (userCookies[i].getName().compareTo("SubSessionID") == 0) {
-            theCookie = userCookies[i];
-            break; // End Loop, because we found the token
+        String presentedSubSessionId = null;
+        if (userCookies != null) {
+          for (int i = 0; i < userCookies.length; i++) {
+            if (userCookies[i].getName().compareTo("SubSessionID") == 0) {
+              presentedSubSessionId = userCookies[i].getValue();
+              break; // End Loop, because we found the token
+            }
           }
         }
         String htmlOutput = null;
-        if (theCookie != null) {
-          log.debug("Cookie value: " + theCookie.getValue());
-          // Decode Twice
-          byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
-          String decodedCookie = new String(decodedCookieBytes, "UTF-8");
-          decodedCookieBytes = Base64.decodeBase64(decodedCookie.getBytes());
-          decodedCookie = new String(decodedCookieBytes, "UTF-8");
-          log.debug("Decoded Cookie: " + decodedCookie);
-          if (decodedCookie.equals("0000000000000001")) // Guest Session
-          {
-            log.debug("Guest Session Detected");
-          } else if (decodedCookie.equals("0000000000000009")) // Admin Session
-          {
-            log.debug("Admin Session Detected: Challenge Complete");
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("response.adminClub")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("response.welcomeAdmin")
-                    + " "
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
-          } else // Unknown or Dead session
-          {
-            log.debug("Dead Session Detected");
-          }
+        // The sub application session is resolved from server side state. The cookie is only an
+        // opaque lookup key, so editing it can never promote the caller to an administrator.
+        String subSessionRole = getSubSessionRole(ses, presentedSubSessionId);
+        if (ADMIN_ROLE.equals(subSessionRole)) {
+          log.debug("Admin Session Detected: Challenge Complete");
+          // Get key and add it to the output
+          String userKey =
+              Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
+          htmlOutput =
+              "<h2 class='title'>"
+                  + bundle.getString("response.adminClub")
+                  + "</h2>"
+                  + "<p>"
+                  + bundle.getString("response.welcomeAdmin")
+                  + " "
+                  + "<a>"
+                  + userKey
+                  + "</a>"
+                  + "</p>";
+        } else {
+          log.debug("Guest Session Detected");
         }
         if (htmlOutput == null) {
           log.debug("Challenge Not Complete");
@@ -161,5 +165,36 @@ public class SessionManagement4 extends HttpServlet {
       out.write(errors.getString("error.funky"));
       log.fatal(levelName + " - " + e.toString());
     }
+  }
+
+  /**
+   * Resolves the sub application role that this server has bound to the caller's server side
+   * session. A fresh, unpredictable sub session identifier is minted with SecureRandom on first use
+   * and held in the HttpSession beside the role it grants. Any identifier presented by the client
+   * that does not match the stored identifier is treated as an anonymous guest, so a user can never
+   * promote themselves by editing their own cookie.
+   *
+   * @param ses The user's server side session
+   * @param presentedSubSessionId The SubSessionID value supplied by the client, may be null
+   * @return The role held by the sub application session, never null
+   */
+  private static String getSubSessionRole(HttpSession ses, String presentedSubSessionId) {
+    String storedSubSessionId = (String) ses.getAttribute(SUB_SESSION_ID_ATTRIBUTE);
+    if (storedSubSessionId == null) {
+      byte[] randomBytes = new byte[32];
+      secureRandom.nextBytes(randomBytes);
+      storedSubSessionId = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
+      ses.setAttribute(SUB_SESSION_ID_ATTRIBUTE, storedSubSessionId);
+      ses.setAttribute(SUB_SESSION_ROLE_ATTRIBUTE, GUEST_ROLE);
+      log.debug("Issued a new sub application session for this user");
+    }
+    if (presentedSubSessionId == null
+        || !MessageDigest.isEqual(
+            storedSubSessionId.getBytes(StandardCharsets.UTF_8),
+            presentedSubSessionId.getBytes(StandardCharsets.UTF_8))) {
+      return GUEST_ROLE;
+    }
+    String storedRole = (String) ses.getAttribute(SUB_SESSION_ROLE_ATTRIBUTE);
+    return storedRole == null ? GUEST_ROLE : storedRole;
   }
 }

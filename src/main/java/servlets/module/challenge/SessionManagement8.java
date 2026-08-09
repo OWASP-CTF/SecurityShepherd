@@ -43,15 +43,26 @@ public class SessionManagement8 extends HttpServlet {
   private static String levelHash =
       "714d8601c303bbef8b5cabab60b1060ac41f0d96f53b6ea54705bb1ea4316334";
 
+  /** Server side session attribute holding this session's role in the sub application. */
+  private static final String ROLE_ATTRIBUTE = "sessionManagement8Role";
+
+  /** Role every session of the sub application starts with. */
+  private static final String DEFAULT_ROLE = "user";
+
+  /** Role required to enter the privileged area of the sub application. */
+  private static final String PRIVILEGED_ROLE = "superuser";
+
+  /** Untampered value of the client side tracking cookie. It carries no authority. */
+  private static final String EXPECTED_ROLE_COOKIE = "LmH6nmbC";
+
   /**
-   * Users must take advance of the broken session management in this application by modifying the
-   * tracking cookie "challengeRole" which is encoded in ATOM-128. They must modify this cookie to
-   * be equal to superuser to access the result key.
+   * The role of the sub application user is authoritative server side state. The "challengeRole"
+   * tracking cookie is unauthenticated client data and is only read to report tampering, so users
+   * cannot promote themselves to a super user by editing it.
    *
    * @param returnUserRole Red herring
    * @param returnPassword Red herring
    * @param adminDetected Red herring
-   * @param challengeRole Cookie encoded ATOM-128 that manages who is signed in to the sub schema
    */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -79,38 +90,28 @@ public class SessionManagement8 extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+        // Authority for this sub application is held server side, in the session. The
+        // "challengeRole" cookie is unauthenticated client state and is only read for logging.
+        String challengeRole = (String) ses.getAttribute(ROLE_ATTRIBUTE);
+        if (challengeRole == null) {
+          challengeRole = DEFAULT_ROLE;
+          ses.setAttribute(ROLE_ATTRIBUTE, challengeRole);
+        }
+
         Cookie userCookies[] = request.getCookies();
-        int i = 0;
         Cookie theCookie = null;
-        for (i = 0; i < userCookies.length; i++) {
-          if (userCookies[i].getName().compareTo("challengeRole") == 0) {
-            theCookie = userCookies[i];
-            break; // End Loop, because we found the token
+        if (userCookies != null) {
+          for (int i = 0; i < userCookies.length; i++) {
+            if (userCookies[i].getName().compareTo("challengeRole") == 0) {
+              theCookie = userCookies[i];
+              break; // End Loop, because we found the token
+            }
           }
         }
         String htmlOutput = new String();
         if (theCookie != null) {
           log.debug("Cookie value: " + theCookie.getValue());
-
-          if (theCookie.getValue().equals("nmHqLjQknlHs")) {
-            log.debug("Super User Cookie detected");
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(
-                    Getter.getModuleResultFromHash(getServletContext().getRealPath(""), levelHash),
-                    (String) ses.getAttribute("userName"));
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("response.superUserClub")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("response.welcomeSuperUser")
-                    + " "
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
-          } else if (!theCookie.getValue().equals("LmH6nmbC")) {
+          if (!theCookie.getValue().equals(EXPECTED_ROLE_COOKIE)) {
             log.debug("Tampered role cookie detected: " + theCookie.getValue());
             htmlOutput += "<!-- " + bundle.getString("response.invalidRole") + " -->";
           } else {
@@ -118,6 +119,25 @@ public class SessionManagement8 extends HttpServlet {
           }
         } else {
           log.debug("No Role Cookie Submitted");
+        }
+        if (PRIVILEGED_ROLE.equals(challengeRole)) {
+          log.debug("Super User session detected");
+          // Get key and add it to the output
+          String userKey =
+              Hash.generateUserSolution(
+                  Getter.getModuleResultFromHash(getServletContext().getRealPath(""), levelHash),
+                  (String) ses.getAttribute("userName"));
+          htmlOutput =
+              "<h2 class='title'>"
+                  + bundle.getString("response.superUserClub")
+                  + "</h2>"
+                  + "<p>"
+                  + bundle.getString("response.welcomeSuperUser")
+                  + " "
+                  + "<a>"
+                  + userKey
+                  + "</a>"
+                  + "</p>";
         }
         if (htmlOutput.isEmpty()) {
           log.debug("Challenge Not Complete");

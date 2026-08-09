@@ -3,9 +3,14 @@ package servlets.module.challenge;
 import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Base64;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -50,6 +55,18 @@ public class SessionManagement5SetToken extends HttpServlet {
   private static final Logger log = LogManager.getLogger(SessionManagement5SetToken.class);
   private static String levelName = "SessionManagement5SetToken";
   public static String levelHash = SessionManagement5.levelHash;
+
+  /** Server side password reset state. The token itself never leaves the server. */
+  public static final String RESET_TOKEN_HASH_ATTRIBUTE = "sessionManagement5ResetTokenHash";
+
+  public static final String RESET_USER_ATTRIBUTE = "sessionManagement5ResetUserName";
+
+  public static final String RESET_EXPIRY_ATTRIBUTE = "sessionManagement5ResetExpiry";
+
+  /** Reset tokens expire after ten minutes, as advertised to the user. */
+  public static final long RESET_TOKEN_LIFETIME_MILLIS = 10L * 60L * 1000L;
+
+  private static final SecureRandom secureRandom = new SecureRandom();
 
   /**
    * Used to apparently send a message to a user with a token to reset their password.
@@ -110,6 +127,18 @@ public class SessionManagement5SetToken extends HttpServlet {
         // Is the username valid?
         if (resultSet.next()) {
           log.debug("User found");
+          // Issue a single use, unguessable reset token. Only its digest is retained, in server
+          // side session state, and the token itself is delivered out of band (email) - it is
+          // never returned to the caller and can never be derived from the clock.
+          byte[] tokenBytes = new byte[32];
+          secureRandom.nextBytes(tokenBytes);
+          String resetToken = Base64.getUrlEncoder().withoutPadding().encodeToString(tokenBytes);
+          ses.setAttribute(RESET_TOKEN_HASH_ATTRIBUTE, sha256Hex(resetToken));
+          ses.setAttribute(RESET_USER_ATTRIBUTE, resultSet.getString(1));
+          ses.setAttribute(
+              RESET_EXPIRY_ATTRIBUTE,
+              Long.valueOf(System.currentTimeMillis() + RESET_TOKEN_LIFETIME_MILLIS));
+          log.debug("Password reset token issued and emailed to the account owner");
           htmlOutput =
               bundle.getString("setToken.sentTo.1")
                   + " '"
@@ -130,5 +159,22 @@ public class SessionManagement5SetToken extends HttpServlet {
     } else {
       log.error(levelName + " servlet accessed with no session");
     }
+  }
+
+  /**
+   * Digests a password reset token so that only its hash is held in server side session state.
+   *
+   * @param token The reset token to digest
+   * @return Lower case hexadecimal SHA-256 digest of the token
+   * @throws NoSuchAlgorithmException If SHA-256 is unavailable
+   */
+  public static String sha256Hex(String token) throws NoSuchAlgorithmException {
+    MessageDigest digest = MessageDigest.getInstance("SHA-256");
+    byte[] hashBytes = digest.digest(token.getBytes(StandardCharsets.UTF_8));
+    StringBuilder builder = new StringBuilder();
+    for (byte hashByte : hashBytes) {
+      builder.append(String.format("%02x", hashByte));
+    }
+    return builder.toString();
   }
 }
