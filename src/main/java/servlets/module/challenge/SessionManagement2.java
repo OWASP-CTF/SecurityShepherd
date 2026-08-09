@@ -46,6 +46,7 @@ public class SessionManagement2 extends HttpServlet {
   private static String levelName = "Session Management Challenge Two";
   private static String levelHash =
       "d779e34a54172cbc245300d3bc22937090ebd3769466a501a5e7ac605b9f34b7";
+  public static final String SUB_ADDRESS = "sessionManagement2SubAddress";
 
   /**
    * The user attempts to use this function to sign into a sub schema. If they successfully sign in
@@ -80,12 +81,14 @@ public class SessionManagement2 extends HttpServlet {
 
       String htmlOutput = new String();
       log.debug(levelName + " Servlet accessed");
+      Connection conn = null;
       try {
         log.debug("Getting Challenge Parameters");
         Object nameObj = request.getParameter("subName");
         Object passObj = request.getParameter("subPassword");
         String subName = new String();
         String subPass = new String();
+        String userAddress = new String();
         if (nameObj != null) {
           subName = (String) nameObj;
         }
@@ -99,8 +102,7 @@ public class SessionManagement2 extends HttpServlet {
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
 
-        Connection conn =
-            Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
+        conn = Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
         log.debug("Checking credentials");
         PreparedStatement callstmt;
 
@@ -119,7 +121,11 @@ public class SessionManagement2 extends HttpServlet {
         ResultSet resultSet = callstmt.executeQuery();
         if (resultSet.next()) {
           log.debug("Successful Login");
-          // Get key and add it to the output
+          ses.setAttribute(SUB_ADDRESS, resultSet.getString(2));
+          // The key is earned by proving the account's password, which is what the query above
+          // just did. The hole this challenge is about was the password reset accepting any
+          // address, so that is where the ownership check belongs - not on a flag the caller
+          // could hand back to us here.
           String userKey =
               Hash.generateUserSolution(
                   Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
@@ -129,25 +135,23 @@ public class SessionManagement2 extends HttpServlet {
                   + bundle.getString("response.welcome")
                   + " "
                   + Encode.forHtml(resultSet.getString(1))
-                  + "</h2>"
-                  + "<p>"
+                  + "</h2><p>"
                   + bundle.getString("response.resultKey")
                   + " <a>"
                   + userKey
-                  + "</a>"
-                  + "</p>";
+                  + "</a></p>";
         } else {
-          // Use one generic failure response so the endpoint cannot enumerate account names or
-          // disclose recovery addresses.
           log.debug("Incorrect credentials");
-          htmlOutput = makeTable(bundle.getString("response.badUser") + "<br/>", bundle);
+          userAddress = bundle.getString("response.badUser") + "<br/>";
+          htmlOutput = makeTable(userAddress, bundle);
         }
-        Database.closeConnection(conn);
         log.debug("Outputting HTML");
         out.write(htmlOutput);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
+      } finally {
+        Database.closeConnection(conn);
       }
     } else {
       log.error(levelName + " servlet accessed with no session");

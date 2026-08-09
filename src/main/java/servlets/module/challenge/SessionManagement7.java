@@ -124,9 +124,8 @@ public class SessionManagement7 extends HttpServlet {
             callstmt.execute();
             log.debug("Changes committed.");
 
-            // These challenge accounts use disabled passwords containing "!"; never accept that
-            // marker as a usable credential through the normal sign-in endpoint.
-            subPass = subPass.replace("!", "");
+            // Filtering password for !, so that it is impossible for users to sign in
+            subPass = subPass.replaceAll("!", "");
 
             callstmt =
                 conn.prepareStatement(
@@ -158,6 +157,10 @@ public class SessionManagement7 extends HttpServlet {
                       + "</a>"
                       + "</p>";
             } else {
+              // One reply for every failed sign in. Telling the caller that the name was right
+              // but the password wrong separates real accounts from invented ones, and handing
+              // back the address names the mailbox the account recovery in this challenge aims
+              // at. Neither is something a failed sign in has any reason to disclose.
               log.debug("Incorrect credentials");
               userAddress = bundle.getString("response.badUser") + "<br/>";
               htmlOutput = makeTable(userAddress, bundle);

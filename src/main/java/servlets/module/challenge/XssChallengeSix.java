@@ -77,7 +77,7 @@ public class XssChallengeSix extends HttpServlet {
           String userPost = new String();
           String searchTerm = request.getParameter("searchTerm");
           log.debug("User Submitted - " + searchTerm);
-          searchTerm = XssFilter.validateHttpUrl(searchTerm);
+          searchTerm = XssFilter.safeHttpUrl(searchTerm);
           userPost = "<a href=\"" + Encode.forHtmlAttribute(searchTerm) + "\">Your HTTP Link!</a>";
           log.debug("After Sanitising - " + searchTerm);
 

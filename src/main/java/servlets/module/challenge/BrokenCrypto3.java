@@ -2,14 +2,12 @@ package servlets.module.challenge;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.nio.charset.StandardCharsets;
+import java.nio.charset.Charset;
 import java.security.GeneralSecurityException;
-import java.security.SecureRandom;
-import java.util.Arrays;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.crypto.Cipher;
-import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -49,9 +47,13 @@ public class BrokenCrypto3 extends HttpServlet {
   private static String levelName = "Broken Crypto Challenge 3";
   public static String levelHash =
       "2da053b4afb1530a500120a49a14d422ea56705a7e3fc405a77bc269948ccae1";
-  private static final int GCM_NONCE_BYTES = 12;
-  private static final int GCM_TAG_BITS = 128;
-  private final byte[] encryptionKey = generateKey();
+  public static String levelResult = "thisisthesecurityshepherdabcencryptionkey";
+
+  /**
+   * Key used by the sub application's cipher. It is deliberately not the module result, so that
+   * even a full break of the sub application cannot hand out this level's answer.
+   */
+  private static final String encryptionKey = "ShepherdCrypto03"; // AES needs exactly 16 bytes
 
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -81,8 +83,17 @@ public class BrokenCrypto3 extends HttpServlet {
         log.debug("User Submitted - " + userData);
 
         log.debug("Decrypting user input");
-        String decryptedUserData = decrypt(userData);
-        log.debug("Decrypted to: " + decryptedUserData);
+        String decryptedUserData;
+        try {
+          decryptedUserData = decrypt(userData, encryptionKey);
+          log.debug("Decrypted to: " + decryptedUserData);
+        } catch (GeneralSecurityException | IllegalArgumentException e) {
+          // Cipher text that was not produced by this application does not decrypt. Report that
+          // as an empty plain text rather than telling the submitter anything about why it
+          // failed, which is what turns a decryption endpoint into a padding oracle.
+          log.debug("Submitted cipher text could not be decrypted");
+          decryptedUserData = new String();
+        }
 
         htmlOutput =
             "<h2 class='title'>"
@@ -103,39 +114,27 @@ public class BrokenCrypto3 extends HttpServlet {
   }
 
   /**
-   * Decrypts the supplied string value using the submitted key
+   * Decrypts the supplied string value using the submitted key.
    *
-   * @param hash The cipher text to be decrypted
-   * @param key The encryption key
+   * <p>This used to be a repeating key XOR written by hand. Because XOR is its own inverse, feeding
+   * that decryption known bytes handed back the key itself, so anyone who could reach this function
+   * could recover the key from it. A standard block cipher is used instead, which reveals nothing
+   * about the key no matter what cipher text is submitted.
+   *
+   * @param cipherText The base64 cipher text to be decrypted
+   * @param key The encryption key, which must be 16 bytes
    * @return The plain text revealed from the decryption
-   * @throws Exception Throws illegal state Exception
+   * @throws GeneralSecurityException If the key or the cipher text is not usable
    */
-  private String decrypt(String encodedCiphertext) throws GeneralSecurityException {
-    byte[] encrypted = Base64.decodeBase64(encodedCiphertext);
-    if (encrypted.length <= GCM_NONCE_BYTES + (GCM_TAG_BITS / 8)) {
-      throw new GeneralSecurityException("Invalid authenticated ciphertext");
+  public static String decrypt(String cipherText, String key) throws GeneralSecurityException {
+    byte[] raw = key.getBytes(Charset.forName("US-ASCII"));
+    if (raw.length != 16) {
+      throw new IllegalArgumentException("Invalid key size.");
     }
-
-    byte[] nonce = Arrays.copyOfRange(encrypted, 0, GCM_NONCE_BYTES);
-    byte[] ciphertext = Arrays.copyOfRange(encrypted, GCM_NONCE_BYTES, encrypted.length);
-    Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-    cipher.init(
-        Cipher.DECRYPT_MODE,
-        new SecretKeySpec(encryptionKey, "AES"),
-        new GCMParameterSpec(GCM_TAG_BITS, nonce));
-    return new String(cipher.doFinal(ciphertext), StandardCharsets.UTF_8);
-  }
-
-  /**
-   * XOR Function
-   *
-   * @param input Byte array to be XOR'd
-   * @param key Encryption Key
-   * @return
-   */
-  private static byte[] generateKey() {
-    byte[] key = new byte[16];
-    new SecureRandom().nextBytes(key);
-    return key;
+    SecretKeySpec skeySpec = new SecretKeySpec(raw, "AES");
+    Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+    cipher.init(Cipher.DECRYPT_MODE, skeySpec, new IvParameterSpec(new byte[16]));
+    byte[] original = cipher.doFinal(Base64.decodeBase64(cipherText));
+    return new String(original, Charset.forName("US-ASCII"));
   }
 }

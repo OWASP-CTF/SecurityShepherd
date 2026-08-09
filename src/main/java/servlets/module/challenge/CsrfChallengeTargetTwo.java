@@ -1,5 +1,7 @@
 package servlets.module.challenge;
 
+import dbProcs.Getter;
+import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;
@@ -68,18 +70,23 @@ public class CsrfChallengeTargetTwo extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+        String plusId = request.getParameter("userId");
+        log.debug("User Submitted - " + plusId);
         Cookie tokenCookie = Validate.getToken(request.getCookies());
-        if (!Validate.validateTokens(tokenCookie, request.getParameter("csrfToken"))) {
+        Object tokenParameter = request.getParameter("csrfToken");
+        if (!Validate.validateTokens(tokenCookie, tokenParameter)) {
           response.sendError(HttpServletResponse.SC_FORBIDDEN);
           return;
         }
-        String plusId = request.getParameter("userId");
-        log.debug("User Submitted - " + plusId);
         String userId = (String) ses.getAttribute("userStamp");
         if (!userId.equals(plusId)) {
           response.sendError(HttpServletResponse.SC_FORBIDDEN);
           return;
         }
+        String applicationRoot = getServletContext().getRealPath("");
+        String moduleHash = CsrfChallengeTwo.getLevelHash();
+        String moduleId = Getter.getModuleIdFromHash(applicationRoot, moduleHash);
+        result = Setter.updateCsrfCounter(applicationRoot, moduleId, userId);
 
         if (result) {
           out.write(csrfGenerics.getString("target.incrementSuccess"));

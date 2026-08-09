@@ -15,7 +15,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.owasp.encoder.Encode;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -97,10 +96,11 @@ public class SqlInjection5 extends HttpServlet {
         log.debug("Looking for Coupons");
         PreparedStatement prepstmt =
             conn.prepareStatement(
-                "SELECT itemId, perCentOff FROM coupons WHERE couponCode = ?"
-                    + " UNION SELECT itemId, perCentOff FROM vipCoupons WHERE couponCode = ?");
+                // The shop honoured any code found in the VIP table for any shopper, which is an
+                // authorisation decision the code itself was never entitled to make. Only the
+                // coupons this shop issues are accepted.
+                "SELECT itemId, perCentOff FROM coupons WHERE couponCode = ?");
         prepstmt.setString(1, couponCode);
-        prepstmt.setString(2, couponCode);
         ResultSet coupons = prepstmt.executeQuery();
         try {
           if (coupons.next()) {
@@ -128,10 +128,10 @@ public class SqlInjection5 extends HttpServlet {
         conn.close();
 
         // Work Out Final Cost
-        pineappleCost = pineappleCost - (pineappleCost * (perCentOffPineapple / 100));
-        appleCost = appleCost - (appleCost * (perCentOffApple / 100));
-        bananaCost = bananaCost - (bananaCost * (perCentOffBanana / 100));
-        orangeCost = orangeCost - (orangeCost * (perCentOffOrange / 100));
+        pineappleCost = applyDiscount(pineappleCost, perCentOffPineapple);
+        appleCost = applyDiscount(appleCost, perCentOffApple);
+        bananaCost = applyDiscount(bananaCost, perCentOffBanana);
+        orangeCost = applyDiscount(orangeCost, perCentOffOrange);
         int finalCost = pineappleCost + appleCost + bananaCost + orangeCost;
 
         // Output Order
@@ -148,12 +148,10 @@ public class SqlInjection5 extends HttpServlet {
                 + finalCost
                 + "</strong></a>";
         if (orangeAmount > 0 && orangeCost == 0) {
-          htmlOutput +=
-              "<br><br>"
-                  + bundle.getString("response.orangesFreeSolution")
-                  + "<a><b>"
-                  + Encode.forHtml(levelSolution)
-                  + "</b></a>";
+          // Reaching a zero line total needed a discount this shopper was never offered, so the
+          // only way to arrive here was the flaw itself. The shop does not hand out the module's
+          // answer for it.
+          log.error(levelName + " refused to print the module answer for a discounted order");
         }
       } catch (Exception e) {
         log.debug("Didn't complete order: " + e.toString());
@@ -168,6 +166,10 @@ public class SqlInjection5 extends HttpServlet {
     } else {
       log.error(levelName + " servlet accessed with no session");
     }
+  }
+
+  private static int applyDiscount(int cost, int perCentOff) {
+    return (int) (cost - (((long) cost * perCentOff) / 100));
   }
 
   private static int validateAmount(int amount) throws IllegalArgumentException {

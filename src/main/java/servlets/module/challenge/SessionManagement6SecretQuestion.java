@@ -102,8 +102,10 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
             log.debug("Running secret Answer Check");
             ResultSet rs = callstmt.executeQuery();
             if (rs.next()) {
-              // A guessable knowledge-based answer is not an authentication credential. Confirm
-              // the submitted identity without granting account access or returning the key.
+              // Answering the secret question confirms who the caller claims to be and nothing
+              // more. It is a shared, guessable fact, not a credential, so it cannot stand in
+              // for signing in to the account - and it certainly cannot earn the key that is
+              // only given for holding the account's real authentication.
               log.debug("Correct Answer Submitted");
               htmlOutput =
                   "<h2 class='title'>"
@@ -215,6 +217,9 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
                     Database.getChallengeConnection(
                         ApplicationRoot, "BrokenAuthAndSessMangChalSix");
                 log.debug("Getting Secret Question");
+                // The address is bound, not pasted into the statement. Concatenated here it let
+                // the caller rewrite the lookup and read whatever the challenge user could
+                // reach, rather than the one question they asked for.
                 PreparedStatement callstmt =
                     conn.prepareStatement("SELECT secretQuestion FROM users WHERE userAddress = ?");
                 callstmt.setString(1, subEmail);
@@ -233,6 +238,9 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
                 Database.closeConnection(conn);
               }
             } catch (SQLException e) {
+              // The database's own complaint stays in the log. Handed to the caller it names
+              // tables, columns and the statement that failed, which is how a query gets rebuilt
+              // until it returns something it should not.
               log.error(levelName + " SQL Error: " + e.toString());
               htmlOutput = new String(bundle.getString("question.noQuestion"));
             }

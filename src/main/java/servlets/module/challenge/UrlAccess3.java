@@ -1,18 +1,18 @@
 package servlets.module.challenge;
 
-import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -76,33 +76,28 @@ public class UrlAccess3 extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
-        String currentPerson = (String) ses.getAttribute("urlAccessCurrentPerson");
-        if (currentPerson == null) {
-          currentPerson = "aGuest";
-          ses.setAttribute("urlAccessCurrentPerson", currentPerson);
+        Cookie userCookies[] = request.getCookies();
+        int i = 0;
+        Cookie theCookie = null;
+        for (i = 0; i < userCookies.length; i++) {
+          if (userCookies[i].getName().compareTo("currentPerson") == 0) {
+            theCookie = userCookies[i];
+            break; // End Loop, because we found the token
+          }
         }
         String htmlOutput = null;
-        if (currentPerson != null) {
-          if (currentPerson.equals("MrJohnReillyTheSecond")) {
-            log.debug("Super Admin Cookie detected");
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(
-                    Getter.getModuleResultFromHash(getServletContext().getRealPath(""), levelHash),
-                    (String) ses.getAttribute("userName"));
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("admin.superAdminClub")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("admin.superAdminClub.keyMessage")
-                    + " "
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
-          } else if (!currentPerson.equals("aGuest")) {
-            log.debug("Invalid server-side role detected: " + currentPerson);
+        if (theCookie != null) {
+          log.debug("Cookie value: " + theCookie.getValue());
+          byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
+          String decodedCookie = new String(decodedCookieBytes, "UTF-8");
+          log.debug("Decoded Cookie: " + decodedCookie);
+
+          // The currentPerson cookie is supplied by the client and carries no authority. It
+          // cannot promote the requester to a privileged view, and since nothing else in the
+          // application grants that view, any value other than the guest one is a tampered
+          // role cookie and is rejected.
+          if (!decodedCookie.equals("aGuest")) {
+            log.debug("Tampered role cookie detected: " + decodedCookie);
             htmlOutput = "<!-- " + bundle.getString("response.invalidUser") + " -->";
           } else {
             log.debug("No change to role cookie submitted");

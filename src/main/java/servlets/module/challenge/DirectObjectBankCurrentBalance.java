@@ -67,11 +67,18 @@ public class DirectObjectBankCurrentBalance extends HttpServlet {
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
       try {
-        String accountNumber = (String) ses.getAttribute("directObjectBankAccount");
-        if (accountNumber == null) {
-          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+        // The balance served is always for the account this session is authenticated against. The
+        // account number in the request is a direct object reference and is not trusted.
+        Object sessionBankAccount = ses.getAttribute("directObjectBankAccount");
+        if (sessionBankAccount == null) {
+          log.error("Balance requested without being signed into a bank account");
+          out.write(
+              errors.getString("error.funky")
+                  + " "
+                  + bundle.getString("login.error.couldNotGetBalance"));
           return;
         }
+        String accountNumber = sessionBankAccount.toString();
         log.debug("Account Number - " + accountNumber);
         String applicationRoot = getServletContext().getRealPath("");
         String htmlOutput = new String();

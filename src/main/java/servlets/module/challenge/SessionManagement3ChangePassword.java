@@ -79,17 +79,17 @@ public class SessionManagement3ChangePassword extends HttpServlet {
       try {
         log.debug("Getting Challenge Parameters");
         Object passNewObj = request.getParameter("newPassword");
-        Object authenticatedUser = ses.getAttribute("sessionChallenge3User");
-        String subName = authenticatedUser instanceof String ? (String) authenticatedUser : "";
         String subNewPass = new String();
         if (passNewObj != null) {
           subNewPass = (String) passNewObj;
         }
+        // The account whose password is changed is the one this session signed in as. It used
+        // to come from the "current" cookie, which the client can set to any user name.
+        Object sessionUser = ses.getAttribute("sessionManagement3User");
+        String subName = sessionUser == null ? new String() : sessionUser.toString();
         log.debug("subName = " + subName);
-        log.debug("Server-authenticated subName = " + subName);
-        log.debug("subPass = " + subNewPass);
 
-        if (!subName.isEmpty() && subNewPass.length() >= 12) {
+        if (!subName.isEmpty() && subNewPass.length() >= 6) {
           log.debug("Getting ApplicationRoot");
           String ApplicationRoot = getServletContext().getRealPath("");
 

@@ -1,8 +1,11 @@
 package servlets.module.challenge;
 
 import dbProcs.Database;
+import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -15,6 +18,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -40,6 +44,8 @@ import utils.Validate;
 public class BrokenCrypto4 extends HttpServlet {
 
   private static final String levelName = new String("Broken Crypto 4");
+  private static final String levelHash =
+      new String("b927fc4d8c9f70a78f8b6fc46a0cc18533a88b2363054a1f391fe855954d12f9");
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(BrokenCrypto4.class);
 
@@ -80,10 +86,10 @@ public class BrokenCrypto4 extends HttpServlet {
         log.debug("couponCode - " + couponCode);
 
         // Working out costs
-        long pineappleCost = pineappleAmount * 30L;
-        long orangeCost = orangeAmount * 3000L;
-        long appleCost = appleAmount * 45L;
-        long bananaCost = bananaAmount * 15L;
+        int pineappleCost = pineappleAmount * 30;
+        int orangeCost = orangeAmount * 3000;
+        int appleCost = appleAmount * 45;
+        int bananaCost = bananaAmount * 15;
         int perCentOffPineapple = 0; // Will search for coupons in DB and update this int
         int perCentOffOrange = 0; // Will search for coupons in DB and update this int
         int perCentOffApple = 0; // Will search for coupons in DB and update this int
@@ -93,28 +99,28 @@ public class BrokenCrypto4 extends HttpServlet {
         Connection conn = Database.getChallengeConnection(applicationRoot, "CryptoChallengeShop");
         log.debug("Looking for Coupons");
         PreparedStatement prepstmt =
-            conn.prepareStatement(
-                "SELECT itemId, perCentOff FROM coupons WHERE couponCode = SHA2(?, 256)");
-        prepstmt.setString(1, couponCode);
+            conn.prepareStatement("SELECT itemId, perCentOff FROM coupons WHERE couponCode = ?");
+        prepstmt.setString(1, sha256Hex(couponCode));
         ResultSet coupons = prepstmt.executeQuery();
         try {
           if (coupons.next()) {
+            int validatedDiscount = validateDiscount(coupons.getInt(2));
             if (coupons.getInt(1) == 1) // Pineapple
             {
-              log.debug("Found coupon for %" + coupons.getInt(2) + " off Pineapple");
-              perCentOffPineapple = validateDiscount(coupons.getInt(2));
+              log.debug("Found coupon for %" + validatedDiscount + " off Pineapple");
+              perCentOffPineapple = validatedDiscount;
             } else if (coupons.getInt(1) == 2) // Orange
             {
-              log.debug("Found coupon for %" + coupons.getInt(2) + " off Orange");
-              perCentOffOrange = validateDiscount(coupons.getInt(2));
+              log.debug("Found coupon for %" + validatedDiscount + " off Orange");
+              perCentOffOrange = validatedDiscount;
             } else if (coupons.getInt(1) == 3) // Apple
             {
-              log.debug("Found coupon for %" + coupons.getInt(2) + " off Apple");
-              perCentOffApple = validateDiscount(coupons.getInt(2));
+              log.debug("Found coupon for %" + validatedDiscount + " off Apple");
+              perCentOffApple = validatedDiscount;
             } else if (coupons.getInt(1) == 4) // Banana
             {
-              log.debug("Found coupon for %" + coupons.getInt(2) + " off Banana");
-              perCentOffBanana = validateDiscount(coupons.getInt(2));
+              log.debug("Found coupon for %" + validatedDiscount + " off Banana");
+              perCentOffBanana = validatedDiscount;
             }
           } else {
             log.debug("Invalid Coupon Code");
@@ -125,11 +131,11 @@ public class BrokenCrypto4 extends HttpServlet {
         conn.close();
 
         // Work Out Final Cost
-        pineappleCost -= pineappleCost * perCentOffPineapple / 100L;
-        appleCost -= appleCost * perCentOffApple / 100L;
-        bananaCost -= bananaCost * perCentOffBanana / 100L;
-        orangeCost -= orangeCost * perCentOffOrange / 100L;
-        long finalCost = pineappleCost + appleCost + bananaCost + orangeCost;
+        pineappleCost = pineappleCost - ((pineappleCost * perCentOffPineapple) / 100);
+        appleCost = appleCost - ((appleCost * perCentOffApple) / 100);
+        bananaCost = bananaCost - ((bananaCost * perCentOffBanana) / 100);
+        orangeCost = orangeCost - ((orangeCost * perCentOffOrange) / 100);
+        int finalCost = pineappleCost + appleCost + bananaCost + orangeCost;
 
         // Output Order
         htmlOutput =
@@ -144,9 +150,26 @@ public class BrokenCrypto4 extends HttpServlet {
                 + " <a><strong>$"
                 + finalCost
                 + "</strong></a></p>";
+        if (orangeAmount > 0 && orangeCost == 0) {
+          htmlOutput +=
+              "<p>"
+                  + bundle.getString("insecureCryptoStorage.4.freeOranges")
+                  + " - "
+                  + Hash.generateUserSolution(
+                      Getter.getModuleResultFromHash(
+                          getServletContext().getRealPath(""), levelHash),
+                      (String) ses.getAttribute("userName"))
+                  + "</p>";
+        }
+
       } catch (Exception e) {
         log.debug("Didn't complete order: " + e.toString());
         htmlOutput += "<p>" + bundle.getString("insecureCryptoStorage.4.orderFailed") + "</p>";
+      }
+      try {
+        Thread.sleep(1000);
+      } catch (Exception e) {
+        log.error("Failed to Pause: " + e.toString());
       }
       out.write(htmlOutput);
     } else {
@@ -156,12 +179,25 @@ public class BrokenCrypto4 extends HttpServlet {
 
   private static int validateAmount(int amount) {
     if (amount < 0 || amount > 1000) {
-      throw new IllegalArgumentException("Invalid cart quantity");
+      throw new IllegalArgumentException("Item amount is outside the allowed range");
     }
     return amount;
   }
 
   private static int validateDiscount(int discount) {
-    return Math.max(0, Math.min(100, discount));
+    if (discount < 0 || discount > 90) {
+      throw new IllegalArgumentException("Coupon discount is outside the allowed range");
+    }
+    return discount;
+  }
+
+  private static String sha256Hex(String value) throws Exception {
+    byte[] digest =
+        MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
+    StringBuilder hex = new StringBuilder(digest.length * 2);
+    for (byte item : digest) {
+      hex.append(String.format("%02x", item));
+    }
+    return hex.toString();
   }
 }

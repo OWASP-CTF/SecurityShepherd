@@ -68,15 +68,13 @@ public class UrlAccess3UserList extends HttpServlet {
       String htmlOutput = new String();
 
       try {
-        String currentUser = (String) ses.getAttribute("urlAccessCurrentPerson");
-        if (currentUser == null) {
-          currentUser = "aGuest";
-          ses.setAttribute("urlAccessCurrentPerson", currentUser);
-        }
+        // This sub-application only exposes the guest view. A client-supplied cookie cannot
+        // identify a different user or authorize disclosure of the administrative user list.
+        String currentUser = "aGuest";
         String ApplicationRoot = getServletContext().getRealPath("");
         Connection conn = Database.getChallengeConnection(ApplicationRoot, "UrlAccessThree");
         PreparedStatement callstmt;
-        callstmt = conn.prepareStatement("SELECT userName FROM users WHERE userName = ?");
+        callstmt = conn.prepareStatement("SELECT userName FROM users WHERE userName = ?;");
         callstmt.setString(1, currentUser);
         log.debug("Getting User List");
         htmlOutput = new String();

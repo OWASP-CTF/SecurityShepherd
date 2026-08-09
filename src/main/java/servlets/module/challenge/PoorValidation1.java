@@ -11,6 +11,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -75,11 +76,12 @@ public class PoorValidation1 extends HttpServlet {
         int bananaAmount = validateAmount(Integer.parseInt(request.getParameter("bananaAmount")));
         log.debug("bananaAmount - " + bananaAmount);
 
-        // Working out costs
-        long pineappleCost = pineappleAmount * 30L;
-        long orangeCost = orangeAmount * 3000L;
-        long appleCost = appleAmount * 45L;
-        long bananaCost = bananaAmount * 15L;
+        // Working out costs. Long arithmetic so a large order cannot wrap around to a negative
+        // total.
+        long pineappleCost = (long) pineappleAmount * 30;
+        long orangeCost = (long) orangeAmount * 3000;
+        long appleCost = (long) appleAmount * 45;
+        long bananaCost = (long) bananaAmount * 15;
 
         htmlOutput = new String();
 
@@ -99,6 +101,14 @@ public class PoorValidation1 extends HttpServlet {
                 + " <a><strong>$"
                 + finalCost
                 + "</strong></a></p>";
+        if (finalCost <= 0 && orangeAmount > 0) {
+          htmlOutput +=
+              "<br><p>"
+                  + bundle.getString("poorValidation.freeOranges")
+                  + " - "
+                  + Hash.generateUserSolution(levelSolution, currentUser)
+                  + "</p>";
+        }
 
       } catch (Exception e) {
         log.debug("Didn't complete order: " + e.toString());
@@ -115,9 +125,23 @@ public class PoorValidation1 extends HttpServlet {
     }
   }
 
+  /** Largest quantity of any single item one order may contain. */
+  private static final int MAX_ITEM_AMOUNT = 1000;
+
+  /**
+   * Confines a submitted quantity to a sane range. A negative quantity subtracts from the order
+   * total and a very large one overflows the cost arithmetic, so both are refused here rather than
+   * being trusted from the request.
+   *
+   * @param amount Quantity as submitted by the client
+   * @return The quantity confined to 0..MAX_ITEM_AMOUNT
+   */
   private static int validateAmount(int amount) {
-    if (amount < 0 || amount > 1000) {
-      throw new IllegalArgumentException("Invalid item quantity");
+    if (amount < 0) {
+      return 0;
+    }
+    if (amount > MAX_ITEM_AMOUNT) {
+      return MAX_ITEM_AMOUNT;
     }
     return amount;
   }

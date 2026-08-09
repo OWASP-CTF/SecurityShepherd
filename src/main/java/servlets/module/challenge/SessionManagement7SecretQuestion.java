@@ -116,8 +116,10 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
               log.debug("Running secret Answer Check");
               ResultSet rs = callstmt.executeQuery();
               if (rs.next()) {
-                // A guessable knowledge-based answer is not an authentication credential. Confirm
-                // the submitted identity without granting account access or returning the key.
+                // Answering the secret question confirms who the caller claims to be and nothing
+                // more. It is a shared, guessable fact, not a credential, so it cannot stand in
+                // for signing in to the account - and it certainly cannot earn the key that is
+                // only given for holding the account's real authentication.
                 log.debug("Correct Answer Submitted");
                 htmlOutput =
                     "<h2 class='title'>"

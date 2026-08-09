@@ -77,13 +77,28 @@ public class XssChallengeFour extends HttpServlet {
           String userPost = new String();
           String searchTerm = request.getParameter("searchTerm");
           log.debug("User Submitted - " + searchTerm);
-          searchTerm = XssFilter.validateHttpUrl(searchTerm);
-          userPost =
-              "<a href=\""
-                  + Encode.forHtmlAttribute(searchTerm)
-                  + "\" alt=\"OWASP Security Shepherd\">"
-                  + Encode.forHtml(searchTerm)
-                  + "</a>";
+          if (!searchTerm.startsWith("http")) {
+            searchTerm = "https://www.owasp.org/index.php/OWASP_Security_Shepherd";
+            userPost =
+                "<a href=\""
+                    + searchTerm
+                    + "\" alt=\"OWASP Security Shepherd\">"
+                    + searchTerm
+                    + "</a>";
+          } else {
+
+            searchTerm = XssFilter.safeHttpUrl(searchTerm);
+            String safeAttribute = Encode.forHtmlAttribute(searchTerm);
+            userPost =
+                "<a href=\""
+                    + safeAttribute
+                    + "\" alt=\""
+                    + safeAttribute
+                    + "\">"
+                    + Encode.forHtmlContent(searchTerm)
+                    + "</a>";
+            log.debug("After Encoding - " + searchTerm);
+          }
           log.debug("Adding searchTerm to Html: " + searchTerm);
           htmlOutput +=
               "<h2 class='title'>"

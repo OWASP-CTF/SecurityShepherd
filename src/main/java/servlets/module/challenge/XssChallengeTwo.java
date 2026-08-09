@@ -15,7 +15,6 @@ import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
 import utils.ShepherdLogManager;
 import utils.Validate;
-import utils.XssFilter;
 
 /**
  * Cross Site Scripting Challenge Two <br>
@@ -76,8 +75,6 @@ public class XssChallengeTwo extends HttpServlet {
         if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
           String searchTerm = request.getParameter("searchTerm");
           log.debug("User Submitted - " + searchTerm);
-          searchTerm = XssFilter.levelTwo(searchTerm);
-          log.debug("After Filtering - " + searchTerm);
           String htmlOutput = new String();
           log.debug("Adding searchTerm to Html: " + searchTerm);
           htmlOutput +=
@@ -97,7 +94,7 @@ public class XssChallengeTwo extends HttpServlet {
         out.write(errors.getString("error.noSession"));
       }
     } catch (Exception e) {
-      out.write(errors.getString("errors.funky"));
+      out.write(errors.getString("error.funky"));
       log.fatal(levelName + " - " + e.toString());
     }
   }

@@ -15,7 +15,6 @@ import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
 import utils.ShepherdLogManager;
 import utils.Validate;
-import utils.XssFilter;
 
 /**
  * Cross Site Scripting Challenge Three control class. <br>
@@ -75,8 +74,6 @@ public class XssChallengeThree extends HttpServlet {
         if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
           String searchTerm = request.getParameter("searchTerm");
           log.debug("User Submitted - " + searchTerm);
-          searchTerm = XssFilter.levelThree(searchTerm);
-          log.debug("After Filtering - " + searchTerm);
           String htmlOutput = new String();
           log.debug("Adding searchTerm to Html: " + searchTerm);
           htmlOutput +=

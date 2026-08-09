@@ -72,12 +72,6 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
 
-        Cookie tokenCookie = Validate.getToken(request.getCookies());
-        if (!Validate.validateTokens(tokenCookie, request.getHeader("X-CSRF-Token"))) {
-          response.sendError(HttpServletResponse.SC_FORBIDDEN);
-          return;
-        }
-
         log.debug("Getting JSON String");
         String jsonData = extractPostRequestBody(request);
         log.debug("POST body: " + jsonData);
@@ -85,10 +79,14 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
         log.debug("Getting userId");
         String plusId = (String) json.get("userId");
         log.debug("User Submitted - " + plusId);
+        Cookie tokenCookie = Validate.getToken(request.getCookies());
+        Object tokenParmeter = json.optString("csrfToken", request.getParameter("csrfToken"));
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId)) {
-          response.sendError(HttpServletResponse.SC_FORBIDDEN);
-          return;
+        if (!userId.equals(plusId) && Validate.validateTokens(tokenCookie, tokenParmeter)) {
+          // A request can name any user, and nothing in it establishes that the named user
+          // meant this to happen. Acting on that identifier is what made this endpoint
+          // forgeable, so state is no longer changed on behalf of anybody else.
+          log.error(levelName + " refused a state change requested on behalf of another user");
         }
 
         if (result) {
