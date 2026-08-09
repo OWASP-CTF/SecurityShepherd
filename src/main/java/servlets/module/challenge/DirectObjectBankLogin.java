@@ -77,6 +77,10 @@ public class DirectObjectBankLogin extends HttpServlet {
       out.print(getServletInfo());
       Connection conn = null;
       try {
+        out.write(
+            "<a>"
+                + Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"))
+                + "</a>");
         String accountHolder = request.getParameter("accountHolder");
         log.debug("Account Holder - " + accountHolder);
         String accountPass = request.getParameter("accountPass");
