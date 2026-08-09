@@ -79,30 +79,45 @@ public class SessionManagement5ChangePassword extends HttpServlet {
       try {
         log.debug("Getting Challenge Parameters");
         Object passNewObj = request.getParameter("newPassword");
+        Object userNewObj = request.getParameter("userName");
         Object tokenObj = request.getParameter("resetPasswordToken");
+        String submittedUser = new String();
         String newPass = new String();
         String token = new String();
         if (passNewObj != null) {
           newPass = (String) passNewObj;
         }
+        if (userNewObj != null) {
+          submittedUser = (String) userNewObj;
+        }
         if (tokenObj != null) {
           token = (String) tokenObj;
         }
-        // The account to reset is the one the token was issued for, never one named in the request
+        // The account to reset is the one the token was issued for. A user name may still be
+        // submitted, as this level's form has always done, but it is only ever checked against
+        // the account the token belongs to - it can never select the account
         String issuedToken = (String) ses.getAttribute(SessionManagement5SetToken.RESET_TOKEN);
         String userName = (String) ses.getAttribute(SessionManagement5SetToken.RESET_USER);
         Long expires = (Long) ses.getAttribute(SessionManagement5SetToken.RESET_EXPIRES);
         log.debug("userName = " + userName);
 
-        if (issuedToken == null
-            || userName == null
-            || expires == null
-            || expires < System.currentTimeMillis()
-            || !MessageDigest.isEqual(
-                issuedToken.getBytes(StandardCharsets.UTF_8),
-                token.getBytes(StandardCharsets.UTF_8))) {
-          log.debug("No matching reset token was issued");
+        boolean tokenIssued = issuedToken != null && userName != null && expires != null;
+        boolean tokenMatches =
+            tokenIssued
+                && MessageDigest.isEqual(
+                    issuedToken.getBytes(StandardCharsets.UTF_8),
+                    token.getBytes(StandardCharsets.UTF_8));
+        boolean tokenLive = tokenIssued && expires >= System.currentTimeMillis();
+
+        if (token.isEmpty() || (tokenIssued && tokenMatches && !tokenLive)) {
+          log.debug("Token too old, or none was submitted");
           htmlOutput = "<p>" + bundle.getString("changePass.oldToken") + "</p>";
+        } else if (!tokenIssued || !tokenMatches) {
+          log.debug("Submitted token does not match any token issued to this session");
+          htmlOutput = "<p>" + bundle.getString("changePass.funkyToken") + "</p>";
+        } else if (!submittedUser.isEmpty() && !submittedUser.equals(userName)) {
+          log.debug("Submitted user name is not the account this token was issued for");
+          htmlOutput = "<p>" + bundle.getString("response.badUser") + "</p>";
         } else if (newPass.length() < 12) {
           log.debug("Invalid password submitted");
           htmlOutput = "<p>" + bundle.getString("changePass.failure") + "</p>";
