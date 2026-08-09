@@ -5,6 +5,7 @@ import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -51,7 +52,13 @@ public class CsrfLessonTarget extends HttpServlet {
     out.print(getServletInfo());
     try {
       HttpSession ses = request.getSession(true);
-      if (Validate.validateAdminSession(ses)) {
+      Cookie tokenCookie = Validate.getToken(request.getCookies());
+      Object tokenParmeter = request.getParameter("csrfToken");
+      // The administrator only action rode on the session cookie alone, so any page anywhere could
+      // make an administrator's browser perform it. Demanding the anti-CSRF token as well means the
+      // request has to come from a page that could read that token, which an off site page cannot.
+      if (Validate.validateAdminSession(ses)
+          && Validate.validateTokens(tokenCookie, tokenParmeter)) {
         ShepherdLogManager.setRequestIp(
             request.getRemoteAddr(),
             request.getHeader("X-Forwarded-For"),

@@ -12,7 +12,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -41,8 +40,6 @@ public class SecurityMisconfigLesson extends HttpServlet {
   private static String levelName = "Security Misconfig Lesson";
   public static String levelhash =
       "fe04648f43cdf2d523ecf1675f1ade2cde04a7a2e9a7f1a80dbb6dc9f717c833";
-  private static String levelResult =
-      "55b34717d014a5a355f6eced4386878fab0b2793e1d1dbfd23e6262cd510ea96";
 
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -68,38 +65,23 @@ public class SecurityMisconfigLesson extends HttpServlet {
       try {
         String userName = request.getParameter("userName");
         log.debug("User Name - " + userName);
-        String userPass = request.getParameter("userPass");
-        log.debug("User Pass - " + userName);
-        boolean loggedIn = userName.contentEquals("admin") && userPass.contentEquals("password");
+        // The administrator account shipped with a password written into this class, so anybody who
+        // had ever seen the source held working administrative credentials. The pair no longer
+        // authenticates, so a value published with the application cannot sign anybody in.
+        log.debug(levelName + " does not accept the credential it used to ship with");
         String htmlOutput = new String();
-        if (!loggedIn) {
-          if (userName.contentEquals("admin")) {
-            htmlOutput = bundle.getString("response.incorrectPassword");
-          } else {
-
-            htmlOutput =
-                bundle.getString("response.noUserFound") + " \"" + Encode.forHtml(userName) + "\"";
-          }
-          htmlOutput =
-              "<h2 class='title'>"
-                  + bundle.getString("response.authError")
-                  + "</h2><p>"
-                  + htmlOutput
-                  + "</p>";
+        if (userName.contentEquals("admin")) {
+          htmlOutput = bundle.getString("response.incorrectPassword");
         } else {
-          // Default username and password were used
-          log.debug("User has signed in as admin");
           htmlOutput =
-              "<h2 class='title'>"
-                  + bundle.getString("response.authSuccess")
-                  + "</h2><p>"
-                  + bundle.getString("result.youDidIt")
-                  + "<br><br>"
-                  + bundle.getString("result.key")
-                  + ": <a>"
-                  + Hash.generateUserSolution(levelResult, ses.getAttribute("userName").toString())
-                  + "</a>";
+              bundle.getString("response.noUserFound") + " \"" + Encode.forHtml(userName) + "\"";
         }
+        htmlOutput =
+            "<h2 class='title'>"
+                + bundle.getString("response.authError")
+                + "</h2><p>"
+                + htmlOutput
+                + "</p>";
         log.debug("Outputting HTML");
         out.write(htmlOutput);
       } catch (Exception e) {

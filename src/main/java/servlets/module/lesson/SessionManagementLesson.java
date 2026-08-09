@@ -12,7 +12,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -41,7 +40,6 @@ public class SessionManagementLesson extends HttpServlet {
   private static String levelName = "Session Management Lesson";
   public static String levelHash =
       "b8c19efd1a7cc64301f239f9b9a7a32410a0808138bbefc98986030f9ea83806";
-  private static String levelResult = "6594dec9ff7c4e60d9f8945ca0d4";
 
   /**
    * Controller is tracking the user completion through the "lessonComplete" cookie. If this cookie
@@ -79,40 +77,19 @@ public class SessionManagementLesson extends HttpServlet {
             break; // End Loop, because we found the token
           }
         }
-        String htmlOutput = null;
-        if (theCookie != null) {
-          log.debug("Cookie value: " + theCookie.getValue());
-
-          if (theCookie.getValue().equals("lessonComplete")) {
-            log.debug("Lesson Complete");
-
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
-
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("result.lessonComplete")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("result.youDidIt")
-                    + " "
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
-          }
+        // The cookie is written by the browser and records nothing the server witnessed, so it
+        // cannot decide that the lesson was completed. The only value the page ever writes is
+        // "lessonNotComplete"; anything else arrived from an edited cookie jar.
+        if (theCookie != null && !theCookie.getValue().equals("lessonNotComplete")) {
+          log.error(levelName + " received an edited lesson tracking cookie");
         }
-        if (htmlOutput == null) {
-          log.debug("Lesson Not Complete");
-          htmlOutput =
-              "<h2 class='title'>"
-                  + bundle.getString("response.lessonNotComplete")
-                  + "</h2>"
-                  + "<p>"
-                  + bundle.getString("response.youDidntDoIt")
-                  + "</p>";
-        }
+        String htmlOutput =
+            "<h2 class='title'>"
+                + bundle.getString("response.lessonNotComplete")
+                + "</h2>"
+                + "<p>"
+                + bundle.getString("response.youDidntDoIt")
+                + "</p>";
         log.debug("Outputting HTML");
         out.write(htmlOutput);
       } else {

@@ -74,7 +74,11 @@ public class CsrfChallengeSevenGetToken extends HttpServlet {
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
         String htmlOutput = new String("Your csrf Token for this Challenge is: ");
-        String userId = request.getParameter("userId").toString();
+        // The identifier used to come from the request, so this endpoint handed out any user's
+        // anti-CSRF token to anybody who asked for it, and a LIKE pattern returned all of them at
+        // once. A token another party can read protects nothing, so only the caller's own token is
+        // looked up and the identifier is matched exactly.
+        String userId = (String) ses.getAttribute("userStamp");
 
         conn =
             Database.getChallengeConnection(
@@ -83,8 +87,7 @@ public class CsrfChallengeSevenGetToken extends HttpServlet {
           log.debug("Preparing setCsrfChallengeSevenToken call");
           PreparedStatement callstmnt =
               conn.prepareStatement(
-                  "SELECT csrfTokenscol FROM csrfChallengeEnumTokens.csrfTokens WHERE userId LIKE"
-                      + " ?");
+                  "SELECT csrfTokenscol FROM csrfChallengeEnumTokens.csrfTokens WHERE userId = ?");
           callstmnt.setString(1, userId);
           log.debug("Executing setCsrfChallengeSevenTokenQuery");
           ResultSet rs = callstmnt.executeQuery();
