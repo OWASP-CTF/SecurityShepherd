@@ -75,7 +75,8 @@ public class CsrfChallengeTargetThree extends HttpServlet {
         if (expectedNonce == null || expectedNonce.isEmpty()) {
           expectedNonce = Hash.randomString();
           ses.setAttribute(nonceKey, expectedNonce);
-          out.write(csrfGenerics.getString("target.noTokenNewToken") + " " + expectedNonce + "<br><br>");
+          out.write(
+              csrfGenerics.getString("target.noTokenNewToken") + " " + expectedNonce + "<br><br>");
         }
         String plusId = request.getParameter("userid");
         log.debug("User Submitted - " + plusId);
