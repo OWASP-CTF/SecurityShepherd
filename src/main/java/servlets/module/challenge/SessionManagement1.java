@@ -81,7 +81,7 @@ public class SessionManagement1 extends HttpServlet {
         }
         log.debug("Sub schema role: " + subRole);
         String htmlOutput = null;
-        if (subRole.equals("administrator") || true) {
+        if (subRole.equals("administrator")) {
           log.debug("Challenge Complete");
           // Get key and add it to the output
           String userKey =
