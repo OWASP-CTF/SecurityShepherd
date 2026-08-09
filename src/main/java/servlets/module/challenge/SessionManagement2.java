@@ -49,8 +49,9 @@ public class SessionManagement2 extends HttpServlet {
 
   /**
    * The user attempts to use this function to sign into a sub schema. If they successfully sign in
-   * then they are able to retrieve the result key for the challenge. Any sign in that is refused is
-   * refused the same way, whether or not the submitted name belongs to an account.
+   * then they are able to retrieve the result key for the challenge If they sign in with a correct
+   * user name but incorrect password then the email address of the user will be returned in a error
+   * message
    *
    * @param subName Sub schema user name
    * @param subName Sub schema user password
@@ -79,7 +80,6 @@ public class SessionManagement2 extends HttpServlet {
 
       String htmlOutput = new String();
       log.debug(levelName + " Servlet accessed");
-      Connection conn = null;
       try {
         log.debug("Getting Challenge Parameters");
         Object nameObj = request.getParameter("subName");
@@ -100,7 +100,8 @@ public class SessionManagement2 extends HttpServlet {
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
 
-        conn = Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
+        Connection conn =
+            Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
         log.debug("Checking credentials");
         PreparedStatement callstmt;
 
@@ -111,7 +112,8 @@ public class SessionManagement2 extends HttpServlet {
 
         callstmt =
             conn.prepareStatement(
-                "SELECT userName FROM users WHERE userName = ? AND userPassword = SHA(?)");
+                "SELECT userName, userAddress FROM users WHERE userName = ? AND userPassword ="
+                    + " SHA(?)");
         callstmt.setString(1, subName);
         callstmt.setString(2, subPass);
         log.debug("Executing authUser");
@@ -128,25 +130,34 @@ public class SessionManagement2 extends HttpServlet {
                   + bundle.getString("response.welcome")
                   + " "
                   + Encode.forHtml(resultSet.getString(1))
-                  + "</h2><p>"
+                  + "</h2>"
+                  + "<p>"
                   + bundle.getString("response.resultKey")
                   + " <a>"
                   + userKey
-                  + "</a></p>";
+                  + "</a>"
+                  + "</p>";
         } else {
-          // One answer for every rejected sign-in. Naming the address the account recovers to
-          // told the caller both that the name exists and where to aim the reset form.
-          log.debug("Incorrect credentials");
+          log.debug("Incorrect credentials, checking if user name correct");
+          callstmt = conn.prepareStatement("SELECT userAddress FROM users WHERE userName = ?");
+          callstmt.setString(1, subName);
+          log.debug("Executing getAddress");
+          resultSet = callstmt.executeQuery();
+          // A failed sign-in says the same thing whether or not the name exists and never
+          // names the address on file. Telling the caller "that name is real, and here is the
+          // address behind it" handed over both halves of the reset flow's only input.
+          if (resultSet.next()) {
+            log.debug("User Found, but not disclosing the address behind the name");
+          }
           userAddress = bundle.getString("response.badUser") + "<br/>";
           htmlOutput = makeTable(userAddress, bundle);
         }
+        Database.closeConnection(conn);
         log.debug("Outputting HTML");
         out.write(htmlOutput);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
-      } finally {
-        Database.closeConnection(conn);
       }
     } else {
       log.error(levelName + " servlet accessed with no session");
