@@ -6,6 +6,7 @@ import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Date;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -16,6 +17,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -80,6 +82,7 @@ public class SessionManagement5SetToken extends HttpServlet {
 
       String htmlOutput = new String();
       log.debug(levelName + " Servlet Accessed");
+      Connection conn = null;
       try {
         log.debug("Getting Parameters");
         Object nameObj = request.getParameter("subUserName");
@@ -93,8 +96,7 @@ public class SessionManagement5SetToken extends HttpServlet {
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
 
-        Connection conn =
-            Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalFive");
+        conn = Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalFive");
         log.debug("Checking name");
         PreparedStatement callstmt;
 
@@ -110,22 +112,31 @@ public class SessionManagement5SetToken extends HttpServlet {
         // Is the username valid?
         if (resultSet.next()) {
           log.debug("User found");
-          htmlOutput =
-              bundle.getString("setToken.sentTo.1")
-                  + " '"
-                  + Encode.forHtml(userName)
-                  + "' "
-                  + bundle.getString("setToken.sentTo.2");
+          // Issue an unguessable token for this account and keep it server side. It is sent
+          // to the account holder out of band, never returned in this response.
+          ses.setAttribute("sessionManagement5Token", Hash.randomString());
+          ses.setAttribute("sessionManagement5TokenUser", resultSet.getString(1));
+          ses.setAttribute("sessionManagement5TokenIssued", Long.valueOf(new Date().getTime()));
         } else {
           log.debug("User not Found");
-          htmlOutput = bundle.getString("response.badUser") + "" + Encode.forHtml(userName);
         }
-        Database.closeConnection(conn);
+        // The same reply either way. Saying whether the account exists turns this into a list of
+        // the accounts worth attacking, which is the first step of the takeover it guards.
+        htmlOutput =
+            bundle.getString("setToken.sentTo.1")
+                + " '"
+                + Encode.forHtml(userName)
+                + "' "
+                + bundle.getString("setToken.sentTo.2");
         log.debug("Outputting HTML");
         out.write(htmlOutput);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
+      } finally {
+        // The close used to sit inside the try, so anything that threw after the connection was
+        // taken never gave it back.
+        Database.closeConnection(conn);
       }
     } else {
       log.error(levelName + " servlet accessed with no session");

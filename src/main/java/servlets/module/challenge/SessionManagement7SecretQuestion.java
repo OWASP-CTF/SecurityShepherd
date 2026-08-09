@@ -1,7 +1,6 @@
 package servlets.module.challenge;
 
 import dbProcs.Database;
-import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -19,8 +18,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.owasp.encoder.Encode;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -62,6 +59,26 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
   };
 
   /**
+   * A secret question draws its answer from a small, shared, guessable pool - this challenge's is
+   * the seven flowers listed above - so an unlimited number of tries turns the question into a
+   * lookup table. The session is given a fixed allowance and every submission spends one of it,
+   * whether the answer was plausible or not.
+   */
+  private static final int MAX_ANSWER_ATTEMPTS = 5;
+
+  private static final String ANSWER_ATTEMPTS_ATTRIBUTE = "sessionManagement7SecretAnswerAttempts";
+
+  private static boolean answerAllowanceSpent(HttpSession ses) {
+    Object counted = ses.getAttribute(ANSWER_ATTEMPTS_ATTRIBUTE);
+    int attempts = (counted instanceof Integer) ? ((Integer) counted).intValue() : 0;
+    if (attempts >= MAX_ANSWER_ATTEMPTS) {
+      return true;
+    }
+    ses.setAttribute(ANSWER_ATTEMPTS_ATTRIBUTE, Integer.valueOf(attempts + 1));
+    return false;
+  }
+
+  /**
    * A user submits a username and answer, these values are checked against the DB to see if they
    * are valid
    *
@@ -101,12 +118,20 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
         Object emailObj = request.getParameter("subEmail");
         String subEmail = Validate.validateParameter(emailObj, 60);
         log.debug("subEmail = " + subEmail);
+
+        if (answerAllowanceSpent(ses)) {
+          log.error("Refused a secret answer: this session has used its allowance of attempts");
+          out.write(bundle.getString("question.tooManyAttempts"));
+          return;
+        }
+
+        Connection conn = null;
         if (validAnswer(subAns)) {
           log.debug("Submitted answer is a possible valid answer");
           String ApplicationRoot = getServletContext().getRealPath("");
           try {
             if (Validate.isValidEmailAddress(subEmail) && subAns.length() > 5) {
-              Connection conn =
+              conn =
                   Database.getChallengeConnection(
                       ApplicationRoot, "BrokenAuthAndSessMangChalFlowers");
               log.debug("Checking Secret Answer");
@@ -118,23 +143,18 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
               log.debug("Running secret Answer Check");
               ResultSet rs = callstmt.executeQuery();
               if (rs.next()) {
+                // Answering the secret question confirms who the caller claims to be and nothing
+                // more. It is a shared, guessable fact, not a credential, so it cannot stand in
+                // for signing in to the account - and it certainly cannot earn the key that is
+                // only given for holding the account's real authentication.
+                // The reply confirms the answer and nothing else. Naming the account handed
+                // the caller a list of who is worth attacking for every address they guessed at.
                 log.debug("Correct Answer Submitted");
-                // Get key and add it to the output
-                String userKey =
-                    Hash.generateUserSolution(
-                        Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
-                        (String) ses.getAttribute("userName"));
                 htmlOutput =
                     "<h2 class='title'>"
                         + bundle.getString("response.welcome")
-                        + " "
-                        + Encode.forHtml(rs.getString(1))
-                        + "</h2>"
-                        + "<p>"
-                        + bundle.getString("response.resultKey")
-                        + " <a>"
-                        + userKey
-                        + "</a>"
+                        + "</h2><p>"
+                        + bundle.getString("question.whoAreYou")
                         + "</p>";
               } else {
                 log.debug("Bad Answer Submitted");
@@ -146,7 +166,6 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
                             + bundle.getString("question.whoAreYou")
                             + "</p>");
               }
-              Database.closeConnection(conn);
             } else {
               log.debug("Invalid data submitted");
               htmlOutput = new String("<b>" + bundle.getString("question.invalidData") + ": </b>");
@@ -158,6 +177,10 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
             }
           } catch (SQLException e) {
             log.error(levelName + " SQL Error: " + e.toString());
+          } finally {
+            // The close used to sit on the success path only, so a SQL error kept the connection
+            // out of the pool for good.
+            Database.closeConnection(conn);
           }
         } else {
           log.debug("Invalid answer submitted for any user, skipping rest of function");
@@ -212,13 +235,16 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
       log.debug(levelName + " Servlet accessed");
       try {
         log.debug("Getting Cookies");
+        // A request that carries no cookies at all hands back null here, not an empty array.
+        // Walking it unguarded threw out of the check instead of failing it.
         Cookie userCookies[] = request.getCookies();
-        int i = 0;
         Cookie theCookie = null;
-        for (i = 0; i < userCookies.length; i++) {
-          if (userCookies[i].getName().compareTo("ac") == 0) {
-            theCookie = userCookies[i];
-            break; // End Loop, because we found the token
+        if (userCookies != null) {
+          for (int i = 0; i < userCookies.length; i++) {
+            if (userCookies[i].getName().compareTo("ac") == 0) {
+              theCookie = userCookies[i];
+              break; // End Loop, because we found the token
+            }
           }
         }
         if (theCookie != null) {

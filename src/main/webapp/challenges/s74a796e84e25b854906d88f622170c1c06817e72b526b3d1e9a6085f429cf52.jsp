@@ -83,7 +83,7 @@
 		<h2 class="title"><%= bundle.getString("title.csrf1") %></h2>
 		<p>
 			<%= bundle.getString("challenge.intro") %>
-			<br /> <br /> <a> GET /user/csrfchallengeone/plusplus?userid=<%= bundle.getString("challenge.userIdExample") %>
+			<br /> <br /> <a> POST /user/csrfchallengeone/plusplus?userid=<%= bundle.getString("challenge.userIdExample") %>
 			</a> <br /> <br />
 			<%= bundle.getString("challenge.whereIdIsUserBeenIncremented.1") %>&nbsp;<%= bundle.getString("challenge.userIdExample") %>&nbsp;<%= bundle.getString("challenge.whereIdIsUserBeenIncremented.2") %>&nbsp;<%= bundle.getString("challenge.yourIdIs") %>
 			<a><%= userId %></a><%= bundle.getString("challenge.yourIdIs.1") %>
@@ -129,6 +129,9 @@
 				</tr>
 			</table>
 		</form>
+
+		<input type="hidden" id="csrfChallengeNonce"
+			value="<%= Encode.forHtmlAttribute(CsrfNonce.getNonce(ses)) %>" />
 
 		<div id="resultsDiv">
 			<%= Getter.getCsrfForumWithImg(ApplicationRoot, userClass, Getter.getModuleIdFromHash(ApplicationRoot, levelHash), bundle) %>

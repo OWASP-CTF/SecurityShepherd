@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import utils.CsrfNonce;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -40,13 +41,19 @@ public class CsrfChallengeTargetOne extends HttpServlet {
   private static final Logger log = LogManager.getLogger(CsrfChallengeTargetOne.class);
   private static String levelName = "CSRF 1 Target";
 
+  /** Incrementing a user is a state change, so it must not be reachable with a GET. */
+  public void doGet(HttpServletRequest request, HttpServletResponse response)
+      throws ServletException, IOException {
+    response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
+  }
+
   /**
-   * CSRF vulnerable function that can be used by users to force other users to mark their CSRF
-   * challenge One as complete.
+   * Function that can be used by users to mark their CSRF challenge One as complete. The request
+   * must carry the submitting session's CSRF nonce.
    *
    * @param userId User identifier to be incremented
    */
-  public void doGet(HttpServletRequest request, HttpServletResponse response)
+  public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
     // Setting IpAddress To Log and taking header for original IP if forwarded from proxy
     ShepherdLogManager.setRequestIp(request.getRemoteAddr(), request.getHeader("X-Forwarded-For"));
@@ -72,7 +79,9 @@ public class CsrfChallengeTargetOne extends HttpServlet {
         String plusId = request.getParameter("userid");
         log.debug("User Submitted - " + plusId);
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId)) {
+        if (!CsrfNonce.isValid(ses, request.getParameter("csrfToken"))) {
+          log.debug("Request did not carry this session's CSRF nonce");
+        } else if (!userId.equals(plusId)) {
           String ApplicationRoot = getServletContext().getRealPath("");
           String userName = (String) ses.getAttribute("userName");
           String attackerName = Getter.getUserName(ApplicationRoot, plusId);
