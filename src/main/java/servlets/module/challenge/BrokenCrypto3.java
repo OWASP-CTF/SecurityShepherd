@@ -3,9 +3,9 @@ package servlets.module.challenge;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.util.Arrays;
-import java.security.GeneralSecurityException;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.crypto.Cipher;
@@ -16,7 +16,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
@@ -147,5 +146,5 @@ public class BrokenCrypto3 extends HttpServlet {
         new SecretKeySpec(keyMaterial, "AES"),
         new GCMParameterSpec(128, nonce));
     return new String(cipher.doFinal(authenticatedCipherText), StandardCharsets.UTF_8);
-  }}
-
+  }
+}
