@@ -54,16 +54,16 @@ public class SessionManagement8 extends HttpServlet {
 
   /**
    * Role required to view the result key. No code path in this servlet ever assigns this role to
-   * {@link #ROLE_SESSION_KEY} - every visitor starts and stays at {@link #ROLE_STANDARD} - so
-   * there is no way to reach this via request data.
+   * {@link #ROLE_SESSION_KEY} - every visitor starts and stays at {@link #ROLE_STANDARD} - so there
+   * is no way to reach this via request data.
    */
   private static final String ROLE_ELEVATED = "superuser";
 
   /**
-   * The tracking cookie "challengeRole" is client side, unauthenticated state: it is only ever
-   * read here to notice tampering for logging purposes. Whether this visitor may see the result
-   * key is decided from {@link #ROLE_SESSION_KEY}, an attribute this servlet controls entirely on
-   * the server, so nothing in the request can promote a visitor to a privileged role.
+   * The tracking cookie "challengeRole" is client side, unauthenticated state: it is only ever read
+   * here to notice tampering for logging purposes. Whether this visitor may see the result key is
+   * decided from {@link #ROLE_SESSION_KEY}, an attribute this servlet controls entirely on the
+   * server, so nothing in the request can promote a visitor to a privileged role.
    *
    * @param returnUserRole Red herring
    * @param returnPassword Red herring

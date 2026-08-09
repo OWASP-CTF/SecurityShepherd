@@ -32,7 +32,9 @@ class SessionManagement8Test {
     Map<String, Object> attrs = new HashMap<>();
     attrs.put("userName", "regularPlayer");
     attrs.put("userRole", "player");
-    doAnswer(inv -> attrs.get(inv.getArgument(0, String.class))).when(session).getAttribute(anyString());
+    doAnswer(inv -> attrs.get(inv.getArgument(0, String.class)))
+        .when(session)
+        .getAttribute(anyString());
     doAnswer(
             inv -> {
               attrs.put(inv.getArgument(0, String.class), inv.getArgument(1));
@@ -104,7 +106,8 @@ class SessionManagement8Test {
     Cookie baseline = new Cookie("challengeRole", "LmH6nmbC");
     String out = runServlet(fakeRequest(session, new Cookie[] {baseline}));
 
-    assertTrue(out.contains("You're not a privileged User"), () -> "actual output was: [" + out + "]");
+    assertTrue(
+        out.contains("You're not a privileged User"), () -> "actual output was: [" + out + "]");
     assertFalse(out.contains("Welcome super user"));
   }
 
@@ -113,6 +116,7 @@ class SessionManagement8Test {
     HttpSession session = fakeAuthenticatedSession();
     String out = runServlet(fakeRequest(session, null));
 
-    assertTrue(out.contains("You're not a privileged User"), () -> "actual output was: [" + out + "]");
+    assertTrue(
+        out.contains("You're not a privileged User"), () -> "actual output was: [" + out + "]");
   }
 }
