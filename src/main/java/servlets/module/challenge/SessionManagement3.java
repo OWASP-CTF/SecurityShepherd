@@ -47,8 +47,29 @@ public class SessionManagement3 extends HttpServlet {
       "t193c6634f049bcf65cdcac72269eeac25dbb2a6887bdb38873e57d0ef447bc3";
   private static String levelResult = "e62008dc47f5eb065229d48963";
 
+  /** Session attribute holding the sub application account this session is signed in as. */
+  private static final String SUB_USER_ATTRIBUTE = "sessionManagement3SubUser";
+
+  /** The sub application account the challenge page hands out to every player. */
+  private static final String DEFAULT_SUB_USER = "guest12";
+
   public static String getLevelHash() {
     return levelHash;
+  }
+
+  /**
+   * Returns the sub application account bound to the submitted session. If the user has not signed
+   * into the sub application yet, the account the challenge hands out is returned.
+   *
+   * @param ses HttpSession of the Security Shepherd user
+   * @return The sub application user name this session is allowed to act on
+   */
+  public static String getSubUserFromSession(HttpSession ses) {
+    Object subUser = ses.getAttribute(SUB_USER_ATTRIBUTE);
+    if (subUser == null) {
+      return DEFAULT_SUB_USER;
+    }
+    return subUser.toString();
   }
 
   /**
@@ -132,6 +153,8 @@ public class SessionManagement3 extends HttpServlet {
             ResultSet resultSet2 = callstmt.executeQuery();
             if (resultSet2.next()) {
               log.debug("Successful Admin Login");
+              // Bind the sub application identity to server side session state
+              ses.setAttribute(SUB_USER_ATTRIBUTE, resultSet2.getString(1));
               // Get key and add it to the output
               String userKey =
                   Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
@@ -158,6 +181,8 @@ public class SessionManagement3 extends HttpServlet {
             }
           } else {
             log.debug("Successful Guest Login");
+            // Bind the sub application identity to server side session state
+            ses.setAttribute(SUB_USER_ATTRIBUTE, resultSet.getString(1));
             htmlOutput =
                 makeTable(bundle)
                     + "<h2 class='title'>"
