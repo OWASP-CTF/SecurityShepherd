@@ -1,6 +1,7 @@
 package servlets.module.challenge;
 
 import dbProcs.Database;
+import dbProcs.Getter;
 import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -101,17 +102,19 @@ public class CsrfChallengeTargetFour extends HttpServlet {
         log.debug("csrfToken Submitted - '" + csrfToken + "'");
         log.debug("storedCsrf Token is - '" + storedToken + "'");
 
-        if (!userId.equals(plusId)) {
-          if (validCsrfToken(ApplicationRoot, csrfToken, userId)) {
-            // A request can name any user, and nothing in it establishes that the named user
-            // meant this to happen. Acting on that identifier is what made this endpoint
-            // forgeable, so state is no longer changed on behalf of anybody else.
-            log.error(levelName + " refused a state change requested on behalf of another user");
-          } else {
-            log.debug("User " + plusId + " CSRF attack failed due to invalid nonce");
-          }
+        // The per-session nonce issued to this user is the anti-CSRF token: it is stored server
+        // side against their userId and a cross-site page cannot read it. Require both a nonce that
+        // belongs to this session and that the request only acts on the session owner's own
+        // counter,
+        // so a forged cross-site request can no longer drive the state change.
+        if (validCsrfToken(ApplicationRoot, csrfToken, userId) && userId.equals(plusId)) {
+          String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
+          result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, userId);
         } else {
-          log.debug("User " + userId + " is attacking themselves");
+          log.debug(
+              "User "
+                  + plusId
+                  + " CSRF attempt refused due to invalid nonce or cross-user request");
         }
 
         if (result) {

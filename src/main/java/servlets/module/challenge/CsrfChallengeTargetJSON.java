@@ -1,5 +1,7 @@
 package servlets.module.challenge;
 
+import dbProcs.Getter;
+import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;
@@ -72,6 +74,15 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
 
+        // Require a non-simple JSON content type. A cross-site page can auto-submit a simple form
+        // POST, but it cannot set application/json without triggering a pre-flighted CORS request,
+        // so rejecting anything else removes the forgeable form-post entry point.
+        String contentType = request.getContentType();
+        if (contentType == null || !contentType.toLowerCase().contains("application/json")) {
+          response.sendError(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE);
+          return;
+        }
+
         log.debug("Getting JSON String");
         String jsonData = extractPostRequestBody(request);
         log.debug("POST body: " + jsonData);
@@ -81,13 +92,24 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
         log.debug("User Submitted - " + plusId);
         Cookie tokenCookie = Validate.getToken(request.getCookies());
         Object tokenParmeter = json.optString("csrfToken", request.getParameter("csrfToken"));
-        String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId) && Validate.validateTokens(tokenCookie, tokenParmeter)) {
-          // A request can name any user, and nothing in it establishes that the named user
-          // meant this to happen. Acting on that identifier is what made this endpoint
-          // forgeable, so state is no longer changed on behalf of anybody else.
-          log.error(levelName + " refused a state change requested on behalf of another user");
+        // The state change rode on the session cookie alone, so an off-site page could trigger it
+        // in the victim's browser. Require the per-session anti-CSRF token, which a cross-site
+        // request cannot read, before performing the counter increment.
+        if (!Validate.validateTokens(tokenCookie, tokenParmeter)) {
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
         }
+        String userId = (String) ses.getAttribute("userStamp");
+        // Only the token-bearing owner of this session may increment their own counter; nothing in
+        // a request naming another user establishes that user's intent.
+        if (!userId.equals(plusId)) {
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
+        }
+        String applicationRoot = getServletContext().getRealPath("");
+        String moduleHash = CsrfChallengeJSON.getLevelHash();
+        String moduleId = Getter.getModuleIdFromHash(applicationRoot, moduleHash);
+        result = Setter.updateCsrfCounter(applicationRoot, moduleId, userId);
 
         if (result) {
           out.write(csrfGenerics.getString("target.incrementSuccess"));
