@@ -1,7 +1,6 @@
 package servlets.module.challenge;
 
 import dbProcs.Database;
-import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -20,7 +19,7 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
-import utils.Hash;
+import utils.SessionManagementRecoveryGuard;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -61,12 +60,28 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
     new String("Ghost Orchid")
   };
 
+  /** Namespace for this challenge's recovery state inside the player's HttpSession. */
+  private static final String CHALLENGE_KEY = "sessionManagement7";
+
   /**
-   * A user submits a username and answer, these values are checked against the DB to see if they
-   * are valid
+   * Recovery response. Identical for every outcome so that the endpoint is not an oracle for
+   * whether an account exists or whether a secret answer was correct. Hard coded English, in the
+   * same way as the hard coded question string below, because the i18n bundle for this challenge
+   * has no key for this message.
+   */
+  private static final String RECOVERY_RESPONSE =
+      "If those details match an account, password reset instructions have been sent to the email"
+          + " address on file. Account recovery can never sign you in.";
+
+  /**
+   * A user submits an email address and secret answer. The answer is checked against the DB with a
+   * bound parameter, but a correct answer never authenticates the caller and never returns a result
+   * key - a knowledge based answer is not an authenticator. The submission must carry the single
+   * use recovery token this session was issued, and attempts are capped per session.
    *
    * @param subEmail Sub schema user email to search DB with
    * @param subAnswer Sub schema user secret answer to check against the DB
+   * @param recoveryToken Single use recovery token issued by the secret question request
    */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -94,80 +109,64 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
       log.debug(levelName + " Servlet accessed");
       try {
         log.debug("Getting Challenge Parameters");
+        String subAns = Validate.validateParameter(request.getParameter("subAnswer"), 35);
+        String subEmail = Validate.validateParameter(request.getParameter("subEmail"), 60);
+        String subToken = Validate.validateParameter(request.getParameter("recoveryToken"), 128);
 
-        Object ansObj = request.getParameter("subAnswer");
-        String subAns = Validate.validateParameter(ansObj, 35);
-        log.debug("subAnswer = " + subAns);
-        Object emailObj = request.getParameter("subEmail");
-        String subEmail = Validate.validateParameter(emailObj, 60);
-        log.debug("subEmail = " + subEmail);
-        if (validAnswer(subAns)) {
-          log.debug("Submitted answer is a possible valid answer");
-          String ApplicationRoot = getServletContext().getRealPath("");
-          try {
-            if (Validate.isValidEmailAddress(subEmail) && subAns.length() > 5) {
-              Connection conn =
-                  Database.getChallengeConnection(
-                      ApplicationRoot, "BrokenAuthAndSessMangChalFlowers");
-              log.debug("Checking Secret Answer");
-              PreparedStatement callstmt =
-                  conn.prepareStatement(
-                      "SELECT userName FROM users WHERE userAddress = ? AND secretAnswer = ?");
-              callstmt.setString(1, subEmail);
-              callstmt.setString(2, subAns);
-              log.debug("Running secret Answer Check");
-              ResultSet rs = callstmt.executeQuery();
-              if (rs.next()) {
-                log.debug("Correct Answer Submitted");
-                // Get key and add it to the output
-                String userKey =
-                    Hash.generateUserSolution(
-                        Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
-                        (String) ses.getAttribute("userName"));
-                htmlOutput =
-                    "<h2 class='title'>"
-                        + bundle.getString("response.welcome")
-                        + " "
-                        + Encode.forHtml(rs.getString(1))
-                        + "</h2>"
-                        + "<p>"
-                        + bundle.getString("response.resultKey")
-                        + " <a>"
-                        + userKey
-                        + "</a>"
-                        + "</p>";
-              } else {
-                log.debug("Bad Answer Submitted");
-                htmlOutput =
-                    new String(
-                        "<h2 class='title'>"
-                            + bundle.getString("question.badAnswer")
-                            + "</h2><p>"
-                            + bundle.getString("question.whoAreYou")
-                            + "</p>");
-              }
-              Database.closeConnection(conn);
-            } else {
-              log.debug("Invalid data submitted");
-              htmlOutput = new String("<b>" + bundle.getString("question.invalidData") + ": </b>");
-              if (subAns.length() < 5) {
-                htmlOutput += bundle.getString("question.invalidAns");
-              } else {
-                htmlOutput += bundle.getString("question.invalidEmail");
-              }
-            }
-          } catch (SQLException e) {
-            log.error(levelName + " SQL Error: " + e.toString());
+        String ApplicationRoot = getServletContext().getRealPath("");
+
+        if (subEmail.isEmpty() || !Validate.isValidEmailAddress(subEmail) || subAns.length() < 5) {
+          log.debug("Invalid data submitted");
+          htmlOutput = new String("<b>" + bundle.getString("question.invalidData") + ": </b>");
+          if (subAns.length() < 5) {
+            htmlOutput += bundle.getString("question.invalidAns");
+          } else {
+            htmlOutput += bundle.getString("question.invalidEmail");
           }
         } else {
-          log.debug("Invalid answer submitted for any user, skipping rest of function");
+          // Uniform response: recovery never confirms an account and never authenticates.
           htmlOutput =
-              new String(
-                  "<h2 class='title'>"
-                      + bundle.getString("question.badAnswer")
-                      + "</h2><p>"
-                      + bundle.getString("question.whoAreYou")
-                      + "</p>");
+              "<h2 class='title'>"
+                  + bundle.getString("response.welcome")
+                  + "</h2><p>"
+                  + RECOVERY_RESPONSE
+                  + "</p>";
+          if (SessionManagementRecoveryGuard.isLockedOut(ses, CHALLENGE_KEY)) {
+            log.error(
+                "Recovery attempt limit reached by " + ses.getAttribute("userName").toString());
+          } else {
+            SessionManagementRecoveryGuard.recordAttempt(ses, CHALLENGE_KEY);
+            if (!SessionManagementRecoveryGuard.isValidToken(
+                ses, CHALLENGE_KEY, subToken, subEmail)) {
+              log.error("Secret answer submitted without a valid session bound recovery token");
+            } else if (!validAnswer(subAns)) {
+              log.debug("Invalid answer submitted for any user, skipping rest of function");
+            } else {
+              try (Connection conn =
+                      Database.getChallengeConnection(
+                          ApplicationRoot, "BrokenAuthAndSessMangChalFlowers");
+                  PreparedStatement callstmt =
+                      conn.prepareStatement(
+                          "SELECT userName FROM users WHERE userAddress = ? AND secretAnswer = ?")) {
+                callstmt.setString(1, subEmail);
+                callstmt.setString(2, subAns);
+                log.debug("Running secret Answer Check");
+                try (ResultSet rs = callstmt.executeQuery()) {
+                  if (rs.next()) {
+                    // A knowledge based answer is not an authenticator. The single use token is
+                    // burned and a reset mail would be issued out of band. No session is granted
+                    // and no result key is returned from the recovery path.
+                    log.debug("Correct answer submitted, reset mail would be issued");
+                    SessionManagementRecoveryGuard.consumeToken(ses, CHALLENGE_KEY);
+                  } else {
+                    log.debug("Bad Answer Submitted");
+                  }
+                }
+              } catch (SQLException e) {
+                log.error(levelName + " SQL Error: " + e.toString());
+              }
+            }
+          }
         }
         log.debug("Outputting HTML");
         out.write(htmlOutput);
@@ -181,8 +180,9 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
   }
 
   /**
-   * A user submits an email address to get that user's Secret QUestion. This is vulnerable to SQL
-   * injection
+   * A user submits an email address to get that user's Secret Question. A single use recovery token
+   * is issued alongside the question so that an answer can only be submitted by the session that
+   * asked for the question.
    *
    * @param subEmail Sub schema user email to search DB with
    */
@@ -213,24 +213,33 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
       try {
         log.debug("Getting Cookies");
         Cookie userCookies[] = request.getCookies();
-        int i = 0;
         Cookie theCookie = null;
-        for (i = 0; i < userCookies.length; i++) {
-          if (userCookies[i].getName().compareTo("ac") == 0) {
-            theCookie = userCookies[i];
-            break; // End Loop, because we found the token
+        if (userCookies != null) {
+          for (int i = 0; i < userCookies.length; i++) {
+            if (userCookies[i].getName().compareTo("ac") == 0) {
+              theCookie = userCookies[i];
+              break; // End Loop, because we found the token
+            }
           }
         }
         if (theCookie != null) {
-          log.debug("Cookie value: " + theCookie.getValue());
           log.debug("Cookie value: " + theCookie.getValue());
           byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
           String decodedCookie = new String(decodedCookieBytes, "UTF-8");
           log.debug("Decoded Cookie: " + decodedCookie);
           if (decodedCookie.equals("doNotReturnAnswers")) // Untampered Cookie
           {
+            String subEmail = Validate.validateParameter(request.getParameter("subEmail"), 60);
             // Question not translated as DB will only mark English answers as correct
             htmlOutput = new String("What is your favourite flower?");
+            if (!subEmail.isEmpty() && Validate.isValidEmailAddress(subEmail)) {
+              String recoveryToken =
+                  SessionManagementRecoveryGuard.issueToken(ses, CHALLENGE_KEY, subEmail);
+              htmlOutput +=
+                  "<input type='hidden' id='recoveryToken' value='"
+                      + Encode.forHtmlAttribute(recoveryToken)
+                      + "'/>";
+            }
           } else {
             log.debug("Tampered cookie detected");
             htmlOutput = bundle.getString("response.configError");
