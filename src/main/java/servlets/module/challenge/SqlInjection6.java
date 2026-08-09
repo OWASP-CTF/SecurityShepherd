@@ -17,7 +17,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
 import utils.Hash;
-import utils.ResultLeakGuard;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -91,11 +90,8 @@ public class SqlInjection6 extends HttpServlet {
             conn.prepareStatement("SELECT userName FROM users WHERE userPin = ?");
         prepstmt.setString(1, userPin);
         ResultSet users = prepstmt.executeQuery();
-        String levelAnswer = ResultLeakGuard.lookupAnswer(applicationRoot, levelHash);
         try {
-          // A row that carries this module's own answer must never be echoed back through this
-          // lookup, no matter what pin reached it - guessed, brute-forced, or otherwise.
-          if (users.next() && !ResultLeakGuard.leaksAnswer(levelAnswer, users.getString(1))) {
+          if (users.next()) {
             htmlOutput =
                 "<h3>"
                     + bundle.getString("response.welcomeBack")
