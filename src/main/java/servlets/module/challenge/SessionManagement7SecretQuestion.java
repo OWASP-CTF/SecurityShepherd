@@ -49,17 +49,10 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
   private static String levelName = "Session Management Challenge 7 (Secret Question)";
   private static String levelHash =
       "269d55bc0e0ff635dcaeec8533085e5eae5d25e8646dcd4b05009353c9cf9c80";
-  // To catch most requests before calling the DB, the in comming Answers must be one of the
-  // following flowers
-  private static String possibleAnswers[] = {
-    new String("Jade Vine"),
-    new String("Corpse Flower"),
-    new String("Gibraltar Campion"),
-    new String("Franklin Tree"),
-    new String("Middlemist Red"),
-    new String("Chocolate Cosmos"),
-    new String("Ghost Orchid")
-  };
+  // The answers used to be pre-checked against a list of seven flowers held here, which told
+  // anyone reading the source what every account's answer had to be.
+  private static final String BAD_ANSWERS = "sessionManagement7BadAnswers";
+  private static final int BAD_ANSWER_LIMIT = 3;
 
   /**
    * A user submits a username and answer, these values are checked against the DB to see if they
@@ -101,8 +94,7 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
         Object emailObj = request.getParameter("subEmail");
         String subEmail = Validate.validateParameter(emailObj, 60);
         log.debug("subEmail = " + subEmail);
-        if (validAnswer(subAns)) {
-          log.debug("Submitted answer is a possible valid answer");
+        if (badAnswers(ses) < BAD_ANSWER_LIMIT) {
           String ApplicationRoot = getServletContext().getRealPath("");
           try {
             if (Validate.isValidEmailAddress(subEmail) && subAns.length() > 5) {
@@ -138,6 +130,7 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
                         + "</p>";
               } else {
                 log.debug("Bad Answer Submitted");
+                ses.setAttribute(BAD_ANSWERS, badAnswers(ses) + 1);
                 htmlOutput =
                     new String(
                         "<h2 class='title'>"
@@ -160,13 +153,13 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
             log.error(levelName + " SQL Error: " + e.toString());
           }
         } else {
-          log.debug("Invalid answer submitted for any user, skipping rest of function");
+          log.debug("Session has spent its secret answer attempts");
           htmlOutput =
               new String(
                   "<h2 class='title'>"
                       + bundle.getString("question.badAnswer")
                       + "</h2><p>"
-                      + bundle.getString("question.whoAreYou")
+                      + bundle.getString("question.noAttemptsLeft")
                       + "</p>");
         }
         log.debug("Outputting HTML");
@@ -250,12 +243,8 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
     }
   }
 
-  private static boolean validAnswer(String submittedAns) {
-    for (int i = 0; i < possibleAnswers.length; i++) {
-      if (possibleAnswers[i].equalsIgnoreCase(submittedAns)) {
-        return true;
-      }
-    }
-    return false;
+  private static int badAnswers(HttpSession ses) {
+    Object counted = ses.getAttribute(BAD_ANSWERS);
+    return counted instanceof Integer ? (Integer) counted : 0;
   }
 }
