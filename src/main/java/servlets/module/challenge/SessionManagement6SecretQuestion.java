@@ -9,6 +9,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -45,6 +48,34 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
   private static String levelName = "Session Management Challenge Six (Secret Question)";
   private static String levelHash =
       "b5e1020e3742cf2c0880d4098146c4dde25ebd8ceab51807bad88ff47c316ece";
+
+  /**
+   * Answers seen so far, keyed by the account being recovered. A secret question draws its answer
+   * from a space small enough to walk through by hand, so the only thing that makes it survivable
+   * is a limit on how many times it may be tried.
+   */
+  private static final ConcurrentMap<String, AtomicInteger> answerAttempts =
+      new ConcurrentHashMap<String, AtomicInteger>();
+
+  /** Answers an account will tolerate before recovery is refused outright. */
+  private static final int MAX_ANSWER_ATTEMPTS = 3;
+
+  private static boolean answerAttemptsExhausted(String account) {
+    AtomicInteger attempts = answerAttempts.get(account);
+    return attempts != null && attempts.get() >= MAX_ANSWER_ATTEMPTS;
+  }
+
+  private static void recordAnswerAttempt(String account) {
+    AtomicInteger attempts = answerAttempts.get(account);
+    if (attempts == null) {
+      attempts = new AtomicInteger(0);
+      AtomicInteger existing = answerAttempts.putIfAbsent(account, attempts);
+      if (existing != null) {
+        attempts = existing;
+      }
+    }
+    attempts.incrementAndGet();
+  }
 
   /**
    * A user submits a username and answer, these values are checked against the DB to see if they
@@ -88,7 +119,17 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
 
         String ApplicationRoot = getServletContext().getRealPath("");
         try {
-          if (Validate.isValidEmailAddress(subEmail) && subAns.length() > 5) {
+          if (answerAttemptsExhausted(subEmail)) {
+            log.error("Secret answer attempts exhausted for the submitted account");
+            htmlOutput =
+                new String(
+                    "<h2 class='title'>"
+                        + bundle.getString("question.badAnswer")
+                        + "</h2><p>"
+                        + bundle.getString("question.whoAreYou")
+                        + "</p>");
+          } else if (Validate.isValidEmailAddress(subEmail) && subAns.length() > 5) {
+            recordAnswerAttempt(subEmail);
             Connection conn =
                 Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalSix");
             log.debug("Checking Secret Answer");
