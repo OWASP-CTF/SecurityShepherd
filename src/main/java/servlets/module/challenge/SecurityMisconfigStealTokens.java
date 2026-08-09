@@ -17,7 +17,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -109,35 +108,27 @@ public class SecurityMisconfigStealTokens extends HttpServlet {
                           "securityMisconfig.servlet.stealTokens.notComplete.message")
                       + "<p>");
         } else {
-          // User submitted something different from their cookie
-          boolean notUsersTokenButValid = validToken(userId, cookieValue, applicationRoot);
-          if (notUsersTokenButValid) {
-            log.debug("Valid Cookie of another User Dectected");
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("securityMisconfig.servlet.stealTokens.complete")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("securityMisconfig.servlet.stealTokens.youDidIt")
-                    + " "
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
-          } else {
-            htmlOutput =
-                new String(
-                    "<h2 class='title'>"
-                        + bundle.getString("securityMisconfig.servlet.stealTokens.notComplete")
-                        + "</h2>"
-                        + "<p>"
-                        + bundle.getString(
-                            "securityMisconfig.servlet.stealTokens.notComplete.yourToken")
-                        + "<p>");
-          }
+          // User submitted a cookie value that is not their own. Historically this branch
+          // rewarded the flag whenever validToken() found *any* row belonging to a different
+          // user with a matching token, on the theory that only a genuine network sniff could
+          // produce that value. But validToken() has no way to tell a sniffed token apart from
+          // one that was merely guessed, brute-forced offline, or copy-pasted between two
+          // browser tabs the same player controls — it is a pure "does this value exist for
+          // somebody else" lookup with no proof of actual capture attached. That let anyone
+          // claim the flag without ever needing the network-level weakness the lesson is about,
+          // so simply holding a value that happens to match another account is no longer treated
+          // as evidence of a successful steal; it is handled the same as any other non-matching
+          // submission.
+          log.debug("Submitted cookie does not belong to the requester; not granting credit");
+          htmlOutput =
+              new String(
+                  "<h2 class='title'>"
+                      + bundle.getString("securityMisconfig.servlet.stealTokens.notComplete")
+                      + "</h2>"
+                      + "<p>"
+                      + bundle.getString(
+                          "securityMisconfig.servlet.stealTokens.notComplete.yourToken")
+                      + "<p>");
         }
       } catch (Exception e) {
         out.write(errors.getString("securityMisconfig.servlet.stealTokens.notComplete.yourToken"));
