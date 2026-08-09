@@ -100,6 +100,8 @@ public class SLS extends HttpServlet {
           ses = request.getSession(true);
           // Remove cookie
           Cookie emptyCookie = new Cookie("token", "");
+          // Match the flags the token was issued with so this actually replaces it in the browser.
+          emptyCookie.setHttpOnly(true);
           emptyCookie.setPath("/");
           response.addCookie(emptyCookie);
           log.debug("User Logged Out");

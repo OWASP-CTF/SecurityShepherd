@@ -42,7 +42,7 @@ public class BrokenCrypto3 extends HttpServlet {
   public static String levelHash =
       "2da053b4afb1530a500120a49a14d422ea56705a7e3fc405a77bc269948ccae1";
   public static String levelResult =
-      "thisisthesecurityshepherdabcencryptionkey"; // Is used as encryption key in this level
+      "99LTSSJ2JYZY2QY4G2F8KLJZZ9V5UC491ZCF3DGTYX"; // Is used as encryption key in this level
 
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -95,40 +95,49 @@ public class BrokenCrypto3 extends HttpServlet {
   }
 
   /**
-   * Decrypts the supplied string value using the submitted key
+   * Decrypts the supplied string value using the submitted key.
    *
-   * @param hash The cipher text to be decrypted
-   * @param key The encryption key
+   * <p>Previously this used a hand-rolled repeating-key XOR "cipher" with no integrity check: any
+   * attacker-chosen ciphertext was happily decrypted with the server's secret key, so submitting a
+   * known plaintext (e.g. a run of space characters) let an attacker recover the key byte-by-byte
+   * from the output (a classic known-plaintext attack against XOR keystream reuse). Authenticated
+   * AES-GCM decryption closes this: tampered/foreign ciphertext fails the authentication tag check
+   * and throws instead of silently returning attacker-controlled keystream material, so the key can
+   * no longer be recovered via this oracle.
+   *
+   * @param hash The cipher text to be decrypted (base64 of a 12-byte GCM nonce followed by the
+   *     GCM-encrypted payload and authentication tag)
+   * @param key The encryption key (hashed with SHA-256 to derive a proper 256-bit AES key)
    * @return The plain text revealed from the decryption
-   * @throws Exception Throws illegal state Exception
+   * @throws Exception Thrown if the ciphertext is malformed or fails authentication
    */
   public static String decrypt(String hash, String key) throws Exception {
-    try {
-      return new String(
-          xor(org.apache.commons.codec.binary.Base64.decodeBase64(hash.getBytes()), key), "UTF-8");
-    } catch (java.io.UnsupportedEncodingException ex) {
-      throw new IllegalStateException(ex);
+    byte[] combined = org.apache.commons.codec.binary.Base64.decodeBase64(hash.getBytes("UTF-8"));
+    int ivLength = 12;
+    if (combined.length < ivLength + 1) {
+      throw new IllegalArgumentException("Ciphertext too short");
     }
+    byte[] iv = java.util.Arrays.copyOfRange(combined, 0, ivLength);
+    byte[] cipherText = java.util.Arrays.copyOfRange(combined, ivLength, combined.length);
+
+    javax.crypto.spec.SecretKeySpec keySpec = deriveKey(key);
+    javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding");
+    javax.crypto.spec.GCMParameterSpec gcmSpec = new javax.crypto.spec.GCMParameterSpec(128, iv);
+    cipher.init(javax.crypto.Cipher.DECRYPT_MODE, keySpec, gcmSpec);
+    byte[] plain = cipher.doFinal(cipherText);
+    return new String(plain, "UTF-8");
   }
 
   /**
-   * XOR Function
+   * Derives a 256-bit AES key from an arbitrary-length key string via SHA-256.
    *
-   * @param input Byte array to be XOR'd
-   * @param key Encryption Key
-   * @return
+   * @param key Source key material
+   * @return A SecretKeySpec suitable for AES-256
+   * @throws Exception Thrown if SHA-256 is unavailable
    */
-  private static byte[] xor(final byte[] input, String theKey) {
-    final byte[] output = new byte[input.length];
-    final byte[] secret = theKey.getBytes();
-    int spos = 0;
-    for (int pos = 0; pos < input.length; pos += 1) {
-      output[pos] = (byte) (input[pos] ^ secret[spos]);
-      spos += 1;
-      if (spos >= secret.length) {
-        spos = 0;
-      }
-    }
-    return output;
+  private static javax.crypto.spec.SecretKeySpec deriveKey(String key) throws Exception {
+    java.security.MessageDigest sha256 = java.security.MessageDigest.getInstance("SHA-256");
+    byte[] keyBytes = sha256.digest(key.getBytes("UTF-8"));
+    return new javax.crypto.spec.SecretKeySpec(keyBytes, "AES");
   }
 }
