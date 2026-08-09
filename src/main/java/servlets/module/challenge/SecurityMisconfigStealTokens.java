@@ -82,22 +82,21 @@ public class SecurityMisconfigStealTokens extends HttpServlet {
         String userId = ses.getAttribute("userStamp").toString();
         String userActualCookie = getUserToken(userId, applicationRoot);
         // Getting Submitted Cookie
+        int i = 0;
         Cookie[] userCookies = request.getCookies();
         Cookie theToken = null;
-        if (userCookies != null) {
-          for (int i = 0; i < userCookies.length; i++) {
-            if (userCookies[i].getName().compareTo("securityMisconfigLesson") == 0) {
-              theToken = userCookies[i];
-              break; // End Loop, because we found the token
-            }
+        for (i = 0; i < userCookies.length; i++) {
+          if (userCookies[i].getName().compareTo("securityMisconfigLesson") == 0) {
+            theToken = userCookies[i];
+            break; // End Loop, because we found the token
           }
         }
-        String cookieValue = theToken == null ? new String() : theToken.getValue();
+        String cookieValue = theToken.getValue();
 
         log.debug("User Submitted Cookie: " + cookieValue);
         log.debug("Stored Cookie Value  : " + userActualCookie);
 
-        if (cookieValue.isEmpty() || cookieValue.compareTo(userActualCookie) == 0) {
+        if (cookieValue.compareTo(userActualCookie) == 0) {
           // User is using their own Cookie: Not Complete
           htmlOutput =
               new String(

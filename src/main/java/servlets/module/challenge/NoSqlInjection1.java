@@ -158,10 +158,8 @@ public class NoSqlInjection1 extends HttpServlet {
           htmlOutput = "<p>An Error Occurred! You must be getting funky!</p>";
           log.fatal(levelName + " - " + e.toString());
         } finally {
-          if (cursor != null) {
-            cursor.close();
-          }
-          MongoDatabase.closeConnection(mongoClient);
+          cursor.close();
+          mongoClient.close();
         }
       } catch (MongoSocketException e) {
         log.error(bundle.getString("result.mongoError") + e.toString());
