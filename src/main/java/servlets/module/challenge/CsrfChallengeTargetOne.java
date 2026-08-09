@@ -1,5 +1,7 @@
 package servlets.module.challenge;
 
+import dbProcs.Getter;
+import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;
@@ -47,6 +49,11 @@ public class CsrfChallengeTargetOne extends HttpServlet {
    */
   public void doGet(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
+    response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
+  }
+
+  public void doPost(HttpServletRequest request, HttpServletResponse response)
+      throws ServletException, IOException {
     // Setting IpAddress To Log and taking header for original IP if forwarded from proxy
     ShepherdLogManager.setRequestIp(request.getRemoteAddr(), request.getHeader("X-Forwarded-For"));
     log.debug("Cross-SiteForegery Challenge One Target Servlet");
@@ -71,14 +78,20 @@ public class CsrfChallengeTargetOne extends HttpServlet {
         String plusId = request.getParameter("userid");
         log.debug("User Submitted - " + plusId);
         Cookie tokenCookie = Validate.getToken(request.getCookies());
-        Object tokenParmeter = request.getParameter("csrfToken");
-        String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId) && Validate.validateTokens(tokenCookie, tokenParmeter)) {
-          // A request can name any user, and nothing in it establishes that the named user
-          // meant this to happen. Acting on that identifier is what made this endpoint
-          // forgeable, so state is no longer changed on behalf of anybody else.
-          log.error(levelName + " refused a state change requested on behalf of another user");
+        Object tokenParameter = request.getParameter("csrfToken");
+        if (!Validate.validateTokens(tokenCookie, tokenParameter)) {
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
         }
+        String userId = (String) ses.getAttribute("userStamp");
+        if (!userId.equals(plusId)) {
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
+        }
+        String applicationRoot = getServletContext().getRealPath("");
+        String moduleHash = CsrfChallengeOne.getLevelHash();
+        String moduleId = Getter.getModuleIdFromHash(applicationRoot, moduleHash);
+        result = Setter.updateCsrfCounter(applicationRoot, moduleId, userId);
 
         if (result) {
           out.write(csrfGenerics.getString("target.incrementSuccess"));
