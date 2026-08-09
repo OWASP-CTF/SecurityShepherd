@@ -73,7 +73,10 @@ public class CsrfChallengeSevenGetToken extends HttpServlet {
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
         String htmlOutput = new String("Your csrf Token for this Challenge is: ");
-        String userId = request.getParameter("userId").toString();
+        // The userId must be the caller's own - taking it from a request parameter let any user
+        // fetch any other user's real CSRF token directly, and the LIKE match (with wildcard
+        // metacharacters left unescaped) made it worse by allowing broad token disclosure.
+        String userId = (String) ses.getAttribute("userStamp");
 
         Connection conn =
             Database.getChallengeConnection(
@@ -82,8 +85,7 @@ public class CsrfChallengeSevenGetToken extends HttpServlet {
           log.debug("Preparing setCsrfChallengeSevenToken call");
           PreparedStatement callstmnt =
               conn.prepareStatement(
-                  "SELECT csrfTokenscol FROM csrfChallengeEnumTokens.csrfTokens WHERE userId LIKE"
-                      + " ?");
+                  "SELECT csrfTokenscol FROM csrfChallengeEnumTokens.csrfTokens WHERE userId = ?");
           callstmnt.setString(1, userId);
           log.debug("Executing setCsrfChallengeSevenTokenQuery");
           ResultSet rs = callstmnt.executeQuery();
