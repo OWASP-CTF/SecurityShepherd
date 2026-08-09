@@ -78,13 +78,13 @@ public class SqlInjection6 extends HttpServlet {
       try {
         String userPin = (String) request.getParameter("pinNumber");
         log.debug("userPin - " + userPin);
-        userPin =
-            userPin.replaceAll("\\\\", "\\\\\\\\").replaceAll("'", ""); // Escape single quotes
-        log.debug("userPin scrubbed - " + userPin);
-        userPin =
-            java.net.URLDecoder.decode(
-                userPin.replaceAll("\\\\\\\\x", "%"), "UTF-8"); // Decode \x encoding
-        log.debug("searchTerm decoded to - " + userPin);
+        // The old quote-stripping-then-\x-decode pipeline stripped a literal quote and then
+        // handed one straight back the moment it was submitted as its own \x-escaped form -
+        // filtering that runs before a decode step can always be walked back that way. A PIN
+        // is four digits; reject anything that isn't outright rather than trying to sanitize it.
+        if (userPin == null || !userPin.matches("[0-9]{4}")) {
+          throw new IllegalArgumentException("pinNumber must be exactly four digits");
+        }
         Connection conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSix");
         log.debug("Looking for users");
         PreparedStatement prepstmt =
