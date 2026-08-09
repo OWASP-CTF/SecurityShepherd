@@ -1,7 +1,5 @@
 package servlets.module.challenge;
 
-import dbProcs.Getter;
-import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;

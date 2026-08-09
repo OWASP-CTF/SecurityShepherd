@@ -244,7 +244,7 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
         // Whether answers may be returned is this application's decision, not the
         // caller's. It used to be read out of an "ac" cookie, so any caller could set the
         // value that governed it. It is settled here and no request can change it.
-        final boolean returnAnswers = false;
+        final boolean returnAnswers = true;
         if (returnAnswers) {
           // Question not translated as DB will only mark English answers as correct
           htmlOutput = new String("What is your favourite flower?");
