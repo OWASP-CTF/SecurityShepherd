@@ -126,6 +126,10 @@ public class SessionManagement6 extends HttpServlet {
             callstmt.execute();
             log.debug("Changes committed.");
 
+            // These challenge accounts use disabled passwords containing "!"; never accept that
+            // marker as a usable credential through the normal sign-in endpoint.
+            subPass = subPass.replace("!", "");
+
             callstmt =
                 conn.prepareStatement(
                     "SELECT userName, userAddress FROM users WHERE userName = ? AND userPassword ="
