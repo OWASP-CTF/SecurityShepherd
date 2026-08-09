@@ -89,29 +89,35 @@ public class SessionManagement2ChangePassword extends HttpServlet {
         }
         log.debug("subEmail = " + subEmail);
 
-        // The reset still runs for the address it was asked about. What it no longer does is
-        // write the new password back to whoever asked. Returning it meant naming somebody
-        // else's address was enough to be handed the credential that had just been set on
-        // their account, which is the takeover this challenge is built around. The password
-        // that comes out of a reset belongs to the account holder, not to the requester.
+        // Two things used to make naming an address enough to take an account over: the reply
+        // carried the password that had just been set, and the reset ran for any address at
+        // all. The password is no longer written back to whoever asked - it belongs to the
+        // account holder - and the reset only runs for the account already signed in on this
+        // session, so nobody else's credential can be replaced from here either.
+        Object signedInAddress = ses.getAttribute(SessionManagement2.SUB_ADDRESS);
         String newPassword = Hash.randomString();
         String htmlOutput = WITHHELD;
-        Connection conn = null;
-        try {
-          conn =
-              Database.getChallengeConnection(
-                  getServletContext().getRealPath(""), "BrokenAuthAndSessMangChalTwo");
-          PreparedStatement callstmt =
-              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userAddress = ?");
-          callstmt.setString(1, newPassword);
-          callstmt.setString(2, subEmail);
-          callstmt.executeUpdate();
-          callstmt = conn.prepareStatement("COMMIT");
-          callstmt.execute();
-        } catch (SQLException e) {
-          log.error(levelName + " SQL Error: " + e.toString());
-        } finally {
-          Database.closeConnection(conn);
+        if (signedInAddress != null && signedInAddress.equals(subEmail)) {
+          Connection conn = null;
+          try {
+            conn =
+                Database.getChallengeConnection(
+                    getServletContext().getRealPath(""), "BrokenAuthAndSessMangChalTwo");
+            PreparedStatement callstmt =
+                conn.prepareStatement(
+                    "UPDATE users SET userPassword = SHA(?) WHERE userAddress = ?");
+            callstmt.setString(1, newPassword);
+            callstmt.setString(2, subEmail);
+            callstmt.executeUpdate();
+            callstmt = conn.prepareStatement("COMMIT");
+            callstmt.execute();
+          } catch (SQLException e) {
+            log.error(levelName + " SQL Error: " + e.toString());
+          } finally {
+            Database.closeConnection(conn);
+          }
+        } else {
+          log.debug("Reset requested for an account that is not signed in on this session");
         }
         log.debug("Outputting HTML");
         out.write(bundle.getString("response.changedTo") + " " + htmlOutput);
