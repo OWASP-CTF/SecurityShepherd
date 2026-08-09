@@ -11,6 +11,22 @@
 		<welcome-file>default.jsp</welcome-file>
 	</welcome-file-list>
 
+	<!--
+		The session id cookie carries this application's identity for every request. Issued
+		with no flags, it can be read by any script running on the page and gets attached to
+		requests that started somewhere else entirely - the two properties that let a stolen
+		session be replayed and let a forged cross-site request arrive already authenticated.
+		Restricting it to first-party, script-inaccessible, TLS-only, cookie-based delivery
+		closes both of those off at the transport level, independent of any one servlet's logic.
+	-->
+	<session-config>
+		<cookie-config>
+			<http-only>true</http-only>
+			<secure>true</secure>
+		</cookie-config>
+		<tracking-mode>COOKIE</tracking-mode>
+	</session-config>
+
 	<jsp-config>
 		<jsp-property-group>
 			<url-pattern>*.jsp</url-pattern>
