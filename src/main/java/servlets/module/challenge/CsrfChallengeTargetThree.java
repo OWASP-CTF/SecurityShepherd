@@ -7,6 +7,7 @@ import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -41,8 +42,9 @@ public class CsrfChallengeTargetThree extends HttpServlet {
   private static String levelName = "CSRF 3 Target";
 
   /**
-   * CSRF vulnerable function that can be used by users to force other users to mark their CSRF
-   * challenge Three as complete.
+   * Increments the requesting user's own CSRF-3 counter, but only when the request carries a
+   * csrfToken that matches the token bound to the requester's own session. The endpoint never
+   * mutates any account other than the one making the request.
    *
    * @param userId User identifier to be incremented
    */
@@ -71,31 +73,32 @@ public class CsrfChallengeTargetThree extends HttpServlet {
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
         String plusId = request.getParameter("userid");
         log.debug("User Submitted - " + plusId);
-        String csrfParam = null;
-        if (request.getParameter("csrfToken") != null) {
-          csrfParam = (String) request.getParameter("csrfToken");
-          if (csrfParam.isEmpty()) {
-            csrfParam = null;
-          }
-        }
+        // Two things were wrong here. (1) The submitted csrfToken was only checked for being
+        // present/non-empty, never compared against anything - so it provided zero protection;
+        // any placeholder string satisfied it. (2) Even a *real* per-session token only proves
+        // who is making the request, it says nothing about whether that requester is allowed to
+        // mutate someone else's counter - a caller acting with their own perfectly legitimate
+        // token could still target an arbitrary "userid" belonging to a different account. This
+        // "increment whoever you like" capability is exactly what made the endpoint worth
+        // forging a cross-site request against in the first place, so closing it means the
+        // requester's own verified token can only ever affect the requester's own counter.
+        Cookie tokenCookie = Validate.getToken(request.getCookies());
+        Object tokenParameter = request.getParameter("csrfToken");
+        boolean validCsrfToken = Validate.validateTokens(tokenCookie, tokenParameter);
 
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId) && csrfParam != null) {
+        boolean actingOnOwnAccount = userId.equals(plusId);
+        if (validCsrfToken && actingOnOwnAccount) {
+          log.debug("Attempting to Increment ");
           String ApplicationRoot = getServletContext().getRealPath("");
-          String userName = (String) ses.getAttribute("userName");
-          String attackerName = Getter.getUserName(ApplicationRoot, plusId);
-          if (attackerName != null) {
-            log.debug(userName + " is been CSRF'd by " + attackerName);
-
-            log.debug("Attempting to Increment ");
-            String moduleHash = CsrfChallengeThree.getLevelHash();
-            String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
-            result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
-          } else {
-            log.error("UserId '" + plusId + "' could not be found.");
-          }
+          String moduleHash = CsrfChallengeThree.getLevelHash();
+          String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
+          result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, userId);
+        } else if (!actingOnOwnAccount) {
+          log.error(
+              "Refusing to let '" + userId + "' modify another user's ('" + plusId + "') counter");
         } else {
-          log.debug("No CSRF Token found");
+          log.debug("No valid CSRF Token found");
         }
 
         if (result) {
