@@ -77,13 +77,9 @@ public class SqlInjection6 extends HttpServlet {
       try {
         String userPin = (String) request.getParameter("pinNumber");
         log.debug("userPin - " + userPin);
-        userPin =
-            userPin.replaceAll("\\\\", "\\\\\\\\").replaceAll("'", ""); // Escape single quotes
-        log.debug("userPin scrubbed - " + userPin);
-        userPin =
-            java.net.URLDecoder.decode(
-                userPin.replaceAll("\\\\\\\\x", "%"), "UTF-8"); // Decode \x encoding
-        log.debug("searchTerm decoded to - " + userPin);
+        // The pin is bound below, so it is used exactly as submitted. The pair of steps that
+        // stood here scrubbed the quotes out and then ran a decode that turned an encoded
+        // quote back into a real one, handing back the character the scrub had just removed.
         Connection conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSix");
         log.debug("Looking for users");
         PreparedStatement prepstmt =
