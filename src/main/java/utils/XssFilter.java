@@ -40,13 +40,18 @@ public class XssFilter {
     input = input.toLowerCase();
     if (input.startsWith("http")) {
       try {
+        // Every occurrence of an attribute-breakout character must be neutralised, not just the
+        // first one - a second, un-escaped '<' / '>' / '"' / '\'' later in the string still lets
+        // an attacker close the surrounding href="" attribute and inject a fresh HTML attribute
+        // (e.g. onmouseover=alert(1)) or a whole new tag.
         URL theUrl =
             new URL(
                 input
                     .replaceAll("#", "&#x23;")
-                    .replaceFirst("<", "&#x3c;")
-                    .replaceFirst(">", "&#x3e;")
-                    .replaceFirst("\"", "&quot;"));
+                    .replaceAll("<", "&#x3c;")
+                    .replaceAll(">", "&#x3e;")
+                    .replaceAll("\"", "&quot;")
+                    .replaceAll("'", "&#x27;"));
         input = theUrl.toString();
       } catch (MalformedURLException e) {
         log.debug("Could not Cast URL from input: " + e.toString());
