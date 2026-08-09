@@ -86,8 +86,7 @@ public class SessionManagement4 extends HttpServlet {
         if (!hackDetected) {
           log.debug("useSecurity: " + request.getParameter("useSecurity"));
           log.debug("userId: " + request.getParameter("userId"));
-          hackDetected =
-              !(request.getParameter("useSecurity").toString().equalsIgnoreCase("true"));
+          hackDetected = !(request.getParameter("useSecurity").toString().equalsIgnoreCase("true"));
         } else {
           log.debug("Parameters Missing");
         }
