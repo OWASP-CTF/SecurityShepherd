@@ -104,6 +104,7 @@ public class SqlInjection5CouponCheck extends HttpServlet {
           }
         } catch (Exception e) {
           log.debug("Could Not Find Coupon: " + e.toString());
+          htmlOutput += "<p> " + bundle.getString("response.checkFailed") + "</p>";
         }
         conn.close();
       } catch (Exception e) {

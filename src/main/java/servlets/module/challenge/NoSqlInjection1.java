@@ -149,27 +149,25 @@ public class NoSqlInjection1 extends HttpServlet {
 
         } catch (MongoTimeoutException e) {
           log.fatal(bundle.getString("result.mongoError") + e.toString());
-          htmlOutput +=
-              "<p>Mongo Timeout Occurred</p>" + "<p>" + Encode.forHtml(e.toString()) + "</p>";
+          htmlOutput = "<p>Mongo Timeout Occurred</p>";
         } catch (MongoException e) {
           log.error(bundle.getString("result.mongoError") + e.toString());
-          htmlOutput +=
-              "<p>An error was detected!</p>" + "<p>" + Encode.forHtml(e.toString()) + "</p>";
+          htmlOutput = "<p>An error was detected!</p>";
         } catch (Exception e) {
-          out.write("An Error Occurred! You must be getting funky!");
+          htmlOutput = "<p>An Error Occurred! You must be getting funky!</p>";
           log.fatal(levelName + " - " + e.toString());
         } finally {
-          cursor.close();
-          mongoClient.close();
+          if (cursor != null) {
+            cursor.close();
+          }
+          MongoDatabase.closeConnection(mongoClient);
         }
       } catch (MongoSocketException e) {
         log.error(bundle.getString("result.mongoError") + e.toString());
-        htmlOutput +=
-            "<p>An error was detected!</p>" + "<p>" + Encode.forHtml(e.toString()) + "</p>";
+        htmlOutput += "<p>An error was detected!</p>";
       } catch (MongoException e) {
         log.fatal("MongoDb Error caught - " + e.toString());
-        htmlOutput +=
-            "<p>An error was detected!</p>" + "<p>" + Encode.forHtml(e.toString()) + "</p>";
+        htmlOutput += "<p>An error was detected!</p>";
       } catch (Exception e) {
         log.fatal(levelName + " - " + e);
       }

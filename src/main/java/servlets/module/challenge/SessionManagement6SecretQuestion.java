@@ -43,6 +43,8 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(SessionManagement6SecretQuestion.class);
   private static String levelName = "Session Management Challenge Six (Secret Question)";
+  private static final String FAILED_ANSWERS = "sessionManagement6FailedAnswers";
+  private static final int MAX_FAILED_ANSWERS = 10;
   private static String levelHash =
       "b5e1020e3742cf2c0880d4098146c4dde25ebd8ceab51807bad88ff47c316ece";
 
@@ -85,10 +87,22 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
         Object ansObj = request.getParameter("subAnswer");
         String subAns = Validate.validateParameter(ansObj, 128);
         log.debug("subAnswer = " + subAns);
+        Integer failedAnswers = (Integer) ses.getAttribute(FAILED_ANSWERS);
+        if (failedAnswers == null) {
+          failedAnswers = 0;
+        }
 
         String ApplicationRoot = getServletContext().getRealPath("");
         try {
-          if (Validate.isValidEmailAddress(subEmail) && subAns.length() > 5) {
+          if (failedAnswers >= MAX_FAILED_ANSWERS) {
+            log.debug("Too many failed answers on this session");
+            htmlOutput =
+                new String(
+                    "<h2 class='title'>"
+                        + bundle.getString("question.badAnswer")
+                        + "</h2><p>"
+                        + bundle.getString("question.whoAreYou"));
+          } else if (Validate.isValidEmailAddress(subEmail) && subAns.length() > 5) {
             Connection conn =
                 Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalSix");
             log.debug("Checking Secret Answer");
@@ -99,15 +113,12 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
             callstmt.setString(2, subAns);
             log.debug("Running secret Answer Check");
             ResultSet rs = callstmt.executeQuery();
-            // The same reply whether or not the answer was right, and no account handed over
-            // either way. The answer is one fact about a person that plenty of people other than
-            // the account holder can know, so it is not proof of identity, and confirming a
-            // correct one turns this into an oracle for guessing the rest.
-            if (rs.next()) {
-              log.debug("Correct secret answer submitted; no account access is granted here");
-            } else {
-              log.debug("Bad Answer Submitted");
-            }
+            // Discard the result deliberately. A correct answer must read and behave exactly like
+            // a wrong one, otherwise the attempt counter itself becomes an answer oracle.
+            rs.next();
+            log.debug("Secret answer checked; no account access is granted on an answer alone");
+            ses.setAttribute(FAILED_ANSWERS, failedAnswers + 1);
+            rs.close();
             htmlOutput =
                 new String(
                     "<h2 class='title'>"
@@ -126,6 +137,7 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
           }
         } catch (SQLException e) {
           log.error(levelName + " SQL Error: " + e.toString());
+          htmlOutput = bundle.getString("question.noQuestion");
         }
         log.debug("Outputting HTML");
         out.write(htmlOutput);
