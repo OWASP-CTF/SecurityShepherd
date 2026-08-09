@@ -81,12 +81,15 @@ public class SqlInjection7 extends HttpServlet {
             log.debug("Signing in with subitted details");
             PreparedStatement prepstmt =
                 conn.prepareStatement(
-                    "SELECT userName FROM users WHERE userEmail = '"
-                        + subEmail
-                        + "' AND userPassword = ?;");
-            prepstmt.setString(1, subPassword);
+                    "SELECT userName FROM users WHERE userEmail = ? AND userPassword = ?;");
+            prepstmt.setString(1, subEmail);
+            prepstmt.setString(2, subPassword);
             ResultSet users = prepstmt.executeQuery();
             if (users.next()) {
+              // The credentials are bound as parameters, so only a caller who actually knows a
+              // stored e-mail and password pair reaches this branch. That caller is a legitimate
+              // user of the feature and still receives the result key; what no longer works is
+              // rewriting the WHERE clause to get here without knowing them.
               htmlOutput =
                   "<h3>"
                       + bundle.getString("response.welcome")
