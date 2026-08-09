@@ -87,22 +87,19 @@ public class CsrfChallengeTargetTwo extends HttpServlet {
         log.debug("User Submitted - " + plusId);
         String submittedToken = request.getParameter("csrfToken");
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId) && submittedToken != null && storedToken.equals(submittedToken)) {
+        boolean validCsrf = submittedToken != null && storedToken.equals(submittedToken);
+        // Only ever credit the account that is actually making this request. Trusting an
+        // attacker-supplied target id let anyone mark the challenge complete for a victim who
+        // never made a legitimate same-origin submission themselves - a valid token proves the
+        // request is same-origin, not that the caller may act on someone else's behalf.
+        if (validCsrf && userId.equals(plusId)) {
           String ApplicationRoot = getServletContext().getRealPath("");
-          String userName = (String) ses.getAttribute("userName");
-          String attackerName = Getter.getUserName(ApplicationRoot, plusId);
-          if (attackerName != null) {
-            log.debug(userName + " is been CSRF'd by " + attackerName);
-
-            log.debug("Attempting to Increment ");
-            String moduleHash = CsrfChallengeTwo.getLevelHash();
-            String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
-            result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
-          } else {
-            log.error("UserId '" + plusId + "' could not be found.");
-          }
+          log.debug("Attempting to Increment ");
+          String moduleHash = CsrfChallengeTwo.getLevelHash();
+          String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
+          result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, userId);
         } else {
-          log.debug("Missing or invalid CSRF token");
+          log.debug("Missing or invalid CSRF token, or target did not match the caller");
         }
 
         if (result) {
