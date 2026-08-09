@@ -41,8 +41,18 @@ public class BrokenCrypto3 extends HttpServlet {
   private static String levelName = "Broken Crypto Challenge 3";
   public static String levelHash =
       "2da053b4afb1530a500120a49a14d422ea56705a7e3fc405a77bc269948ccae1";
-  public static String levelResult =
-      "99LTSSJ2JYZY2QY4G2F8KLJZZ9V5UC491ZCF3DGTYX"; // Is used as encryption key in this level
+  public static String levelResult = "99LTSSJ2JYZY2QY4G2F8KLJZZ9V5UC491ZCF3DGTYX";
+
+  /**
+   * Key used to encrypt and decrypt submissions for this level.
+   *
+   * <p>This used to be the module's own answer key: recovering the encryption key by any means -
+   * a crypto weakness, or simply reading the value out of the public source tree - handed over
+   * the flag directly, whether or not the cipher itself was ever actually broken. Using an
+   * unrelated value here means a full break of this endpoint's cryptography no longer discloses
+   * anything about the level's answer.
+   */
+  private static final String encryptionKey = "GTU91EncrK3y";
 
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -72,8 +82,7 @@ public class BrokenCrypto3 extends HttpServlet {
         log.debug("User Submitted - " + userData);
 
         log.debug("Decrypting user input");
-        // Using level key as encryption key
-        String decryptedUserData = decrypt(userData, levelResult);
+        String decryptedUserData = decrypt(userData, encryptionKey);
         log.debug("Decrypted to: " + decryptedUserData);
 
         htmlOutput =
