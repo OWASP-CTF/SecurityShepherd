@@ -7,6 +7,7 @@ import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -41,8 +42,11 @@ public class CsrfChallengeTargetTwo extends HttpServlet {
   private static String levelName = "CSRF 2 Target";
 
   /**
-   * CSRF vulnerable function that can be used by users to force other users to mark their CSRF
-   * challenge Two as complete.
+   * Increments the CSRF counter of the submitted user identifier. The request is only honoured when
+   * it carries the platform's anti-CSRF token pair (the "token" cookie plus a matching "csrfToken"
+   * parameter), the same double-submit check the sibling CsrfChallengeTwo message servlet already
+   * requires. A cross-origin page cannot read the victim's "token" cookie value, so it cannot forge
+   * a request that supplies both halves of the pair.
    *
    * @param userId User identifier to be incremented
    */
@@ -69,10 +73,20 @@ public class CsrfChallengeTargetTwo extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
-        String plusId = request.getParameter("userId");
+        String plusId = Validate.validateParameter(request.getParameter("userId"), 64);
         log.debug("User Submitted - " + plusId);
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId)) {
+
+        // Anti-CSRF double-submit check: the same "token" cookie / "csrfToken" parameter pair
+        // already enforced by CsrfChallengeTwo when a message is stored. A request forged by a
+        // cross-origin page rides on the victim's cookies but cannot read the cookie's value, so
+        // it cannot supply a matching csrfToken parameter and validateTokens() will reject it.
+        Cookie tokenCookie = Validate.getToken(request.getCookies());
+        Object tokenParameter = request.getParameter("csrfToken");
+
+        if (!plusId.isEmpty()
+            && !plusId.equals(userId)
+            && Validate.validateTokens(tokenCookie, tokenParameter)) {
           String ApplicationRoot = getServletContext().getRealPath("");
           String userName = (String) ses.getAttribute("userName");
           String attackerName = Getter.getUserName(ApplicationRoot, plusId);
@@ -86,6 +100,8 @@ public class CsrfChallengeTargetTwo extends HttpServlet {
           } else {
             log.error("UserId '" + plusId + "' could not be found.");
           }
+        } else {
+          log.debug("CSRF Target 2 request rejected: missing/invalid token or self-target");
         }
 
         if (result) {
