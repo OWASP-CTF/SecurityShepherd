@@ -106,6 +106,19 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
           String ApplicationRoot = getServletContext().getRealPath("");
           try {
             if (Validate.isValidEmailAddress(subEmail) && subAns.length() > 5) {
+              // The valid-answer space is a hardcoded 7-item whitelist, so without a limit an
+              // attacker can brute force any target's answer in at most 7 requests.
+              if (SessionManagement7AttemptTracker.isLockedOut(subEmail)) {
+                log.debug("Too many failed attempts for: " + subEmail);
+                htmlOutput =
+                    "<h2 class='title'>"
+                        + bundle.getString("question.badAnswer")
+                        + "</h2><p>"
+                        + bundle.getString("question.tooManyAttempts")
+                        + "</p>";
+                out.write(htmlOutput);
+                return;
+              }
               Connection conn =
                   Database.getChallengeConnection(
                       ApplicationRoot, "BrokenAuthAndSessMangChalFlowers");
@@ -119,6 +132,7 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
               ResultSet rs = callstmt.executeQuery();
               if (rs.next()) {
                 log.debug("Correct Answer Submitted");
+                SessionManagement7AttemptTracker.clearAttempts(subEmail);
                 // Get key and add it to the output
                 String userKey =
                     Hash.generateUserSolution(
@@ -138,6 +152,7 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
                         + "</p>";
               } else {
                 log.debug("Bad Answer Submitted");
+                SessionManagement7AttemptTracker.recordFailedAttempt(subEmail);
                 htmlOutput =
                     new String(
                         "<h2 class='title'>"
