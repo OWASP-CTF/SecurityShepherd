@@ -8,6 +8,7 @@ import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.Scanner;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -81,7 +82,12 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
         String plusId = (String) json.get("userId");
         log.debug("User Submitted - " + plusId);
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId)) {
+        // No CSRF token was ever checked here - any cross-site JSON POST could increment the
+        // counter. Validate.validateTokens() performs the real cookie/body comparison, the same
+        // check CsrfChallengeJSON already does for the message-setting action.
+        Cookie tokenCookie = Validate.getToken(request.getCookies());
+        Object csrfTokenParam = json.has("csrfToken") ? json.get("csrfToken") : null;
+        if (!userId.equals(plusId) && Validate.validateTokens(tokenCookie, csrfTokenParam)) {
           String ApplicationRoot = getServletContext().getRealPath("");
           String userName = (String) ses.getAttribute("userName");
           String attackerName = Getter.getUserName(ApplicationRoot, plusId);

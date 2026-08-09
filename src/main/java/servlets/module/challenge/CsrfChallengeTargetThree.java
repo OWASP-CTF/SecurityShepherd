@@ -7,6 +7,7 @@ import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -71,16 +72,16 @@ public class CsrfChallengeTargetThree extends HttpServlet {
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
         String plusId = request.getParameter("userid");
         log.debug("User Submitted - " + plusId);
-        String csrfParam = null;
-        if (request.getParameter("csrfToken") != null) {
-          csrfParam = (String) request.getParameter("csrfToken");
-          if (csrfParam.isEmpty()) {
-            csrfParam = null;
-          }
-        }
+        // Any non-empty string was previously accepted as a valid CSRF token - it was never
+        // actually compared against the session's own token cookie, so a forged cross-site
+        // request could just supply csrfToken=x and pass. Validate.validateTokens() performs
+        // the real cookie/parameter comparison, the same check CsrfChallengeThree already does
+        // for the message-setting action.
+        Cookie tokenCookie = Validate.getToken(request.getCookies());
+        Object csrfParam = request.getParameter("csrfToken");
 
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId) && csrfParam != null) {
+        if (!userId.equals(plusId) && Validate.validateTokens(tokenCookie, csrfParam)) {
           String ApplicationRoot = getServletContext().getRealPath("");
           String userName = (String) ses.getAttribute("userName");
           String attackerName = Getter.getUserName(ApplicationRoot, plusId);
