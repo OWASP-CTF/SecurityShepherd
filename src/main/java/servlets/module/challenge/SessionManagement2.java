@@ -48,14 +48,6 @@ public class SessionManagement2 extends HttpServlet {
       "d779e34a54172cbc245300d3bc22937090ebd3769466a501a5e7ac605b9f34b7";
 
   /**
-   * Session attribute recording which sub-schema account this HTTP session most recently proved
-   * ownership of by supplying its correct password. The password-reset companion servlet uses
-   * this to confirm a reset request actually comes from the account owner, rather than acting on
-   * any email address a caller supplies.
-   */
-  public static final String AUTHENTICATED_ADDRESS = "sessionManagement2AuthenticatedAddress";
-
-  /**
    * The user attempts to use this function to sign into a sub schema. If they successfully sign in
    * then they are able to retrieve the result key for the challenge If they sign in with a correct
    * user name but incorrect password then the email address of the user will be returned in a error
@@ -128,10 +120,6 @@ public class SessionManagement2 extends HttpServlet {
         ResultSet resultSet = callstmt.executeQuery();
         if (resultSet.next()) {
           log.debug("Successful Login");
-          // Record which sub-account this session just proved it owns, so the reset servlet
-          // can tell a genuine owner-initiated reset apart from an arbitrary address submitted
-          // by someone else.
-          ses.setAttribute(AUTHENTICATED_ADDRESS, resultSet.getString(2));
           // Get key and add it to the output
           String userKey =
               Hash.generateUserSolution(
