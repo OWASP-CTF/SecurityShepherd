@@ -56,6 +56,13 @@
 		
 		String ApplicationRoot = getServletContext().getRealPath("");
 		String csrfToken = Encode.forHtml(tokenCookie.getValue());
+		String csrfChallengeOneNonce = (String) ses.getAttribute("csrfChallengeOneNonce");
+		if (csrfChallengeOneNonce == null || csrfChallengeOneNonce.isEmpty())
+		{
+			csrfChallengeOneNonce = Hash.randomString();
+			ses.setAttribute("csrfChallengeOneNonce", csrfChallengeOneNonce);
+		}
+		String csrfChallengeOneNonceHtml = Encode.forHtml(csrfChallengeOneNonce);
 		String userClass = null;
 		if(ses.getAttribute("userClass") != null)
 		{
@@ -83,7 +90,7 @@
 		<h2 class="title"><%= bundle.getString("title.csrf1") %></h2>
 		<p>
 			<%= bundle.getString("challenge.intro") %>
-			<br /> <br /> <a> GET /user/csrfchallengeone/plusplus?userid=<%= bundle.getString("challenge.userIdExample") %>
+			<br /> <br /> <a> GET /user/csrfchallengeone/plusplus?userid=<%= bundle.getString("challenge.userIdExample") %>&amp;csrfToken=<%= csrfChallengeOneNonceHtml %>
 			</a> <br /> <br />
 			<%= bundle.getString("challenge.whereIdIsUserBeenIncremented.1") %>&nbsp;<%= bundle.getString("challenge.userIdExample") %>&nbsp;<%= bundle.getString("challenge.whereIdIsUserBeenIncremented.2") %>&nbsp;<%= bundle.getString("challenge.yourIdIs") %>
 			<a><%= userId %></a><%= bundle.getString("challenge.yourIdIs.1") %>
