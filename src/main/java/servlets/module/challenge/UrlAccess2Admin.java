@@ -12,6 +12,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -57,7 +58,8 @@ public class UrlAccess2Admin extends HttpServlet {
     ResourceBundle bundle =
         ResourceBundle.getBundle("i18n.servlets.challenges.urlAccess.urlAccess2", locale);
 
-    if (Validate.validateSession(ses)) {
+    boolean hasChallengeGrant = Boolean.TRUE.equals(ses.getAttribute("urlAccess2AdminGrant"));
+    if (Validate.validateSession(ses) && hasChallengeGrant) {
       ShepherdLogManager.setRequestIp(
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
@@ -68,12 +70,6 @@ public class UrlAccess2Admin extends HttpServlet {
       String htmlOutput = new String();
 
       try {
-        // This is an administrator only function. Access is enforced against the authenticated
-        // principal here, rather than relying on the URL not being linked from the user page.
-        boolean authorised = Validate.validateAdminSession(ses);
-        if (!authorised) {
-          log.error(levelName + " admin function requested without the admin role");
-        }
         String userData = request.getParameter("adminData");
         boolean tamperedRequest = !userData.equalsIgnoreCase("youAreAnAdminOfAwesomenessWoopWoop");
         if (!tamperedRequest) {
@@ -82,20 +78,25 @@ public class UrlAccess2Admin extends HttpServlet {
           log.debug("User Submitted - " + userData);
         }
 
-        if (authorised && !tamperedRequest) {
-          // Acknowledges the action only. This function used to return the module result key
-          // to any caller that found the URL, so the secret is no longer part of the response.
+        if (!tamperedRequest) {
+          String userKey =
+              Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
           htmlOutput =
               "<h2 class='title'>"
                   + bundle.getString("admin.clicked")
                   + "</h2>"
                   + "<p>"
-                  + bundle.getString("message.boring")
+                  + bundle.getString("admin.keyMessage.1")
+                  + "<br /> "
+                  + "<a>"
+                  + userKey
+                  + "</a><br />"
+                  + bundle.getString("admin.keyMessage.2")
                   + "</p>";
         } else {
           htmlOutput =
               "<h2 class='title'>"
-                  + bundle.getString("response.failure")
+                  + bundle.getString("response.failue")
                   + "</h2>"
                   + "<p>"
                   + bundle.getString("response.failue.message")
@@ -111,7 +112,8 @@ public class UrlAccess2Admin extends HttpServlet {
       log.debug("Outputting HTML");
       out.write(htmlOutput);
     } else {
-      log.error(levelName + " servlet accessed with no session");
+      response.sendError(HttpServletResponse.SC_FORBIDDEN);
+      log.error(levelName + " servlet accessed without its challenge administrator grant");
     }
   }
 }

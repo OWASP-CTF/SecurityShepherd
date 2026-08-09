@@ -54,29 +54,14 @@ public class BrokenCryptoHomeMade extends HttpServlet {
   private static final String levelHash =
       new String("9e5ed059b23632c8801d95621fa52071b2eb211d8c044dde6d2f4b89874a7bc4");
   private static final long serialVersionUID = 1L;
-  // Returned to the browser when a user specific key cannot be generated. It is a fixed public
-  // notice, never a solution, so nothing may ever be compared as equal to it.
-  private static final String KEY_GENERATION_FAILED =
-      "Key Should be here! Please refresh the home page and try again!";
-  // The name of the entry this servlet grades submissions against. Never rendered with a user
-  // specific solution beside it, so it is the only entry a submission may be compared to.
-  private static final String THIS_CHALLENGE_NAME = "This Challenge";
-  // Declared before the key fields below because their initialisers call
-  // randomKeyLengthString(), which logs. A logger initialised after them would still be null at
-  // that point, so a logging branch in there would fail during class initialisation.
-  private static final Logger log = LogManager.getLogger(BrokenCryptoHomeMade.class);
   public static String userNameKey = randomKeyLengthString();
   private static String serverEncryptionKey = randomKeyLengthString();
   private static String encryptionKeySalt = randomKeyLengthString();
+  private static final Logger log = LogManager.getLogger(BrokenCryptoHomeMade.class);
   public static List<List<String>> challenges = new ArrayList<List<String>>();
   public static boolean initDone = false;
 
-  // Synchronized because the guard below is a check-then-act on shared static state. Two callers
-  // arriving together could both see initDone false and both populate the list, interleaving
-  // their appends: entries land at unexpected positions and concurrent ArrayList appends can
-  // also drop writes or leave holes. Anything reading this list by position would then read a
-  // different challenge than it asked for.
-  public static synchronized void initLists() {
+  public static void initLists() {
 
     ArrayList<String> challenge = new ArrayList<String>();
     if (!initDone) {
@@ -140,28 +125,11 @@ public class BrokenCryptoHomeMade extends HttpServlet {
           log.debug(homemadebadanswers + "previous bad attempts");
           if (homemadebadanswers < 5) {
             String submittedSolution = request.getParameter("theSubmission");
-            // The entry to grade against is looked up by name rather than by list position. The
-            // list is built lazily and every reader that renders a user specific solution beside
-            // an entry decides what to render by name. Grading by position meant that a list
-            // whose order did not match those readers graded a submission against a challenge
-            // whose solution is printed on the page, which anybody could copy back in.
-            String thisChallengeBaseKey = findBaseKeyByName(THIS_CHALLENGE_NAME);
-            String expectedSolution = null;
-            if (thisChallengeBaseKey == null) {
-              log.error("No '" + THIS_CHALLENGE_NAME + "' entry to grade against");
-            } else {
-              expectedSolution =
-                  BrokenCryptoHomeMade.generateUserSolutionKeyOnly(
-                      thisChallengeBaseKey, ses.getAttribute("userName").toString());
-            }
-            // A failed generation hands back a fixed public notice instead of a cipher text.
-            // Comparing a submission against that notice handed the level to anybody who typed
-            // it out, so an unusable expected solution can never match a submission.
-            boolean expectedSolutionUsable =
-                expectedSolution != null
-                    && !expectedSolution.trim().isEmpty()
-                    && !expectedSolution.equals(KEY_GENERATION_FAILED);
-            if (expectedSolutionUsable && submittedSolution.equals(expectedSolution)) {
+            String expectedSolution =
+                BrokenCryptoHomeMade.generateUserSolutionKeyOnly(
+                    BrokenCryptoHomeMade.challenges.get(4).get(1),
+                    ses.getAttribute("userName").toString());
+            if (submittedSolution.equals(expectedSolution)) {
               log.debug("Correct Solution Submitted for 'This Challenge'. Returning Key");
               htmlOutput =
                   "<h2 class='title'>"
@@ -283,29 +251,6 @@ public class BrokenCryptoHomeMade extends HttpServlet {
   }
 
   /**
-   * Finds the base key of the first challenge entry carrying the given name.
-   *
-   * @param challengeName Name of the challenge entry to look for
-   * @return The entry's base key, or null when no entry carries that name
-   */
-  private static String findBaseKeyByName(String challengeName) {
-    List<List<String>> theChallenges = challenges;
-    if (theChallenges == null) {
-      return null;
-    }
-    for (int i = 0; i < theChallenges.size(); i++) {
-      List<String> entry = theChallenges.get(i);
-      if (entry != null
-          && entry.size() > 1
-          && entry.get(0) != null
-          && entry.get(0).equalsIgnoreCase(challengeName)) {
-        return entry.get(1);
-      }
-    }
-    return null;
-  }
-
-  /**
    * Merges current server encryption key with user name based encryption key to create user
    * specific key
    *
@@ -313,13 +258,6 @@ public class BrokenCryptoHomeMade extends HttpServlet {
    * @return
    */
   private static String createUserSpecificEncryptionKey(String userNameKey) throws Exception {
-    // The server side key is the only part of this derivation the caller cannot compute. A key
-    // that came back empty or short would leave the derived key a digest over caller controlled
-    // input alone, which anybody could reproduce, so refuse to derive rather than hand back a
-    // guessable key. Callers turn the refusal into a failure notice, never a solution.
-    if (serverEncryptionKey == null || serverEncryptionKey.length() != 16) {
-      throw new Exception("Server encryption key is unusable");
-    }
     if (userNameKey.length() != 16) {
       throw new Exception("User Name key must be 16 bytes long");
     } else {
@@ -441,7 +379,7 @@ public class BrokenCryptoHomeMade extends HttpServlet {
    */
   public static String generateUserSolution(String baseKey, String userSalt) {
     log.debug("Generating key for " + userSalt);
-    String toReturn = KEY_GENERATION_FAILED;
+    String toReturn = "Key Should be here! Please refresh the home page and try again!";
 
     try {
       String key = createUserSpecificEncryptionKey(Validate.validateEncryptionKey(userSalt));
@@ -465,7 +403,7 @@ public class BrokenCryptoHomeMade extends HttpServlet {
       log.debug("Returning: " + forLog);
     } catch (Exception e) {
       log.error("Encrypt Failure: " + e.toString());
-      toReturn = KEY_GENERATION_FAILED;
+      toReturn = "Key Should be here! Please refresh the home page and try again!";
       ;
     }
     return toReturn;
@@ -473,7 +411,7 @@ public class BrokenCryptoHomeMade extends HttpServlet {
 
   public static String generateUserSolutionKeyOnly(String baseKey, String userSalt) {
     log.debug("Generating key for " + userSalt);
-    String forLog = KEY_GENERATION_FAILED;
+    String forLog = "Key Should be here! Please refresh the home page and try again!";
 
     try {
       String key = createUserSpecificEncryptionKey(Validate.validateEncryptionKey(userSalt));

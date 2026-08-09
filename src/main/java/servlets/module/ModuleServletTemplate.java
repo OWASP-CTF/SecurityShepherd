@@ -4,9 +4,9 @@ import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -91,19 +91,11 @@ public class ModuleServletTemplate extends HttpServlet {
         // if(returnKey)
         // Get Running Context of Application to make Database Call with
         String applicationRoot = getServletContext().getRealPath("");
-        String output = null;
-        if (aUserName == null || aUserName.trim().isEmpty()) {
-          // A search that was never made is not a solve. Without this the level answers an empty
-          // request, because "the lookup found nothing" and "the lookup never ran" arrive here
-          // looking exactly the same.
-          log.debug("No aUserName was submitted - skipping the lookup");
-        } else {
-          output = doLevelSqlStuff(applicationRoot, aUserName, bundle);
-        }
+        String output = doLevelSqlStuff(applicationRoot, aUserName, bundle);
         log.debug("Logging in English. Going to Output " + output);
         String htmlOutput =
             "<h2 class='title'>" + bundle.getString("module.example.header") + "</h2>";
-        if (output == null || output.isEmpty()) {
+        if (output == null) {
           htmlOutput += "<p>" + bundle.getString("module.example.outputWasNull") + "/p>";
         } else if (output.startsWith("123")) {
           log.debug("Setting Error Message");
@@ -115,15 +107,6 @@ public class ModuleServletTemplate extends HttpServlet {
           // If you want to return a user specific key if the user has used SQLi to bypass
           // authentication or somthing, use the following bit of code for that
           returnKey = true;
-        }
-        // Second gate on the same fact, kept deliberately: the key is only ever minted for a
-        // lookup that named a user and came back with a row for that user. Anything the branches
-        // above may grow into still has to get past this before the key exists.
-        boolean lookupNamedAUser = aUserName != null && !aUserName.trim().isEmpty();
-        boolean lookupFoundARow = output != null && !output.isEmpty();
-        if (returnKey && !(lookupNamedAUser && lookupFoundARow)) {
-          log.error("Refusing to mint the key for a lookup that returned nothing");
-          returnKey = false;
         }
         if (returnKey) {
           // Something happened and now you want the user to be given a user specific key. then do
@@ -161,12 +144,7 @@ public class ModuleServletTemplate extends HttpServlet {
   public static String doLevelSqlStuff(
       String applicationRoot, String username, ResourceBundle bundle) {
 
-    String result = null;
-    if (username == null || username.trim().isEmpty()) {
-      // Nothing was asked for, so there is nothing to report. Returning an empty string here read
-      // as a successful lookup to the caller.
-      return null;
-    }
+    String result = new String();
     try {
       // You will need to make a schema in the database/moduleSchemas.sql file, and define a user
       // which can access it.
@@ -174,13 +152,10 @@ public class ModuleServletTemplate extends HttpServlet {
       // The Name of that user need to be entered in the following funciton;
       Connection conn =
           Database.getChallengeConnection(applicationRoot, "nameOfPropertiesFile.properties");
-      // The name the player typed is data, never statement text. Built by concatenation it was
-      // the whole query's grammar, so a quote in the parameter rewrote the search into anything
-      // the caller wanted.
-      final String query = "SELECT * FROM tb_users WHERE username = ?";
-      PreparedStatement prepstmt = conn.prepareStatement(query);
-      prepstmt.setString(1, username);
-      ResultSet resultSet = prepstmt.executeQuery();
+      Statement stmt;
+      stmt = conn.createStatement();
+      ResultSet resultSet =
+          stmt.executeQuery("SELECT * FROM tb_users WHERE username = '" + username + "'");
       log.debug("Opening Result Set from query");
       for (int i = 0; resultSet.next(); i++) {
         log.debug("Row " + i + ": User ID = " + resultSet.getString(1));
@@ -188,15 +163,16 @@ public class ModuleServletTemplate extends HttpServlet {
       }
       log.debug("That's All");
     } catch (SQLException e) {
-      // A failed statement is not a found user. Handing the error text back made every broken
-      // query look like a successful lookup to the caller, which then minted the key - and the
-      // database's own complaint names tables and columns, which is how the next query is built.
-      log.error("SQL Error caught - " + e.toString());
-      result = null;
+      log.debug("SQL Error caught - " + e.toString());
+      result =
+          bundle.getString("example.error")
+              + ": "
+              + Encode.forHtml(e.toString()); // Html Encode Error to prevent XSS
     } catch (Exception e) {
-      // Same reasoning: a lookup that could not run reports nothing found, not something found.
-      log.fatal("Error caught - " + e.toString());
-      result = null;
+      log.fatal(
+          bundle.getString("example.error")
+              + ": "
+              + Encode.forHtml(e.toString())); // Html Encode Error to prevent XSS
     }
     return result;
   }

@@ -80,11 +80,9 @@ public class SolutionSubmit extends HttpServlet {
 
         log.debug("Getting Parameters");
         String moduleId = (String) request.getParameter("moduleId");
-        ;
-        log.debug("moduleId = " + moduleId.toString());
+        log.debug("moduleId = " + moduleId);
         String solutionKey = (String) request.getParameter("solutionKey");
-        ;
-        log.debug("solutionKey = " + solutionKey.toString());
+        log.debug("solutionKey = " + solutionKey);
 
         log.debug("Getting session parameters");
         String userId = (String) ses.getAttribute("userStamp");
@@ -93,16 +91,9 @@ public class SolutionSubmit extends HttpServlet {
 
         // Validation
         notNull = (moduleId != null && solutionKey != null);
-        // A blank submission is never something a player derived by solving the level. Presence
-        // alone used to be enough to reach the comparison, so an empty submission was comparable
-        // against whatever the module happened to hold. Nothing blank is treated as an answer.
-        boolean submissionUsable = notNull && !solutionKey.trim().isEmpty();
         if (notNull) {
           storedResult = Getter.getModuleResult(ApplicationRoot, moduleId);
         }
-        // The same reasoning applies to the stored side of the comparison: a module carrying a
-        // blank answer cannot prove anyone solved it, so it is never comparable either.
-        boolean answerUsable = storedResult != null && !storedResult.trim().isEmpty();
         boolean moduleOpen = false;
         boolean isRunning = false;
         try {
@@ -113,10 +104,10 @@ public class SolutionSubmit extends HttpServlet {
           log.error(message);
           throw new RuntimeException(e);
         }
-        if (submissionUsable && answerUsable) {
+        if (notNull && storedResult != null) {
           moduleOpen = Getter.isModuleOpen(ApplicationRoot, moduleId) && isRunning;
         }
-        if (submissionUsable && answerUsable && moduleOpen) {
+        if (notNull && storedResult != null && moduleOpen) {
           boolean validKey = false;
           // Identify if solution is a user Specific key (Does it need to be decrypted?)
           if (Getter.getModuleKeyType(ApplicationRoot, moduleId)) {
@@ -126,9 +117,7 @@ public class SolutionSubmit extends HttpServlet {
             storedResult =
                 Hash.generateUserSolutionKeyOnly(
                     Getter.getModuleResult(ApplicationRoot, moduleId), userName);
-            // The generator hands back null when the HMAC cannot be produced. Nothing was
-            // derived in that case, so there is no answer to compare against.
-            validKey = storedResult != null && storedResult.compareTo(solutionKey) == 0;
+            validKey = storedResult.compareTo(solutionKey) == 0;
             log.debug("Submitted Key: " + storedResult);
             log.debug("Expected Key : " + solutionKey);
           }
@@ -207,10 +196,10 @@ public class SolutionSubmit extends HttpServlet {
         } else {
           // Validation Error Responses
           String errorMessage = "An Error Occurred: ";
-          if (!submissionUsable) {
-            log.error("Null or blank values detected");
+          if (!notNull) {
+            log.error("Null values detected");
             errorMessage += "Invalid Request. Please try again";
-          } else if (!answerUsable) {
+          } else if (storedResult == null) {
             log.error("Module not found");
             errorMessage += "Module Not Found. Please try again";
           } else {

@@ -103,8 +103,8 @@ public class DirectObject1 extends HttpServlet {
         ResultSet resultSet = prepstmt.executeQuery();
         if (authorised && resultSet.next()) {
           log.debug("Found user: " + resultSet.getString(1));
-          String userName = Encode.forHtml(resultSet.getString(1));
-          String privateMessage = Encode.forHtml(resultSet.getString(2));
+          String userName = resultSet.getString(1);
+          String privateMessage = resultSet.getString(2);
           htmlOutput =
               "<h2 class='title'>"
                   + userName
