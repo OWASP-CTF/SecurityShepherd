@@ -1041,6 +1041,11 @@
 		<servlet-name>/challenges/278fa30ee727b74b9a2522a5ca3bf993087de5a0ac72adff216002abf79146fahghghmin</servlet-name>
 		<servlet-class>servlets.module.challenge.UrlAccess2Admin</servlet-class>
 	</servlet>
+	<servlet-mapping>
+		<servlet-name>/challenges/278fa30ee727b74b9a2522a5ca3bf993087de5a0ac72adff216002abf79146fahghghmin</servlet-name>
+		<url-pattern>/challenges/278fa30ee727b74b9a2522a5ca3bf993087de5a0ac72adff216002abf79146fahghghmin</url-pattern>
+	</servlet-mapping>
+
 	<servlet>
 		<servlet-name>/challenges/278fa30ee727b74b9a2522a5ca3bf993087de5a0ac72adff216002abf79146fa</servlet-name>
 		<servlet-class>servlets.module.challenge.UrlAccess2</servlet-class>
