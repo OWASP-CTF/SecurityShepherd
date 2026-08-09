@@ -113,7 +113,9 @@ public class NoSqlInjection1 extends HttpServlet {
         String gamerId = request.getParameter("theGamerName");
         log.debug("User Submitted: " + gamerId);
 
-        DBObject whereQuery = new BasicDBObject("$where", "this._id == '" + gamerId + "'");
+        // A plain equality match on the field. The old $where clause evaluated the submitted
+        // value as server side JavaScript, so any expression could be injected into it.
+        DBObject whereQuery = new BasicDBObject("_id", gamerId);
         cursor = dbCollection.find(whereQuery);
 
         try {

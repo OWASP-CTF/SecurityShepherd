@@ -57,6 +57,13 @@ public class Validate {
   public static Cookie getToken(Cookie[] userCookies) {
     int i = 0;
     Cookie theToken = null;
+    // getCookies() returns null, not an empty array, when the request carries no cookies at all.
+    // Reading length off that threw out of every caller, so a request that simply omitted its
+    // cookies took the handler down instead of being turned away for having no token.
+    if (userCookies == null) {
+      log.error("No cookies were sent with the request, so no CSRF token could be read");
+      return null;
+    }
     for (i = 0; i < userCookies.length; i++) {
       if (userCookies[i].getName().compareTo("token") == 0) {
         theToken = userCookies[i];

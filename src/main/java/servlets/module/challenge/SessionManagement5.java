@@ -112,20 +112,21 @@ public class SessionManagement5 extends HttpServlet {
         log.debug("Executing findUser");
         ResultSet resultSet = callstmt.executeQuery();
         // Is the username valid?
+        // Every account has to present its password, not just the administrators. Waving a
+        // guest through on the strength of a name that exists is not a sign in at all, and the
+        // reply it gave marked out which names were real.
         if (resultSet.next()) {
           log.debug("User found");
-          // Is the user an Admin?
-          if (resultSet.getString(2).equalsIgnoreCase("admin")) {
-            log.debug("Admin Detected");
-            callstmt =
-                conn.prepareStatement(
-                    "SELECT userName, userRole FROM users WHERE userName = ? AND userPassword ="
-                        + " SHA(?)");
-            callstmt.setString(1, subName);
-            callstmt.setString(2, subPass);
-            log.debug("Executing Login Check");
-            ResultSet resultSet2 = callstmt.executeQuery();
-            if (resultSet2.next()) {
+          callstmt =
+              conn.prepareStatement(
+                  "SELECT userName, userRole FROM users WHERE userName = ? AND userPassword ="
+                      + " SHA(?)");
+          callstmt.setString(1, subName);
+          callstmt.setString(2, subPass);
+          log.debug("Executing Login Check");
+          ResultSet resultSet2 = callstmt.executeQuery();
+          if (resultSet2.next()) {
+            if (resultSet2.getString(2).equalsIgnoreCase("admin")) {
               log.debug("Successful Admin Login");
               // Get key and add it to the output
               String userKey =
@@ -144,23 +145,22 @@ public class SessionManagement5 extends HttpServlet {
                       + "</a>"
                       + "</p>";
             } else {
-              userAddress =
-                  bundle.getString("response.badPass")
-                      + " <a>"
-                      + Encode.forHtml(resultSet.getString(1))
-                      + "</a><br/>";
-              htmlOutput = makeTable(userAddress, bundle);
+              log.debug("Successful Pleb Login");
+              htmlOutput =
+                  makeTable(bundle)
+                      + "<h2 class='title'>"
+                      + bundle.getString("response.welcomeGuest")
+                      + "</h2>"
+                      + "<p>"
+                      + bundle.getString("response.guestMessage")
+                      + "</p><br/><br/>";
             }
           } else {
-            log.debug("Successful Pleb Login");
-            htmlOutput =
-                makeTable(bundle)
-                    + "<h2 class='title'>"
-                    + bundle.getString("response.welcomeGuest")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("response.guestMessage")
-                    + "</p><br/><br/>";
+            // The same reply as for an account that does not exist. Telling the caller that
+            // the name was right and only the password was wrong marks out the accounts worth
+            // aiming a password reset at.
+            userAddress = bundle.getString("response.badUser") + "<br/>";
+            htmlOutput = makeTable(userAddress, bundle);
           }
         } else {
           userAddress = bundle.getString("response.badUser") + "<br/>";
