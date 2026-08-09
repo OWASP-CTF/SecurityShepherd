@@ -71,11 +71,17 @@ public class DirectObjectBankCurrentBalance extends HttpServlet {
         log.debug("Account Number - " + accountNumber);
         String applicationRoot = getServletContext().getRealPath("");
         String htmlOutput = new String();
-        long currentBalance =
-            DirectObjectBankLogin.getAccountBalance(accountNumber, applicationRoot);
-        log.debug("Outputting HTML");
-        htmlOutput = Long.toString(currentBalance);
-        out.write(htmlOutput);
+        String ownedAccountNumber = (String) ses.getAttribute("directObjectBankAccount");
+        if (ownedAccountNumber != null && ownedAccountNumber.equals(accountNumber)) {
+          long currentBalance =
+              DirectObjectBankLogin.getAccountBalance(accountNumber, applicationRoot);
+          log.debug("Outputting HTML");
+          htmlOutput = Long.toString(currentBalance);
+          out.write(htmlOutput);
+        } else {
+          log.debug("Unauthorized access to another account's balance denied");
+          out.write(errors.getString("error.funky"));
+        }
       } catch (SQLException e) {
         out.write(
             errors.getString("error.funky")
