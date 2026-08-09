@@ -9,6 +9,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.regex.Pattern;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -48,6 +49,11 @@ public class SqlInjection7 extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(SqlInjection7.class);
 
+  // InternetAddress accepts a quoted local part, so quotes, spaces, semicolons and comment
+  // syntax all pass the library check. A sign-in address has no use for that form.
+  private static final Pattern ADDRESS_FORMAT =
+      Pattern.compile("[A-Za-z0-9][A-Za-z0-9._%+-]*@[A-Za-z0-9][A-Za-z0-9.-]*\\.[A-Za-z]{2,63}");
+
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
     // Setting IpAddress To Log and taking header for original IP if forwarded from proxy
@@ -75,7 +81,7 @@ public class SqlInjection7 extends HttpServlet {
         String subPassword = Validate.validateParameter(request.getParameter("subPassword"), 40);
         log.debug("subPassword - " + subPassword);
         boolean validEmail =
-            Validate.isValidEmailAddress(subEmail.replaceAll("\n", "")); // Ignore \n 's
+            ADDRESS_FORMAT.matcher(subEmail).matches() && Validate.isValidEmailAddress(subEmail);
         if (!subEmail.isEmpty() && !subPassword.isEmpty() && validEmail) {
           conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSeven");
           try {
