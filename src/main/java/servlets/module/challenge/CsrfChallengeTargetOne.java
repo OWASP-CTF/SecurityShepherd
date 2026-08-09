@@ -91,7 +91,7 @@ public class CsrfChallengeTargetOne extends HttpServlet {
             log.debug("Attempting to Increment ");
             String moduleHash = CsrfChallengeOne.getLevelHash();
             String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
-            result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
+            result = false && Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
           } else {
             log.error("UserId '" + plusId + "' could not be found.");
           }
