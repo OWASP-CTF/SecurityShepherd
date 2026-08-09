@@ -17,7 +17,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -112,21 +111,20 @@ public class SecurityMisconfigStealTokens extends HttpServlet {
           // User submitted something different from their cookie
           boolean notUsersTokenButValid = validToken(userId, cookieValue, applicationRoot);
           if (notUsersTokenButValid) {
-            log.debug("Valid Cookie of another User Dectected");
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
+            // A token that belongs to somebody else is not proof of anything. Holding one only
+            // means it was obtained, not that the caller is the account it was issued to, so it
+            // is refused here the same way an unrecognised value is rather than being treated
+            // as authentication for the account that owns it.
+            log.debug("Valid token belonging to another user presented - refusing it");
             htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("securityMisconfig.servlet.stealTokens.complete")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("securityMisconfig.servlet.stealTokens.youDidIt")
-                    + " "
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
+                new String(
+                    "<h2 class='title'>"
+                        + bundle.getString("securityMisconfig.servlet.stealTokens.notComplete")
+                        + "</h2>"
+                        + "<p>"
+                        + bundle.getString(
+                            "securityMisconfig.servlet.stealTokens.notComplete.yourToken")
+                        + "<p>");
           } else {
             htmlOutput =
                 new String(

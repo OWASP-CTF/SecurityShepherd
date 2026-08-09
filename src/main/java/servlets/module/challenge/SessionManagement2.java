@@ -143,16 +143,13 @@ public class SessionManagement2 extends HttpServlet {
           callstmt.setString(1, subName);
           log.debug("Executing getAddress");
           resultSet = callstmt.executeQuery();
+          // A failed sign-in says the same thing whether or not the name exists and never
+          // names the address on file. Telling the caller "that name is real, and here is the
+          // address behind it" handed over both halves of the reset flow's only input.
           if (resultSet.next()) {
-            log.debug("User Found");
-            userAddress =
-                bundle.getString("response.badPass")
-                    + " <a>"
-                    + Encode.forHtml(resultSet.getString(1))
-                    + "</a><br/>";
-          } else {
-            userAddress = bundle.getString("response.badUser") + "<br/>";
+            log.debug("User Found, but not disclosing the address behind the name");
           }
+          userAddress = bundle.getString("response.badUser") + "<br/>";
           htmlOutput = makeTable(userAddress, bundle);
         }
         Database.closeConnection(conn);
