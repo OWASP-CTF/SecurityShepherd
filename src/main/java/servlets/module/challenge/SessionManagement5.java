@@ -42,6 +42,12 @@ public class SessionManagement5 extends HttpServlet {
 
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(SessionManagement5.class);
+
+  // The sign in form offered an unlimited number of password guesses against a small, fixed
+  // set of accounts, so the number of failures one session may accumulate is capped
+  private static final String FAILED_SIGN_INS = "sessionManagement5FailedSignIns";
+
+  private static final int MAX_FAILED_SIGN_INS = 10;
   private static String levelName = "Session Management Challenge Five";
   public static String levelHash =
       "7aed58f3a00087d56c844ed9474c671f8999680556c127a19ee79fa5d7a132e1";
@@ -116,9 +122,16 @@ public class SessionManagement5 extends HttpServlet {
         callstmt.setString(1, subName);
         callstmt.setString(2, subPass);
         log.debug("Executing Login Check");
+        Integer failedSignIns = (Integer) ses.getAttribute(FAILED_SIGN_INS);
+        if (failedSignIns == null) {
+          failedSignIns = 0;
+        }
         ResultSet resultSet = callstmt.executeQuery();
-        if (resultSet.next() && resultSet.getString(2).equalsIgnoreCase("admin")) {
+        if (failedSignIns < MAX_FAILED_SIGN_INS
+            && resultSet.next()
+            && resultSet.getString(2).equalsIgnoreCase("admin")) {
           log.debug("Successful Admin Login");
+          ses.removeAttribute(FAILED_SIGN_INS);
           // Get key and add it to the output
           String userKey =
               Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
@@ -139,6 +152,7 @@ public class SessionManagement5 extends HttpServlet {
           // One message for a bad user name, a bad password and a non admin account, so the sign
           // in form cannot be used to enumerate accounts or to locate the administrators
           log.debug("Incorrect credentials");
+          ses.setAttribute(FAILED_SIGN_INS, failedSignIns + 1);
           userAddress = bundle.getString("response.badUser") + "<br/>";
           htmlOutput = makeTable(userAddress, bundle);
         }
