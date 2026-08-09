@@ -73,8 +73,33 @@ public class DirectObjectBankTransfer extends HttpServlet {
       String errorMessage = new String();
       String applicationRoot = getServletContext().getRealPath("");
       try {
-        String senderAccountNumber = request.getParameter("senderAccountNumber");
+        // Access control: the account funds are taken from is the account this session
+        // authenticated to at bank sign in time. A client supplied sender is never trusted.
+        Object bankSessionAccount = ses.getAttribute("directObjectBankAccount");
+        if (bankSessionAccount == null) {
+          log.error(levelName + " transfer called before bank sign in");
+          out.write(
+              bundle.getString("transfer.error.occurred")
+                  + " "
+                  + errors.getString("error.noSession"));
+          return;
+        }
+        String senderAccountNumber = bankSessionAccount.toString();
         log.debug("Sender Account Number - " + senderAccountNumber);
+
+        // If a sender account is submitted it must be the account owned by this bank session
+        String submittedSender = request.getParameter("senderAccountNumber");
+        if (submittedSender != null
+            && !submittedSender.isEmpty()
+            && !submittedSender.equals(senderAccountNumber)) {
+          log.error(levelName + " denied: sender account not owned by this bank session");
+          out.write(
+              bundle.getString("transfer.error.occurred")
+                  + " "
+                  + errors.getString("error.detected"));
+          return;
+        }
+
         String receiverAccountNumber = request.getParameter("receiverAccountNumber");
         log.debug("Receiver Account Number - " + receiverAccountNumber);
         String transferAmountString = request.getParameter("transferAmount");
@@ -82,8 +107,8 @@ public class DirectObjectBankTransfer extends HttpServlet {
         float tranferAmount = Float.parseFloat(transferAmountString);
 
         // Data Validation
-        // Positive Transfer Amount?
-        if (tranferAmount > 0) {
+        // Finite and Positive Transfer Amount?
+        if (Float.isFinite(tranferAmount) && tranferAmount > 0) {
           // Sender Account Has necessary funds?
           long senderFunds =
               DirectObjectBankLogin.getAccountBalance(senderAccountNumber, applicationRoot);

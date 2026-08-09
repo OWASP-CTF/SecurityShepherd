@@ -3,6 +3,8 @@ package servlets.module.challenge;
 import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -17,7 +19,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -47,14 +48,11 @@ public class SecurityMisconfigStealTokens extends HttpServlet {
   private static String levelName = "Security Misconfig Cookie Flags Servlet";
   public static String levelHash =
       "c4285bbc6734a10897d672c1ed3dd9417e0530a4e0186c27699f54637c7fb5d4";
-  private static String levelResult =
-      "92755de2ebb012e689caf8bfec629b1e237d23438427499b6bf0d7933f1b8215"; // Base Key. User is given
-
-  // user specific key
 
   /**
-   * This servlet will return the key to complete as long as the cookie submitted is valid and does
-   * not belong to the user making the request
+   * This servlet reports on the identity token presented with the request. Possession of a token is
+   * never accepted as proof of identity: the only token this session may act with is the token
+   * bound to the session's own user.
    */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -80,24 +78,35 @@ public class SecurityMisconfigStealTokens extends HttpServlet {
       try {
         String applicationRoot = getServletContext().getRealPath("");
 
+        // Identity comes from the server side session, never from a cookie value that anybody
+        // could have copied from another user
         String userId = ses.getAttribute("userStamp").toString();
         String userActualCookie = getUserToken(userId, applicationRoot);
-        // Getting Submitted Cookie
-        int i = 0;
-        Cookie[] userCookies = request.getCookies();
+
+        // Getting Submitted Cookie. It may be absent: the cookie is flagged Secure and is not
+        // presented over a plain text connection
         Cookie theToken = null;
-        for (i = 0; i < userCookies.length; i++) {
-          if (userCookies[i].getName().compareTo("securityMisconfigLesson") == 0) {
-            theToken = userCookies[i];
-            break; // End Loop, because we found the token
+        Cookie[] userCookies = request.getCookies();
+        if (userCookies != null) {
+          for (int i = 0; i < userCookies.length; i++) {
+            if (userCookies[i].getName().compareTo("securityMisconfigLesson") == 0) {
+              theToken = userCookies[i];
+              break; // End Loop, because we found the token
+            }
           }
         }
-        String cookieValue = theToken.getValue();
+        String cookieValue = (theToken == null) ? new String() : theToken.getValue();
 
-        log.debug("User Submitted Cookie: " + cookieValue);
-        log.debug("Stored Cookie Value  : " + userActualCookie);
+        // Possession of a token is not proof of identity. The only token this session may act
+        // with is the token bound to the session's own user, compared in constant time.
+        boolean ownToken =
+            !cookieValue.isEmpty()
+                && !userActualCookie.isEmpty()
+                && MessageDigest.isEqual(
+                    cookieValue.getBytes(StandardCharsets.UTF_8),
+                    userActualCookie.getBytes(StandardCharsets.UTF_8));
 
-        if (cookieValue.compareTo(userActualCookie) == 0) {
+        if (ownToken) {
           // User is using their own Cookie: Not Complete
           htmlOutput =
               new String(
@@ -109,38 +118,23 @@ public class SecurityMisconfigStealTokens extends HttpServlet {
                           "securityMisconfig.servlet.stealTokens.notComplete.message")
                       + "<p>");
         } else {
-          // User submitted something different from their cookie
-          boolean notUsersTokenButValid = validToken(userId, cookieValue, applicationRoot);
-          if (notUsersTokenButValid) {
-            log.debug("Valid Cookie of another User Dectected");
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("securityMisconfig.servlet.stealTokens.complete")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("securityMisconfig.servlet.stealTokens.youDidIt")
-                    + " "
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
-          } else {
-            htmlOutput =
-                new String(
-                    "<h2 class='title'>"
-                        + bundle.getString("securityMisconfig.servlet.stealTokens.notComplete")
-                        + "</h2>"
-                        + "<p>"
-                        + bundle.getString(
-                            "securityMisconfig.servlet.stealTokens.notComplete.yourToken")
-                        + "<p>");
-          }
+          // A token that is not bound to this session proves nothing and is rejected
+          log.error(
+              levelName
+                  + " rejected a token that is not bound to the session user: "
+                  + ses.getAttribute("userName").toString());
+          htmlOutput =
+              new String(
+                  "<h2 class='title'>"
+                      + bundle.getString("securityMisconfig.servlet.stealTokens.notComplete")
+                      + "</h2>"
+                      + "<p>"
+                      + bundle.getString(
+                          "securityMisconfig.servlet.stealTokens.notComplete.yourToken")
+                      + "<p>");
         }
       } catch (Exception e) {
-        out.write(errors.getString("securityMisconfig.servlet.stealTokens.notComplete.yourToken"));
+        out.write(errors.getString("error.detected"));
         log.fatal(levelName + " - " + e.toString());
       }
       log.debug("Outputting HTML");
@@ -181,49 +175,8 @@ public class SecurityMisconfigStealTokens extends HttpServlet {
     }
     conn.close();
     if (!userToken.isEmpty()) {
-      log.debug("Found token: " + userToken);
+      log.debug("Retrieved the token of the requesting user");
     }
     return userToken;
-  }
-
-  /**
-   * Method to validate if a token exists in the database which does not belong to the user
-   * submitting the request
-   *
-   * @param userId The ID of the user submitting the request
-   * @param token The token submitted in the request
-   * @param applicationRoot Running context of the application
-   * @return Boolean depicting if the token exists in the database and does not belong to the user
-   *     submitting the request
-   * @throws SQLException
-   */
-  public static boolean validToken(String userId, String token, String applicationRoot)
-      throws SQLException {
-    boolean validToken = false;
-    log.debug("Checking token:" + token);
-    Connection conn =
-        Database.getChallengeConnection(applicationRoot, "SecurityMisconfigStealToken");
-    try {
-      CallableStatement validateTokenCs = conn.prepareCall("call validToken(?, ?)");
-      validateTokenCs.setString(1, userId);
-      validateTokenCs.setString(2, token);
-      log.debug("Executing validToken procedure...");
-      ResultSet tokenRs = validateTokenCs.executeQuery();
-      if (tokenRs.next()) {
-        if (tokenRs.getInt(1) > 0) {
-          log.debug("Valid Token Detected");
-          validToken = true;
-        }
-      } else {
-        log.error("No Results From validToken Call");
-        throw new SQLException("No results from validToken Call. Empty Result Set");
-      }
-      tokenRs.close();
-    } catch (SQLException e) {
-      log.error("Could not verify token: " + e.toString());
-      throw e;
-    }
-    conn.close();
-    return validToken;
   }
 }

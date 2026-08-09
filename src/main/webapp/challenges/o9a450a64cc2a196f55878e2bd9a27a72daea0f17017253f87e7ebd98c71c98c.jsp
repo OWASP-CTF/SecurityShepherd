@@ -82,11 +82,15 @@ String i18nChallengeName = bundle.getString("challenge.challengeName");
 					<tr>
 						</td>
 						<select id='userId' style='width: 300px;' multiple>
-							<option value="1">Paul Bourke</option>
-							<option value="3">Will Bailey</option>
-							<option value="5">Orla Cleary</option>
-							<option value="7">Ronan Fitzpatrick</option>
-							<option value="9">Pat McKenana</option>
+							<%
+							java.util.Map<String, String[]> profileMap = DirectObjectReferenceMap.getChallengeOneMap(ses);
+							for (java.util.Map.Entry<String, String[]> profileEntry : profileMap.entrySet())
+							{
+							%>
+							<option value="<%= Encode.forHtmlAttribute(profileEntry.getKey()) %>"><%= Encode.forHtmlContent(profileEntry.getValue()[1]) %></option>
+							<%
+							}
+							%>
 						</select>
 						</td>
 					</tr>

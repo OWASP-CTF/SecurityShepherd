@@ -14,6 +14,7 @@ import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
 import utils.Hash;
 import utils.ShepherdLogManager;
+import utils.UrlAccessIdentity;
 import utils.Validate;
 
 /**
@@ -68,9 +69,29 @@ public class UrlAccess2Admin extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
 
+      // The administrator role is server side session state. A value submitted with the request
+      // can never grant it, so a caller cannot claim to be an administrator by sending a magic
+      // string to a guessed URL.
+      if (!UrlAccessIdentity.isAdministrator(ses)) {
+        log.error(
+            levelName
+                + " administrative function requested without the administrator role by: "
+                + ses.getAttribute("userName").toString());
+        // Deny with a rendered message rather than a bare 403: the challenge page only injects
+        // the response body on a 200, so a 403 would leave the user with a silent dead button.
+        out.write(
+            "<h2 class='title'>"
+                + bundle.getString("response.failure")
+                + "</h2>"
+                + "<p>"
+                + errors.getString("error.shouldNotBeHere")
+                + "</p>");
+        return;
+      }
+
       try {
         String userData = request.getParameter("adminData");
-        boolean tamperedRequest = !userData.equalsIgnoreCase("youAreAnAdminOfAwesomenessWoopWoop");
+        boolean tamperedRequest = !"youAreAnAdminOfAwesomenessWoopWoop".equalsIgnoreCase(userData);
         if (!tamperedRequest) {
           log.debug("No request tampering detected");
         } else {
@@ -95,7 +116,7 @@ public class UrlAccess2Admin extends HttpServlet {
         } else {
           htmlOutput =
               "<h2 class='title'>"
-                  + bundle.getString("response.failue")
+                  + bundle.getString("response.failure")
                   + "</h2>"
                   + "<p>"
                   + bundle.getString("response.failue.message")

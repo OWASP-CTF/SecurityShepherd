@@ -82,16 +82,15 @@
 					<tr>
 						</td>
 						<select id='userId' style='width: 300px;' multiple>
-							<option value="c81e728d9d4c2f636f067f89cc14862c">Joe
-								Sullivan</option>
-							<option value="eccbc87e4b5ce2fe28308fd9f2a7baf3">Will
-								Bailey</option>
-							<option value="e4da3b7fbbce2345d7772b0674a318d5">Orla
-								Cleary</option>
-							<option value="8f14e45fceea167a5a36dedd4bea2543">Ronan
-								Fitzpatrick</option>
-							<option value="6512bd43d9caa6e02c990b0a82652dca">Pat
-								McKenana</option>
+							<%
+							java.util.Map<String, String[]> profileMap = DirectObjectReferenceMap.getChallengeTwoMap(ses);
+							for (java.util.Map.Entry<String, String[]> profileEntry : profileMap.entrySet())
+							{
+							%>
+							<option value="<%= Encode.forHtmlAttribute(profileEntry.getKey()) %>"><%= Encode.forHtmlContent(profileEntry.getValue()[1]) %></option>
+							<%
+							}
+							%>
 						</select>
 						</td>
 					</tr>

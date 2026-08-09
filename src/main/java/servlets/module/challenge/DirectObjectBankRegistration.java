@@ -70,9 +70,19 @@ public class DirectObjectBankRegistration extends HttpServlet {
         String accountHolder = request.getParameter("accountHolder");
         log.debug("Account Holder - " + accountHolder);
         String accountPass = request.getParameter("accountPass");
-        log.debug("Account Pass - " + accountPass);
         String applicationRoot = getServletContext().getRealPath("");
         String htmlOutput = new String();
+
+        // Server side input validation. An empty holder or password would create an account that
+        // anybody could sign into.
+        if (accountHolder == null
+            || accountHolder.isEmpty()
+            || accountPass == null
+            || accountPass.isEmpty()) {
+          log.error(levelName + " called with an empty account holder or password");
+          out.write(errors.getString("error.detected") + " " + bundle.getString("register.error"));
+          return;
+        }
 
         Connection conn = Database.getChallengeConnection(applicationRoot, "directObjectBank");
         CallableStatement callstmt = conn.prepareCall("CALL createAccount(?, ?)");

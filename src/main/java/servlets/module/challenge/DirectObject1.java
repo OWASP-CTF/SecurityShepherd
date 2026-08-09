@@ -16,6 +16,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
+import utils.DirectObjectReferenceMap;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -73,48 +74,74 @@ public class DirectObject1 extends HttpServlet {
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
       try {
-        String userId = request.getParameter("userId[]");
-        log.debug("User Submitted - " + userId);
+        String submittedReference = request.getParameter("userId[]");
+        if (submittedReference == null) {
+          submittedReference = new String();
+        }
+        log.debug("User Submitted - " + submittedReference);
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
         String htmlOutput = new String();
 
-        Connection conn =
-            Database.getChallengeConnection(ApplicationRoot, "directObjectRefChalOne");
-        PreparedStatement prepstmt =
-            conn.prepareStatement("SELECT userName, privateMessage FROM users WHERE userId = ?");
-        prepstmt.setString(1, userId);
-        ResultSet resultSet = prepstmt.executeQuery();
-        if (resultSet.next()) {
-          log.debug("Found user: " + resultSet.getString(1));
-          String userName = resultSet.getString(1);
-          String privateMessage = resultSet.getString(2);
-          htmlOutput =
-              "<h2 class='title'>"
-                  + userName
-                  + "'s "
-                  + bundle.getString("response.message")
-                  + "</h2>"
-                  + "<p>"
-                  + privateMessage
-                  + "</p>";
-        } else {
-          log.debug("No Profile Found");
+        // Access control. The submitted value is resolved against this session's own indirect
+        // object reference map and, failing that, against the server side allow list of the
+        // profiles this feature is permitted to expose. Any other identifier addresses nothing.
+        String userId =
+            DirectObjectReferenceMap.resolveChallengeOneReference(ses, submittedReference);
 
+        if (userId == null) {
+          log.error(
+              levelName
+                  + " - Unauthorised object reference submitted by "
+                  + ses.getAttribute("userName").toString());
           htmlOutput =
               "<h2 class='title'>"
                   + bundle.getString("response.notFound")
                   + "</h2><p>"
                   + bundle.getString("response.notFoundMessage.1")
                   + " '"
-                  + Encode.forHtml(userId)
+                  + Encode.forHtml(submittedReference)
                   + "' "
                   + bundle.getString("response.notFoundMessage.2")
                   + "</p>";
+        } else {
+          Connection conn =
+              Database.getChallengeConnection(ApplicationRoot, "directObjectRefChalOne");
+          PreparedStatement prepstmt =
+              conn.prepareStatement("SELECT userName, privateMessage FROM users WHERE userId = ?");
+          prepstmt.setString(1, userId);
+          ResultSet resultSet = prepstmt.executeQuery();
+          if (resultSet.next()) {
+            log.debug("Found user: " + resultSet.getString(1));
+            String userName = resultSet.getString(1);
+            String privateMessage = resultSet.getString(2);
+            htmlOutput =
+                "<h2 class='title'>"
+                    + Encode.forHtml(userName)
+                    + "'s "
+                    + bundle.getString("response.message")
+                    + "</h2>"
+                    + "<p>"
+                    + Encode.forHtml(privateMessage)
+                    + "</p>";
+          } else {
+            log.debug("No Profile Found");
+
+            htmlOutput =
+                "<h2 class='title'>"
+                    + bundle.getString("response.notFound")
+                    + "</h2><p>"
+                    + bundle.getString("response.notFoundMessage.1")
+                    + " '"
+                    + Encode.forHtml(submittedReference)
+                    + "' "
+                    + bundle.getString("response.notFoundMessage.2")
+                    + "</p>";
+          }
+          Database.closeConnection(conn);
         }
         log.debug("Outputting HTML");
         out.write(htmlOutput);
-        Database.closeConnection(conn);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
