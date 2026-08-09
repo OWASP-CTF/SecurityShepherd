@@ -6,8 +6,11 @@ import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.Set;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -45,6 +48,11 @@ public class DirectObject1 extends HttpServlet {
   private static String levelName = "Insecure Direct Object Challenge Challenge One";
   public static String levelHash =
       "o9a450a64cc2a196f55878e2bd9a27a72daea0f17017253f87e7ebd98c71c98c";
+  // The only userIds the profile-lookup UI ever exposes as options - anything else (including
+  // the hidden user's id) must be rejected server-side, since the client-side dropdown is not a
+  // real access control.
+  private static final Set<String> ALLOWED_USER_IDS =
+      new HashSet<>(Arrays.asList("1", "3", "5", "7", "9"));
 
   /**
    * The user must abuse this functionality to reveal a hidden user. The result key is hidden in
@@ -81,11 +89,16 @@ public class DirectObject1 extends HttpServlet {
 
         Connection conn =
             Database.getChallengeConnection(ApplicationRoot, "directObjectRefChalOne");
-        PreparedStatement prepstmt =
-            conn.prepareStatement("SELECT userName, privateMessage FROM users WHERE userId = ?");
-        prepstmt.setString(1, userId);
-        ResultSet resultSet = prepstmt.executeQuery();
-        if (resultSet.next()) {
+        ResultSet resultSet = null;
+        if (ALLOWED_USER_IDS.contains(userId)) {
+          PreparedStatement prepstmt =
+              conn.prepareStatement("SELECT userName, privateMessage FROM users WHERE userId = ?");
+          prepstmt.setString(1, userId);
+          resultSet = prepstmt.executeQuery();
+        } else {
+          log.debug("Rejected out-of-range userId: " + userId);
+        }
+        if (resultSet != null && resultSet.next()) {
           log.debug("Found user: " + resultSet.getString(1));
           String userName = resultSet.getString(1);
           String privateMessage = resultSet.getString(2);
