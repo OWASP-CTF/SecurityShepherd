@@ -15,7 +15,6 @@ import org.owasp.encoder.Encode;
 import utils.CountdownHandler;
 import utils.InvalidCountdownStateException;
 import utils.ModuleBlock;
-import utils.ModulePlan;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -122,12 +121,6 @@ public class GetModule extends HttpServlet {
           if (!isRunning && !isAdmin) {
             // CTF isn't running and user isn't admin
             log.debug("CTF isn't running, access denied");
-            out.write("../blockedMessage.jsp");
-
-          } else if (!isAdmin
-              && ModulePlan.isIncrementalFloor()
-              && !Getter.isNextIncrementalModule(ApplicationRoot, moduleId, userId)) {
-            log.debug("Module is not next in the user's incremental progression");
             out.write("../blockedMessage.jsp");
 
           } else if (ModuleBlock.blockerEnabled && ModuleBlock.blockerId.compareTo(moduleId) == 0) {

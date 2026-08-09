@@ -1,9 +1,7 @@
 package servlets.module;
 
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.fail;
 
-import dbProcs.Getter;
 import dbProcs.GetterIT;
 import dbProcs.Setter;
 import java.io.IOException;
@@ -19,7 +17,6 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockServletConfig;
 import testUtils.TestProperties;
 import utils.ModuleBlock;
-import utils.ModulePlan;
 
 public class GetModuleIT {
 
@@ -190,46 +187,6 @@ public class GetModuleIT {
         log.debug("location returned: " + moduleAddress);
         log.debug("Should be        : challenges&#x2f;" + levelHash + ".jsp");
         fail(message);
-      }
-    }
-  }
-
-  @Test
-  public void testGetModuleRejectsFutureIncrementalModule()
-      throws SQLException, ServletException, IOException {
-    String firstModuleId = "0dbea4cb5811fff0527184f99bd5034ca9286f11";
-    String futureModuleId = "b9d82aa7b46ddaddb6acfe470452a8362136a31e";
-    String userName = "getModuleIncrementalGate";
-
-    boolean incrementalFloor = ModulePlan.isIncrementalFloor();
-    boolean tournamentFloor = ModulePlan.isTournamentFloor();
-    try {
-      GetterIT.verifyTestUser(applicationRoot, userName, userName);
-      ModulePlan.setIncrementalFloor();
-      TestProperties.loginDoPost(log, request, response, userName, userName, null, lang);
-
-      String csrfToken = response.getCookie("token").getValue();
-      request.setCookies(response.getCookies());
-      String moduleAddress = getModuleDoPost(futureModuleId, csrfToken);
-
-      if (!moduleAddress.equalsIgnoreCase("../blockedMessage.jsp")) {
-        fail("Future incremental module was accessible: " + moduleAddress);
-      }
-
-      String userId = Getter.getUserIdFromName(applicationRoot, userName);
-      assertNull(Getter.checkPlayerResult(applicationRoot, futureModuleId, userId));
-      if (Getter.isNextIncrementalModule(applicationRoot, firstModuleId, userId)) {
-        log.debug("First incremental module remains accessible");
-      } else {
-        fail("First incremental module was not accessible");
-      }
-    } finally {
-      if (incrementalFloor) {
-        ModulePlan.setIncrementalFloor();
-      } else if (tournamentFloor) {
-        ModulePlan.setTournamentFloor();
-      } else {
-        ModulePlan.setOpenFloor();
       }
     }
   }
