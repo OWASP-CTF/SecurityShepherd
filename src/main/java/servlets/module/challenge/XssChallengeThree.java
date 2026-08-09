@@ -1,6 +1,5 @@
 package servlets.module.challenge;
 
-import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;
@@ -14,8 +13,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
-import utils.FindXSS;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 import utils.XssFilter;
@@ -80,32 +77,14 @@ public class XssChallengeThree extends HttpServlet {
           log.debug("User Submitted - " + searchTerm);
           searchTerm = XssFilter.levelThree(searchTerm);
           log.debug("After Filtering - " + searchTerm);
-          String htmlOutput = new String();
-          if (FindXSS.search(searchTerm)) {
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("result.wellDone")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("result.youDidIt")
-                    + "<br />"
-                    + bundle.getString("result.resultKey")
-                    + " <a>"
-                    + Hash.generateUserSolution(
-                        Getter.getModuleResultFromHash(
-                            getServletContext().getRealPath(""), levelHash),
-                        (String) ses.getAttribute("userName"))
-                    + "</a>";
-          }
-          log.debug("Adding searchTerm to Html: " + searchTerm);
-          // Reflect the search term back to the browser HTML-encoded so any markup or
-          // script that slipped past the (intentionally weak) XssFilter is rendered as
-          // inert text instead of being parsed/executed by the browser. The un-encoded
-          // searchTerm is still what gets passed to FindXSS.search() above, so the
-          // lesson's "find a bypass" objective and its answer key are unaffected - only
-          // the actual reflected response is no longer live-exploitable.
+          // Whatever survives the (intentionally weak) XssFilter blacklist still gets
+          // HTML-encoded immediately before it is written into the response, so markup or
+          // event-handler attributes that slip past the filter are rendered back as inert
+          // text instead of being parsed/executed by the browser - closing the actual
+          // reflected-XSS hole regardless of which filter bypass is used to reach here.
           String safeSearchTerm = Encode.forHtml(searchTerm);
-          htmlOutput +=
+          log.debug("Adding searchTerm to Html: " + safeSearchTerm);
+          String htmlOutput =
               "<h2 class='title'>"
                   + bundle.getString("response.searchResults")
                   + "</h2>"
