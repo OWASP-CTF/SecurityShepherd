@@ -21,7 +21,8 @@ import utils.ShepherdLogManager;
 import utils.Validate;
 
 /**
- * Session Management Challenge Two - Password Reset Servlet Does not return result key <br>
+ * Session Management Challenge Two - Password Reset Servlet. The response never returns the new
+ * password or the result key. <br>
  * <br>
  * This file is part of the Security Shepherd Project.
  *
