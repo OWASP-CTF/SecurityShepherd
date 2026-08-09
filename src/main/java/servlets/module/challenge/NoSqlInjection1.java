@@ -159,7 +159,8 @@ public class NoSqlInjection1 extends HttpServlet {
           log.fatal(levelName + " - " + e.toString());
         } finally {
           cursor.close();
-          mongoClient.close();
+          // The MongoClient is a process-wide pooled singleton owned by MongoDatabase; closing it
+          // here would break every later request in this JVM. Only the cursor is ours to release.
         }
       } catch (MongoSocketException e) {
         log.error(bundle.getString("result.mongoError") + e.toString());
