@@ -73,7 +73,7 @@ public class PoorValidationLesson extends HttpServlet {
         String userData = request.getParameter("userdata");
         log.debug("User Submitted - " + userData);
         String htmlOutput = new String();
-        int userNumber = Integer.parseInt(userData);
+        int userNumber = validateNumber(Integer.parseInt(userData));
         if (userNumber < 0) {
           // Get key and add it to the output
           String userKey =
@@ -111,5 +111,23 @@ public class PoorValidationLesson extends HttpServlet {
     } else {
       log.error(levelName + " servlet accessed with no session");
     }
+  }
+
+  /** Smallest value this form accepts. The check in the page enforces the same bound. */
+  private static final int MIN_VALID_NUMBER = 0;
+
+  /**
+   * Confines a submitted number to the range the form allows. The check in the page that stops the
+   * value going negative runs in the submitter's own browser, so the same bound is applied here
+   * rather than being taken on trust from the request.
+   *
+   * @param number Number as submitted by the client
+   * @return The number, confined to MIN_VALID_NUMBER or above
+   */
+  private static int validateNumber(int number) {
+    if (number < MIN_VALID_NUMBER) {
+      return MIN_VALID_NUMBER;
+    }
+    return number;
   }
 }
