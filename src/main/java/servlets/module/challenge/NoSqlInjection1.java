@@ -113,7 +113,10 @@ public class NoSqlInjection1 extends HttpServlet {
         String gamerId = request.getParameter("theGamerName");
         log.debug("User Submitted: " + gamerId);
 
-        DBObject whereQuery = new BasicDBObject("$where", "this._id == '" + gamerId + "'");
+        // A parameterized field-equality query, not a string-built $where JS clause: the
+        // submitted value can only ever be compared as a literal _id, never break out into
+        // arbitrary JS (e.g. querying by name/address instead of the private gamer ID).
+        DBObject whereQuery = new BasicDBObject("_id", gamerId);
         cursor = dbCollection.find(whereQuery);
 
         try {
