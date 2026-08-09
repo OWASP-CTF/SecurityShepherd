@@ -550,7 +550,7 @@ SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
 START TRANSACTION;
 USE `SqlChalSix`;
 INSERT INTO `SqlChalSix`.`users` (`idusers`, `userName`, `userPin`, `userQuestion`, `userAnswer`, `userAge`) VALUES (1, 'George', '8367', 'What is your favourite Flower', 'A Red Rose', '23');
-INSERT INTO `SqlChalSix`.`users` (`idusers`, `userName`, `userPin`, `userQuestion`, `userAnswer`, `userAge`) VALUES (2, 'Brendan', '4685', 'What is the answer to this level?', '17f999a8b3fbfde54124d6e94b256a264652e5087b14622e1644c884f8a33f82', '98');
+INSERT INTO `SqlChalSix`.`users` (`idusers`, `userName`, `userPin`, `userQuestion`, `userAnswer`, `userAge`) VALUES (2, 'Brendan', '4685', 'What is the answer to this level?', '3e1632d6361e63495afdf3a9e0a4bb0d23f065515cee83da463980c86a8987ac', '98');
 INSERT INTO `SqlChalSix`.`users` (`idusers`, `userName`, `userPin`, `userQuestion`, `userAnswer`, `userAge`) VALUES (3, 'Sean', '1254', 'Your favourite Viking', 'Thor', '25');
 INSERT INTO `SqlChalSix`.`users` (`idusers`, `userName`, `userPin`, `userQuestion`, `userAnswer`, `userAge`) VALUES (4, 'Anthony', '7844', 'What game do I suck at?', 'All of the games', '84');
 INSERT INTO `SqlChalSix`.`users` (`idusers`, `userName`, `userPin`, `userQuestion`, `userAnswer`, `userAge`) VALUES (5, 'Owen', '4648', 'Favourite Sandwhich Topping', 'Peanutbutter', '33');
@@ -1172,7 +1172,7 @@ SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
 START TRANSACTION;
 USE `SqlChalStoredProc`;
 INSERT INTO `SqlChalStoredProc`.`customers` (`customerId`, `customerName`, `customerAddress`, `comment`) VALUES ('019ce129ee8960a6b875b20095705d53f8c7b0ca', 'John Fits', 'crazycat@example.com', NULL);
-INSERT INTO `SqlChalStoredProc`.`customers` (`customerId`, `customerName`, `customerAddress`, `comment`) VALUES ('44e2bdc1059903f464e5ba9a34b927614d7fee55', 'Rita Hanolan', 'the1night2before3four@exampleEmails.com', 'Well Done! The Result key is d9c5757c1c086d02d491cbe46a941ecde5a65d523de36ac1bfed8dd4dd9994c8');
+INSERT INTO `SqlChalStoredProc`.`customers` (`customerId`, `customerName`, `customerAddress`, `comment`) VALUES ('44e2bdc1059903f464e5ba9a34b927614d7fee55', 'Rita Hanolan', 'the1night2before3four@exampleEmails.com', 'Well Done! The Result key is 1f0a2f699b9878d4943665d8ce4b1d98441cfef64c86de5e30c1fd4ebd454aad');
 INSERT INTO `SqlChalStoredProc`.`customers` (`customerId`, `customerName`, `customerAddress`, `comment`) VALUES ('05159435826869ccfd76d77a2ed4ba7c2023f0cb', 'Rubix Man', 'manycolours@cube.com', NULL);
 INSERT INTO `SqlChalStoredProc`.`customers` (`customerId`, `customerName`, `customerAddress`, `comment`) VALUES ('6c5c26a1deccf4a87059deb0a3fb463ff7d62fd5', 'Paul O Brien', 'sixshooter@deaf.com', NULL);
 
