@@ -73,7 +73,12 @@ public class CsrfChallengeSevenGetToken extends HttpServlet {
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
         String htmlOutput = new String("Your csrf Token for this Challenge is: ");
-        String userId = request.getParameter("userId").toString();
+        String userId = request.getParameter("userId");
+        String authenticatedUserId = (String) ses.getAttribute("userStamp");
+        if (userId == null || !userId.equals(authenticatedUserId)) {
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
+        }
 
         Connection conn =
             Database.getChallengeConnection(
@@ -82,8 +87,7 @@ public class CsrfChallengeSevenGetToken extends HttpServlet {
           log.debug("Preparing setCsrfChallengeSevenToken call");
           PreparedStatement callstmnt =
               conn.prepareStatement(
-                  "SELECT csrfTokenscol FROM csrfChallengeEnumTokens.csrfTokens WHERE userId LIKE"
-                      + " ?");
+                  "SELECT csrfTokenscol FROM csrfChallengeEnumTokens.csrfTokens WHERE userId = ?");
           callstmnt.setString(1, userId);
           log.debug("Executing setCsrfChallengeSevenTokenQuery");
           ResultSet rs = callstmnt.executeQuery();
