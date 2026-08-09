@@ -77,6 +77,7 @@ public class SessionManagement5 extends HttpServlet {
 
       String htmlOutput = new String();
       log.debug(levelName + " Servlet Accessed");
+      Connection conn = null;
       try {
         log.debug("Getting Challenge Parameters");
         Object nameObj = request.getParameter("subUserName");
@@ -97,8 +98,7 @@ public class SessionManagement5 extends HttpServlet {
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
 
-        Connection conn =
-            Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalFive");
+        conn = Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalFive");
         log.debug("Checking credentials");
         PreparedStatement callstmt;
 
@@ -107,71 +107,55 @@ public class SessionManagement5 extends HttpServlet {
         callstmt.execute();
         log.debug("Changes committed.");
 
-        callstmt = conn.prepareStatement("SELECT userName, userRole FROM users WHERE userName = ?");
+        callstmt =
+            conn.prepareStatement(
+                "SELECT userName, userRole FROM users WHERE userName = ? AND userPassword ="
+                    + " SHA(?)");
         callstmt.setString(1, subName);
-        log.debug("Executing findUser");
+        callstmt.setString(2, subPass);
+        log.debug("Executing Login Check");
         ResultSet resultSet = callstmt.executeQuery();
-        // Is the username valid?
-        // Every account has to present its password, not just the administrators. Waving a
-        // guest through on the strength of a name that exists is not a sign in at all, and the
-        // reply it gave marked out which names were real.
         if (resultSet.next()) {
-          log.debug("User found");
-          callstmt =
-              conn.prepareStatement(
-                  "SELECT userName, userRole FROM users WHERE userName = ? AND userPassword ="
-                      + " SHA(?)");
-          callstmt.setString(1, subName);
-          callstmt.setString(2, subPass);
-          log.debug("Executing Login Check");
-          ResultSet resultSet2 = callstmt.executeQuery();
-          if (resultSet2.next()) {
-            if (resultSet2.getString(2).equalsIgnoreCase("admin")) {
-              log.debug("Successful Admin Login");
-              // Get key and add it to the output
-              String userKey =
-                  Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
-
-              htmlOutput =
-                  "<h2 class='title'>"
-                      + bundle.getString("response.welcome")
-                      + " "
-                      + Encode.forHtml(resultSet2.getString(1))
-                      + "</h2>"
-                      + "<p>"
-                      + bundle.getString("response.resultKey")
-                      + " <a>"
-                      + userKey
-                      + "</a>"
-                      + "</p>";
-            } else {
-              log.debug("Successful Pleb Login");
-              htmlOutput =
-                  makeTable(bundle)
-                      + "<h2 class='title'>"
-                      + bundle.getString("response.welcomeGuest")
-                      + "</h2>"
-                      + "<p>"
-                      + bundle.getString("response.guestMessage")
-                      + "</p><br/><br/>";
-            }
+          if (resultSet.getString(2).equalsIgnoreCase("admin")) {
+            log.debug("Successful Admin Login");
+            // The privilege is read off the row this request just authenticated against. What
+            // was wrong before was taking it from the caller, not having roles at all, so the
+            // decision belongs here - on stored data, after the password has been proven.
+            String userKey =
+                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
+            htmlOutput =
+                "<h2 class='title'>"
+                    + bundle.getString("response.welcome")
+                    + " "
+                    + Encode.forHtml(resultSet.getString(1))
+                    + "</h2><p>"
+                    + bundle.getString("response.resultKey")
+                    + " <a>"
+                    + userKey
+                    + "</a></p>";
           } else {
-            // The same reply as for an account that does not exist. Telling the caller that
-            // the name was right and only the password was wrong marks out the accounts worth
-            // aiming a password reset at.
-            userAddress = bundle.getString("response.badUser") + "<br/>";
-            htmlOutput = makeTable(userAddress, bundle);
+            log.debug("Successful Pleb Login");
+            htmlOutput =
+                makeTable(bundle)
+                    + "<h2 class='title'>"
+                    + bundle.getString("response.welcomeGuest")
+                    + "</h2>"
+                    + "<p>"
+                    + bundle.getString("response.guestMessage")
+                    + "</p><br/><br/>";
           }
         } else {
+          log.debug("Incorrect credentials");
           userAddress = bundle.getString("response.badUser") + "<br/>";
           htmlOutput = makeTable(userAddress, bundle);
         }
-        Database.closeConnection(conn);
         log.debug("Outputting HTML");
         out.write(htmlOutput);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
+      } finally {
+        Database.closeConnection(conn);
       }
     } else {
       log.error(levelName + " servlet accessed with no session");

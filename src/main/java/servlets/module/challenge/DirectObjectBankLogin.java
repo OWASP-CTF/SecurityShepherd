@@ -49,17 +49,6 @@ public class DirectObjectBankLogin extends HttpServlet {
   private static String levelResult =
       "4a1df02af317270f844b56edc0c29a09f3dd39faad3e2a23393606769b2dfa35";
 
-  /** The balance an account must hold before this challenge is considered complete. */
-  private static final long COMPLETION_BALANCE = 5000000;
-
-  /** Session attributes recording the account, and its worth, when this session first met it. */
-  private static final String SIGN_IN_ACCOUNT_ATTRIBUTE = "directObjectBankSignInAccount";
-
-  private static final String SIGN_IN_BALANCE_ATTRIBUTE = "directObjectBankSignInBalance";
-
-  /** Set once this session has signed into an account somebody else had already funded. */
-  private static final String PRE_FUNDED_ATTRIBUTE = "directObjectBankSawPreFundedAccount";
-
   /**
    * This Servlet is used in the Insecure Direct Object Bank to sign in to a specific bank account.
    * It does this by checking the user DB credentials and then returns the bank form the user needs
@@ -133,57 +122,6 @@ public class DirectObjectBankLogin extends HttpServlet {
   }
 
   /**
-   * Records the balance this session first saw for a bank account, and reports whether that first
-   * balance was below the amount needed to complete this challenge.
-   *
-   * <p>Every account in this bank is opened empty, so an account that is already worth more than
-   * the completion balance when a session signs into it was funded by somebody else. Signing into
-   * such an account is a direct object reference the requester was never authorised to benefit
-   * from, so it never counts as a solve, no matter how often it is signed into or how often the
-   * challenge page is reloaded. An account that crosses the completion balance while this session
-   * is signed into it is still a solve.
-   *
-   * @param account The account number the session is signed into
-   * @param balance The balance that account holds right now
-   * @param ses The session of the signed in Shepherd user
-   * @return True if the completion balance was not already in the account at sign in
-   */
-  private static boolean fundedSinceSignIn(String account, long balance, HttpSession ses) {
-    if (account == null || ses == null) {
-      return false;
-    }
-    // The account and the balance it arrived with are read and written as one step. Two requests
-    // made at the same time would otherwise be able to leave one account's number recorded beside
-    // another account's balance.
-    synchronized (ses) {
-      Long signInBalance = null;
-      Object recordedAccount = ses.getAttribute(SIGN_IN_ACCOUNT_ATTRIBUTE);
-      Object recordedBalance = ses.getAttribute(SIGN_IN_BALANCE_ATTRIBUTE);
-      boolean sameAccount = recordedAccount != null && account.equals(recordedAccount.toString());
-      if (sameAccount && recordedBalance instanceof Long) {
-        signInBalance = (Long) recordedBalance;
-      }
-      if (signInBalance == null) {
-        // First sight of this account in this session. Remember what it was worth on arrival.
-        signInBalance = Long.valueOf(balance);
-        ses.setAttribute(SIGN_IN_ACCOUNT_ATTRIBUTE, account);
-        ses.setAttribute(SIGN_IN_BALANCE_ATTRIBUTE, signInBalance);
-      }
-      boolean earned = signInBalance.longValue() <= COMPLETION_BALANCE;
-      if (!earned) {
-        // Signing into an account that was already worth this much is remembered for as long as
-        // the session lasts, so that moving on to another account does not clear the record of it.
-        ses.setAttribute(PRE_FUNDED_ATTRIBUTE, Boolean.TRUE);
-        log.debug("Account was already funded before this session signed in. Refusing completion");
-      } else if (ses.getAttribute(PRE_FUNDED_ATTRIBUTE) != null) {
-        earned = false;
-        log.debug("Session has already handled an account it did not fund. Refusing completion");
-      }
-      return earned;
-    }
-  }
-
-  /**
    * Method used to return the bank interaction view for the user that is signed into the Direct
    * Object Bank challenge
    *
@@ -213,8 +151,7 @@ public class DirectObjectBankLogin extends HttpServlet {
             + " <div id='currentAccountBalanceDiv'><b>"
             + currentBalance
             + "</b></div></p>";
-    boolean earnedSinceSignIn = fundedSinceSignIn(accountNumber, currentBalance, ses);
-    if (currentBalance > COMPLETION_BALANCE && earnedSinceSignIn) {
+    if (currentBalance > 5000000) {
       // Level Complete As the user has more than 5000000 in account. Return Key
       bankForm +=
           "<h2 class='title'>"
@@ -305,8 +242,7 @@ public class DirectObjectBankLogin extends HttpServlet {
             + " <div id='currentAccountBalanceDiv'><b>"
             + currentBalance
             + "</b></div></p>";
-    boolean earnedSinceSignIn = fundedSinceSignIn(accountNumber, currentBalance, ses);
-    if (currentBalance > COMPLETION_BALANCE && earnedSinceSignIn) {
+    if (currentBalance > 5000000) {
       // Level Complete As the user has more than 5000000 in account. Return Key
       bankForm +=
           "<h2 class='title'>"

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Context>
+	<!--
+		Cookies were being issued with no SameSite attribute, so the browser attached them to
+		requests a third party site made on the user's behalf. That is what makes a cross site
+		request forgery work at all: the forged request arrives already authenticated. Marking
+		them strict means a request that did not start on this site carries no identity.
+	-->
+	<CookieProcessor className="org.apache.tomcat.util.http.Rfc6265CookieProcessor"
+		sameSiteCookies="strict" />
+</Context>
