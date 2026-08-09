@@ -459,7 +459,8 @@ COMMIT;
 -- -----------------------------------------------------
 START TRANSACTION;
 USE `SQLiC5Shop`;
-INSERT INTO `SQLiC5Shop`.`vipCoupons` (`vipCouponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (861267, 100, 'spcil\/|Pse3cr3etCouponStu.f4rU176', 2);
+-- Coupon 861267 is revoked. Its code was recoverable from the coupon lookup, so a code that
+-- discounted an item to nothing is no longer issued.
 
 COMMIT;
 
@@ -831,13 +832,17 @@ COMMIT;
 -- -----------------------------------------------------
 START TRANSACTION;
 USE `CryptShop`;
-INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (1, 100, 'PleaseTakeAFruit', 3);
-INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (2, 100, 'FruitForFree', 3);
-INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (3, 10, 'PleaseTakeAnOrange', 2);
-INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (4, 50, 'HalfOffOranges', 2);
-INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (5, 10, 'PleaseTakeABanana', 4);
-INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (6, 50, 'HalfOffBananas', 4);
-INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (432197, 100, 'e!c!3etZoumo@Stu4rU176', 2);
+-- Coupon codes are bearer secrets, so they are stored the way a credential is stored:
+-- PBKDF2-HMAC-SHA256 over the code with a per row random salt, 100000 iterations,
+-- written as <hex salt>$<hex digest>. A shared unsalted digest of a short code is
+-- recoverable from a precomputed table; this is not, and it is slow to attack by guessing.
+INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (1, 100, '08f618be312dc963d0f1fb33ffdd0c75$d5b91c6e0f6a4a12373241d9856cfcd28e9dcbd6c6f5e1e0d322e2dc6316969a', 3);
+INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (2, 100, '13aab4556a9fe4c35a698b76274688ba$613c448b61e2ee234b001693d242f2790a7d41efc0f574889be5c7a926164c07', 3);
+INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (3, 10, '0bc8b3541231285ae8a996e6499b7039$a4bea28771ce9e32cdeefefd06031303a3cc2cba93dc78f8fbe9a2113096318e', 2);
+INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (4, 50, '94b64d7d9bc1bf2d0ae73504a93ef032$0d5cdb98497cd534d736755f3548348c989f010809a2b378d3c13b2a84e4ec09', 2);
+INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (5, 10, '82bef5aa2da36136f22bef2e1bea0fe3$db7f81a794bcca5dd3e53af006f1bfb3b6a65109047f0e2919a68f72f7111400', 4);
+INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (6, 50, 'fcdeb8641a8894876698bfbb7eeb3f1e$36d82e136e963314cb81f5028199b3b01a7c384488f597fe06a1b84701bd4afc', 4);
+INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (432197, 100, '216ff0f7d38b2ccaea0b57d334c9adc8$2a2618aa1f1c1c50c2eb188fda262d51bbda66f513f2c3afbe97cd66ee54edb6', 2);
 COMMIT;
 
 -- -----------------------------------------------------
