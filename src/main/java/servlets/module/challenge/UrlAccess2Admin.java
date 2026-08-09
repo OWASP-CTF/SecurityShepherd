@@ -68,21 +68,6 @@ public class UrlAccess2Admin extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
 
-      // Administrative function. The role is held in the session and is never granted to a player,
-      // so no request a client can craft is authorised here.
-      if (!"admin".equals(ses.getAttribute("urlAccess2Role"))) {
-        log.debug(
-            "Unauthorised admin function request by: " + ses.getAttribute("userName").toString());
-        out.write(
-            "<h2 class='title'>"
-                + bundle.getString("response.failure")
-                + "</h2>"
-                + "<p>"
-                + bundle.getString("response.failue.message")
-                + "</p>");
-        return;
-      }
-
       try {
         String userData = request.getParameter("adminData");
         boolean tamperedRequest = !userData.equalsIgnoreCase("youAreAnAdminOfAwesomenessWoopWoop");
@@ -110,7 +95,7 @@ public class UrlAccess2Admin extends HttpServlet {
         } else {
           htmlOutput =
               "<h2 class='title'>"
-                  + bundle.getString("response.failure")
+                  + bundle.getString("response.failue")
                   + "</h2>"
                   + "<p>"
                   + bundle.getString("response.failue.message")
