@@ -91,13 +91,18 @@ public class SessionManagement3ChangePassword extends HttpServlet {
           }
         }
         Object passNewObj = request.getParameter("newPassword");
+        Object passCurrentObj = request.getParameter("currentPassword");
         String subName = new String();
         String subNewPass = new String();
+        String subCurrentPass = new String();
         if (theCookie != null) {
           subName = theCookie.getValue();
         }
         if (passNewObj != null) {
           subNewPass = (String) passNewObj;
+        }
+        if (passCurrentObj != null) {
+          subCurrentPass = (String) passCurrentObj;
         }
         log.debug("subName = " + subName);
         // Base 64 Decode
@@ -123,19 +128,31 @@ public class SessionManagement3ChangePassword extends HttpServlet {
           log.debug("Changing password to: " + subNewPass);
           PreparedStatement callstmt;
 
+          // The "current" cookie is set purely client-side and never issued/signed by the
+          // server, so it cannot prove who is making this request. Requiring the account's
+          // actual current password in the WHERE clause means the change only takes effect if
+          // the requester can prove they already know it.
           callstmt =
-              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userName = ?");
+              conn.prepareStatement(
+                  "UPDATE users SET userPassword = SHA(?) WHERE userName = ? AND userPassword ="
+                      + " SHA(?)");
           callstmt.setString(1, subNewPass);
           callstmt.setString(2, subName);
+          callstmt.setString(3, subCurrentPass);
           log.debug("Executing changePassword");
-          callstmt.execute();
+          int rowsUpdated = callstmt.executeUpdate();
 
           log.debug("Committing changes made to database");
           callstmt = conn.prepareStatement("COMMIT");
           callstmt.execute();
           log.debug("Changes committed.");
 
-          htmlOutput = "<p>" + bundle.getString("reset.password") + "</p>";
+          if (rowsUpdated > 0) {
+            htmlOutput = "<p>" + bundle.getString("reset.password") + "</p>";
+          } else {
+            log.debug("Current password did not match for user: " + subName);
+            htmlOutput = "<p>" + bundle.getString("reset.failed") + "</p>";
+          }
         } else {
           log.debug("invalid password submitted: " + subNewPass);
           htmlOutput = "<p>" + bundle.getString("reset.failed") + "</p>";
