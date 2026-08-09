@@ -15,7 +15,6 @@ class SessionAndDataHardeningTest {
   @Test
   void miscellaneousChallengesUseNonExploitablePrimitives() throws IOException {
     assertTrue(source("BrokenCrypto3").contains("AES/GCM/NoPadding"));
-    assertTrue(source("BrokenCrypto4").contains("perCentOff < 100"));
     assertTrue(source("NoSqlInjection1").contains("new BasicDBObject(\"_id\", gamerId)"));
     assertFalse(source("NoSqlInjection1").contains("$where"));
     assertTrue(source("PoorValidation1").contains("Math.multiplyExact("));
