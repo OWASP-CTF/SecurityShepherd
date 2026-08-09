@@ -255,7 +255,9 @@ public class Validate {
                   "User " + userName + " Attempting Admin functions! (CSRF Tokens Not Checked)");
             }
           } catch (Exception e) {
-            log.fatal("Tampered Parameter Detected!!! Could not parameters");
+            // The decision is only sound if the whole check ran, so a throw refuses access
+            result = false;
+            log.fatal("Could not validate admin session for " + userName + ": " + e.toString());
           }
         } else {
           log.debug("Session has no credentials");
@@ -306,7 +308,9 @@ public class Validate {
             }
 
           } catch (Exception e) {
-            log.fatal("Tampered Parameter Detected!!! Could not parameters");
+            // The decision is only sound if the whole check ran, so a throw refuses access
+            result = false;
+            log.fatal("Could not validate admin session for " + userName + ": " + e.toString());
           }
         } else {
           log.debug("Session has no credentials");
@@ -445,7 +449,10 @@ public class Validate {
               }
             }
           } catch (Exception e) {
-            log.fatal("Tampered Parameter Detected!!! Could not Decrypt stamp");
+            // result is already true by this point, and the suspension check that follows it can
+            // throw, so a swallowed exception would hand a kicked user a valid session
+            result = false;
+            log.fatal("Could not validate session: " + e.toString());
           }
         } else {
           log.debug("Session has no credentials");

@@ -1416,13 +1416,15 @@ public class Getter {
    */
   public static boolean getModuleKeyType(String ApplicationRoot, String moduleId) {
     log.debug("*** Getter.getModuleKeyType ***");
-    boolean theKeyType = true;
+    boolean theKeyType = false;
     try (Connection conn = Database.getCoreConnection(ApplicationRoot);
         PreparedStatement prepstmt =
             conn.prepareStatement("SELECT hardcodedKey FROM modules WHERE moduleId = ?")) {
       prepstmt.setString(1, moduleId);
       try (ResultSet moduleFind = prepstmt.executeQuery()) {
-        moduleFind.next();
+        if (!moduleFind.next()) {
+          throw new SQLException("No module found with id " + moduleId);
+        }
         theKeyType = moduleFind.getBoolean(1);
         if (theKeyType) {
           log.debug("Module has hard coded Key");
@@ -1431,8 +1433,10 @@ public class Getter {
         }
       }
     } catch (Exception e) {
-      log.error("Module did not exist: " + e.toString());
-      theKeyType = true;
+      // Reporting a hard coded key makes the submission check compare against the module's shared
+      // base key, so an unanswered lookup demands the per user key instead
+      log.error("Could not read key type for module " + moduleId + ": " + e.toString());
+      theKeyType = false;
     }
     log.debug("*** END getModuleKeyType ***");
     return theKeyType;
