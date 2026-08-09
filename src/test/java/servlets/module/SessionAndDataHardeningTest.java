@@ -41,8 +41,27 @@ class SessionAndDataHardeningTest {
     assertFalse(source("SessionManagement7SecretQuestion").contains("Hash.generateUserSolution("));
   }
 
+  @Test
+  void sessionManagementFiveSeedsMatchItsPasswordCheck() throws IOException {
+    String schema = databaseSchema();
+    int start = schema.indexOf("USE `BrokenAuthAndSessMangChalFive`;");
+    int end = schema.indexOf("COMMIT;", start);
+    String seeds = schema.substring(start, end);
+
+    assertTrue(source("SessionManagement5").contains("SHA(?)"));
+    assertTrue(seeds.contains("'guest1', '7505d64a54e061b7acd54ccd58b49dc43500b635'"));
+    assertTrue(seeds.contains("'guest9', '35675e68f4b5af7b995d9205ad0fc43842f16450'"));
+    assertFalse(seeds.contains(", 'default',"));
+    assertFalse(seeds.contains(", 'guest',"));
+  }
+
   private static String source(String className) throws IOException {
     Path path = Paths.get("src/main/java/servlets/module/challenge", className + ".java");
+    return new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
+  }
+
+  private static String databaseSchema() throws IOException {
+    Path path = Paths.get("src/main/resources/database/moduleSchemas.sql");
     return new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
   }
 
