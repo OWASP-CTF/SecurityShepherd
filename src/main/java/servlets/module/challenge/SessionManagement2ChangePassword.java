@@ -112,7 +112,10 @@ public class SessionManagement2ChangePassword extends HttpServlet {
           callstmt = conn.prepareStatement("COMMIT");
           callstmt.execute();
           log.debug("Changes committed.");
-          htmlOutput = "<p>Password changed.</p>";
+          // The new password is deliberately never written into the response. The confirmation
+          // itself still comes from this challenge's own bundle rather than a hardcoded string,
+          // so the wording stays translatable and specific to this level.
+          htmlOutput = "<p>" + bundle.getString("response.changedTo") + "</p>";
 
         } catch (SQLException e) {
           log.error(levelName + " SQL Error: " + e.toString());
