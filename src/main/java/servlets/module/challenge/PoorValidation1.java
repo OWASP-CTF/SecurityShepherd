@@ -43,8 +43,12 @@ public class PoorValidation1 extends HttpServlet {
       "ca0e89caf3c50dbf9239a0b3c6f6c17869b2a1e2edc3aa6f029fd30925d66c7e";
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(PoorValidation1.class);
+  private static final int MAX_ITEM_AMOUNT = 1000;
 
-  /** Shopping cart addition algorithm does not check for negative numbers on amounts */
+  /**
+   * Shopping cart addition algorithm rejects negative and excessively large amounts and totals in a
+   * non-wrapping width, so the order total can never be zero or negative.
+   */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
     // Setting IpAddress To Log and taking header for original IP if forwarded from
@@ -66,25 +70,26 @@ public class PoorValidation1 extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
       try {
-        int pineappleAmount = Integer.parseInt(request.getParameter("pineappleAmount"));
+        int pineappleAmount =
+            validateAmount(Integer.parseInt(request.getParameter("pineappleAmount")));
         log.debug("pineappleAmount - " + pineappleAmount);
-        int orangeAmount = Integer.parseInt(request.getParameter("orangeAmount"));
+        int orangeAmount = validateAmount(Integer.parseInt(request.getParameter("orangeAmount")));
         log.debug("orangeAmount - " + orangeAmount);
-        int appleAmount = Integer.parseInt(request.getParameter("appleAmount"));
+        int appleAmount = validateAmount(Integer.parseInt(request.getParameter("appleAmount")));
         log.debug("appleAmount - " + appleAmount);
-        int bananaAmount = Integer.parseInt(request.getParameter("bananaAmount"));
+        int bananaAmount = validateAmount(Integer.parseInt(request.getParameter("bananaAmount")));
         log.debug("bananaAmount - " + bananaAmount);
 
-        // Working out costs
-        int pineappleCost = pineappleAmount * 30;
-        int orangeCost = orangeAmount * 3000;
-        int appleCost = appleAmount * 45;
-        int bananaCost = bananaAmount * 15;
+        // Working out costs in a non-wrapping width
+        long pineappleCost = (long) pineappleAmount * 30;
+        long orangeCost = (long) orangeAmount * 3000;
+        long appleCost = (long) appleAmount * 45;
+        long bananaCost = (long) bananaAmount * 15;
 
         htmlOutput = new String();
 
         // Work Out Final Cost
-        int finalCost = pineappleCost + appleCost + bananaCost + orangeCost;
+        long finalCost = pineappleCost + appleCost + bananaCost + orangeCost;
 
         // Output Order
         htmlOutput =
@@ -121,5 +126,20 @@ public class PoorValidation1 extends HttpServlet {
     } else {
       log.error(levelName + " servlet accessed with no session");
     }
+  }
+
+  /**
+   * Ensures an ordered amount is within the acceptable range. Rejects negative amounts and amounts
+   * above the per-item maximum so the order total can never be driven to zero or below.
+   *
+   * @param amount the ordered amount to validate
+   * @return the validated amount
+   * @throws IllegalArgumentException if the amount is negative or too large
+   */
+  private static int validateAmount(int amount) {
+    if (amount < 0 || amount > MAX_ITEM_AMOUNT) {
+      throw new IllegalArgumentException("Invalid item amount: " + amount);
+    }
+    return amount;
   }
 }
