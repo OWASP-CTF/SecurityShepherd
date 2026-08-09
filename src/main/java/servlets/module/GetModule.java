@@ -15,6 +15,7 @@ import org.owasp.encoder.Encode;
 import utils.CountdownHandler;
 import utils.InvalidCountdownStateException;
 import utils.ModuleBlock;
+import utils.ModulePlan;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
