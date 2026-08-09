@@ -66,10 +66,6 @@ public class UrlAccess2Admin extends HttpServlet {
       log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
-      out.write(
-          "<a>"
-              + Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"))
-              + "</a>");
       String htmlOutput = new String();
 
       // The module signs everyone in as a guest, so no session holds the admin role this
