@@ -459,7 +459,6 @@ COMMIT;
 -- -----------------------------------------------------
 START TRANSACTION;
 USE `SQLiC5Shop`;
-INSERT INTO `SQLiC5Shop`.`vipCoupons` (`vipCouponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (861267, 100, 'spcil\/|Pse3cr3etCouponStu.f4rU176', 2);
 
 COMMIT;
 
