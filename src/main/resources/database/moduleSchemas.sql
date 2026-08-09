@@ -832,13 +832,13 @@ COMMIT;
 -- -----------------------------------------------------
 START TRANSACTION;
 USE `CryptShop`;
-INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (1, 100, '08f618be312dc963d0f1fb33ffdd0c75$d5b91c6e0f6a4a12373241d9856cfcd28e9dcbd6c6f5e1e0d322e2dc6316969a', 3);
-INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (2, 100, '13aab4556a9fe4c35a698b76274688ba$613c448b61e2ee234b001693d242f2790a7d41efc0f574889be5c7a926164c07', 3);
-INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (3, 10, '0bc8b3541231285ae8a996e6499b7039$a4bea28771ce9e32cdeefefd06031303a3cc2cba93dc78f8fbe9a2113096318e', 2);
-INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (4, 50, '94b64d7d9bc1bf2d0ae73504a93ef032$0d5cdb98497cd534d736755f3548348c989f010809a2b378d3c13b2a84e4ec09', 2);
-INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (5, 10, '82bef5aa2da36136f22bef2e1bea0fe3$db7f81a794bcca5dd3e53af006f1bfb3b6a65109047f0e2919a68f72f7111400', 4);
-INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (6, 50, 'fcdeb8641a8894876698bfbb7eeb3f1e$36d82e136e963314cb81f5028199b3b01a7c384488f597fe06a1b84701bd4afc', 4);
-INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (432197, 100, '216ff0f7d38b2ccaea0b57d334c9adc8$2a2618aa1f1c1c50c2eb188fda262d51bbda66f513f2c3afbe97cd66ee54edb6', 2);
+INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (1, 100, '4cfb016b8d20f6591f9f01cceca4d475956e9d32f935b0724b414103c5002bfa', 3);
+INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (2, 100, 'be3863b1ec449231a9aee693f83593f203d06e44bbe3e9ae879f596edd987199', 3);
+INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (3, 10, 'a3132292bd7e8d546c69d0c84c1094014969cca0f24e6b63c90e6fcb5665456f', 2);
+INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (4, 50, '43a11eec22a7deeed08adf6532e8c3cdf9addff2d831fa48cbc2148c4243c3b7', 2);
+INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (5, 10, 'ba6cf2b8cd9a283d8b4376a32ecf96487866c4b252873b2f54e549b11955a365', 4);
+INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (6, 50, '1bebbff6add24b3d9c187a4780174ccdf2005b2d4d313b1c306c8bf9bd098582', 4);
+INSERT INTO `CryptShop`.`coupons` (`couponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (432197, 100, '877951459b92f200b7a7e13c49f13ce9094604b1d50ce62acd6faf427ea20de6', 2);
 COMMIT;
 
 -- -----------------------------------------------------
