@@ -2,13 +2,18 @@ package servlets.module.challenge;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import javax.crypto.Cipher;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
@@ -42,7 +47,16 @@ public class BrokenCrypto3 extends HttpServlet {
   public static String levelHash =
       "2da053b4afb1530a500120a49a14d422ea56705a7e3fc405a77bc269948ccae1";
   public static String levelResult =
-      "thisisthesecurityshepherdabcencryptionkey"; // Is used as encryption key in this level
+      "thisisthesecurityshepherdabcencryptionkey"; // The module's answer. It is kept entirely out
+  // of the demo cipher below, so nothing an attacker can do to that cipher discloses it.
+
+  // Key used only to run the little decryption demo on the challenge page. It is unrelated to
+  // levelResult by construction, so an attacker who fully recovers it (or forges ciphertext
+  // against it) still learns nothing about the module's answer.
+  private static final byte[] DEMO_KEY =
+      Base64.decodeBase64("lrd1TRm6xWIV6/LTkNy9IhCsqPajtactGI4p0uSN22I=");
+  private static final int GCM_IV_BYTES = 12;
+  private static final int GCM_TAG_BITS = 128;
 
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -72,8 +86,7 @@ public class BrokenCrypto3 extends HttpServlet {
         log.debug("User Submitted - " + userData);
 
         log.debug("Decrypting user input");
-        // Using level key as encryption key
-        String decryptedUserData = decrypt(userData, levelResult);
+        String decryptedUserData = decrypt(userData);
         log.debug("Decrypted to: " + decryptedUserData);
 
         htmlOutput =
@@ -95,40 +108,38 @@ public class BrokenCrypto3 extends HttpServlet {
   }
 
   /**
-   * Decrypts the supplied string value using the submitted key
+   * Decrypts the supplied Base64 blob with AES-256/GCM under the fixed demo key.
    *
-   * @param hash The cipher text to be decrypted
-   * @param key The encryption key
+   * <p>Unlike a bare XOR, GCM is authenticated: any ciphertext that was not produced with the demo
+   * key is rejected outright rather than being XOR'd through and handed back to the caller. That
+   * closes off the known/chosen-plaintext trick of feeding in bytes of a guessed value (e.g. all
+   * spaces) to have the key echoed back byte-by-byte - forged or altered input simply fails
+   * authentication here, no matter what bytes it contains.
+   *
+   * @param userSuppliedCipherText Base64-encoded IV + ciphertext + GCM tag
    * @return The plain text revealed from the decryption
-   * @throws Exception Throws illegal state Exception
+   * @throws Exception if the input is malformed or fails GCM authentication
    */
-  public static String decrypt(String hash, String key) throws Exception {
+  public static String decrypt(String userSuppliedCipherText) throws Exception {
     try {
-      return new String(
-          xor(org.apache.commons.codec.binary.Base64.decodeBase64(hash.getBytes()), key), "UTF-8");
-    } catch (java.io.UnsupportedEncodingException ex) {
+      byte[] blob = Base64.decodeBase64(userSuppliedCipherText.getBytes("UTF-8"));
+      if (blob.length <= GCM_IV_BYTES) {
+        throw new IllegalArgumentException("Ciphertext too short");
+      }
+      byte[] iv = new byte[GCM_IV_BYTES];
+      byte[] cipherText = new byte[blob.length - GCM_IV_BYTES];
+      System.arraycopy(blob, 0, iv, 0, GCM_IV_BYTES);
+      System.arraycopy(blob, GCM_IV_BYTES, cipherText, 0, cipherText.length);
+
+      Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+      cipher.init(
+          Cipher.DECRYPT_MODE,
+          new SecretKeySpec(DEMO_KEY, "AES"),
+          new GCMParameterSpec(GCM_TAG_BITS, iv));
+      byte[] plainText = cipher.doFinal(cipherText); // throws on any tampering/forgery
+      return new String(plainText, "UTF-8");
+    } catch (UnsupportedEncodingException ex) {
       throw new IllegalStateException(ex);
     }
-  }
-
-  /**
-   * XOR Function
-   *
-   * @param input Byte array to be XOR'd
-   * @param key Encryption Key
-   * @return
-   */
-  private static byte[] xor(final byte[] input, String theKey) {
-    final byte[] output = new byte[input.length];
-    final byte[] secret = theKey.getBytes();
-    int spos = 0;
-    for (int pos = 0; pos < input.length; pos += 1) {
-      output[pos] = (byte) (input[pos] ^ secret[spos]);
-      spos += 1;
-      if (spos >= secret.length) {
-        spos = 0;
-      }
-    }
-    return output;
   }
 }
