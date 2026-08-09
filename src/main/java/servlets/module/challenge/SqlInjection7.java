@@ -43,7 +43,7 @@ import utils.Validate;
 public class SqlInjection7 extends HttpServlet {
 
   private static final String levelName = "SQLi C7";
-  private static final String levelHash =
+  private static String levelHash =
       "8c2dd7e9818e5c6a9f8562feefa002dc0e455f0e92c8a46ab0cf519b1547eced";
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(SqlInjection7.class);
@@ -68,7 +68,6 @@ public class SqlInjection7 extends HttpServlet {
       String htmlOutput = new String();
       String applicationRoot = getServletContext().getRealPath("");
 
-      Connection conn = null;
       try {
         String subEmail = Validate.validateParameter(request.getParameter("subEmail"), 60);
         log.debug("subEmail - " + subEmail.replaceAll("\n", " \\\\n ")); // Escape \n's
@@ -76,17 +75,16 @@ public class SqlInjection7 extends HttpServlet {
         log.debug("subPassword - " + subPassword);
         boolean validEmail =
             Validate.isValidEmailAddress(subEmail.replaceAll("\n", "")); // Ignore \n 's
-        if (!subEmail.isEmpty() && !subPassword.isEmpty() && validEmail) {
-          conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSeven");
+        if (!subPassword.isEmpty() && !subPassword.isEmpty() && validEmail) {
+          Connection conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSeven");
           try {
             log.debug("Signing in with subitted details");
-            // The address is bound. It used to be concatenated, and the format check above does
-            // not stop that on its own - a newline is enough to get an injection past it.
             PreparedStatement prepstmt =
                 conn.prepareStatement(
-                    "SELECT userName FROM users WHERE userEmail = ? AND userPassword = SHA(?);");
-            prepstmt.setString(1, subEmail);
-            prepstmt.setString(2, subPassword);
+                    "SELECT userName FROM users WHERE userEmail = '"
+                        + subEmail
+                        + "' AND userPassword = ?;");
+            prepstmt.setString(1, subPassword);
             ResultSet users = prepstmt.executeQuery();
             if (users.next()) {
               htmlOutput =
@@ -124,6 +122,7 @@ public class SqlInjection7 extends HttpServlet {
               log.error("Failed to Pause: " + e1.toString());
             }
           }
+          conn.close();
         } else {
           htmlOutput = new String("Invalid data submitted");
           if (!validEmail) {
@@ -138,8 +137,6 @@ public class SqlInjection7 extends HttpServlet {
         } catch (Exception e2) {
           log.error("Failed to Pause: " + e2.toString());
         }
-      } finally {
-        Database.closeConnection(conn);
       }
       log.debug("*** " + levelName + " End ***");
       out.write(htmlOutput);
