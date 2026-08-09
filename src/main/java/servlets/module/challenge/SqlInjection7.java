@@ -81,14 +81,12 @@ public class SqlInjection7 extends HttpServlet {
             log.debug("Signing in with subitted details");
             PreparedStatement prepstmt =
                 conn.prepareStatement(
-                    "SELECT userName FROM users WHERE userEmail = ? AND userPassword = ?;");
-            prepstmt.setString(1, subEmail);
-            prepstmt.setString(2, subPassword);
+                    "SELECT userName FROM users WHERE userEmail = '"
+                        + subEmail
+                        + "' AND userPassword = ?;");
+            prepstmt.setString(1, subPassword);
             ResultSet users = prepstmt.executeQuery();
             if (users.next()) {
-              // The address is bound as a parameter now, so the only way to reach this branch is
-              // to present a stored email and its password. Signing in is what this page is for,
-              // and it still answers the way it always did.
               htmlOutput =
                   "<h3>"
                       + bundle.getString("response.welcome")

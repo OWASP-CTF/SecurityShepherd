@@ -130,17 +130,8 @@ public class XxeChallenge1OldWebService extends HttpServlet {
     Document doc;
     String result;
 
-    // A document type declaration is refused outright, and with it the external general and
-    // parameter entities, the external DTD and the XInclude processing that let a submitted
-    // document name a path on the server and have the parser read it back into the response.
-    // A body carrying a DOCTYPE now fails to parse and is reported as a blank address, which is
-    // the same answer the endpoint already gave for anything else it could not read.
     DocumentBuilder dBuilder =
-        XmlDocumentBuilder.xmlDocBuilder(true, false, false, false, false, false);
-    if (dBuilder == null) {
-      log.error("Could not build a parser that refuses document type declarations");
-      return null;
-    }
+        XmlDocumentBuilder.xmlDocBuilder(false, true, true, true, true, true);
     InputSource is = new InputSource(xmlEmail);
 
     try {
