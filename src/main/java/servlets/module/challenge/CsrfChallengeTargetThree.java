@@ -7,13 +7,13 @@ import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -70,39 +70,32 @@ public class CsrfChallengeTargetThree extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
-        // A per-victim, session-bound nonce is required to credit an attack: the value is only
-        // ever handed to whoever's session it was minted for, so a request forged from another
-        // origin cannot supply a value that matches the target's own session. (The base servlet
-        // only checked that a csrfToken parameter was non-empty, never that it matched anything.)
-        String csrfTokenName = "csrfChallengeThreeNonce";
-        String storedToken;
-        if (ses.getAttribute(csrfTokenName) == null
-            || ses.getAttribute(csrfTokenName).toString().isEmpty()) {
-          storedToken = Hash.randomString();
-          ses.setAttribute(csrfTokenName, storedToken);
-          out.write(csrfGenerics.getString("target.noTokenNewToken") + " " + storedToken + "<br><br>");
-        } else {
-          storedToken = ses.getAttribute(csrfTokenName).toString();
-        }
         String plusId = request.getParameter("userid");
         log.debug("User Submitted - " + plusId);
-        String submittedToken = request.getParameter("csrfToken");
-        boolean validCsrf = submittedToken != null && storedToken.equals(submittedToken);
-
+        // Validate against the application's own session-bound CSRF cookie (the same
+        // cookie/parameter pair every other authenticated call in this app relies on), rather
+        // than a token minted ad hoc by this servlet - a forged cross-origin request can supply
+        // a userid parameter but has no way to read the victim's CSRF cookie to produce a
+        // matching csrfToken parameter.
+        Cookie tokenCookie = Validate.getToken(request.getCookies());
+        if (!Validate.validateTokens(tokenCookie, request.getParameter("csrfToken"))) {
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
+        }
         String userId = (String) ses.getAttribute("userStamp");
         // Only ever credit the account that is actually making this request. Trusting an
         // attacker-supplied target id let anyone mark the challenge complete for a victim who
         // never made a legitimate same-origin submission themselves - a valid token proves the
         // request is same-origin, not that the caller may act on someone else's behalf.
-        if (validCsrf && userId.equals(plusId)) {
-          String ApplicationRoot = getServletContext().getRealPath("");
-          log.debug("Attempting to Increment ");
-          String moduleHash = CsrfChallengeThree.getLevelHash();
-          String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
-          result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, userId);
-        } else {
-          log.debug("Missing or invalid CSRF token, or target did not match the caller");
+        if (!userId.equals(plusId)) {
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
         }
+        String applicationRoot = getServletContext().getRealPath("");
+        log.debug("Attempting to Increment ");
+        String moduleHash = CsrfChallengeThree.getLevelHash();
+        String moduleId = Getter.getModuleIdFromHash(applicationRoot, moduleHash);
+        result = Setter.updateCsrfCounter(applicationRoot, moduleId, userId);
 
         if (result) {
           out.write(csrfGenerics.getString("target.incrementSuccess"));
