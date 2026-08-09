@@ -13,11 +13,11 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
 import utils.FindXSS;
 import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
-import utils.XssFilter;
 
 /**
  * Cross Site Scripting Challenge Four control class. <br>
@@ -78,6 +78,9 @@ public class XssChallengeFour extends HttpServlet {
           String htmlOutput = new String();
           String userPost = new String();
           String searchTerm = request.getParameter("searchTerm");
+          if (searchTerm == null) {
+            searchTerm = "";
+          }
           log.debug("User Submitted - " + searchTerm);
           if (!searchTerm.startsWith("http")) {
             searchTerm = "https://www.owasp.org/index.php/OWASP_Security_Shepherd";
@@ -88,8 +91,10 @@ public class XssChallengeFour extends HttpServlet {
                     + searchTerm
                     + "</a>";
           } else {
-
-            searchTerm = XssFilter.encodeForHtml(searchTerm);
+            // The submitted link is written into two double quoted HTML attribute values and into
+            // element content. Contextual output encoding at the point of output is the control
+            // that keeps it inside those contexts. Never decode any part of the encoder output.
+            searchTerm = Encode.forHtml(searchTerm);
             userPost =
                 "<a href=\"" + searchTerm + "\" alt=\"" + searchTerm + "\">" + searchTerm + "</a>";
             log.debug("After Encoding - " + searchTerm);
