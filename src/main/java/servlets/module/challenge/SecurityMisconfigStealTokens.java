@@ -112,21 +112,20 @@ public class SecurityMisconfigStealTokens extends HttpServlet {
           // User submitted something different from their cookie
           boolean notUsersTokenButValid = validToken(userId, cookieValue, applicationRoot);
           if (notUsersTokenButValid) {
-            log.debug("Valid Cookie of another User Dectected");
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
+            // A token that belongs to someone else is not proof of anything about the caller -
+            // holding it means it was obtained, not that the holder is the account it names. It
+            // is refused the same way an unrecognized value is, rather than being accepted as
+            // authentication for the account it was issued to.
+            log.debug("Valid token belonging to another user presented - refusing it");
             htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("securityMisconfig.servlet.stealTokens.complete")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("securityMisconfig.servlet.stealTokens.youDidIt")
-                    + " "
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
+                new String(
+                    "<h2 class='title'>"
+                        + bundle.getString("securityMisconfig.servlet.stealTokens.notComplete")
+                        + "</h2>"
+                        + "<p>"
+                        + bundle.getString(
+                            "securityMisconfig.servlet.stealTokens.notComplete.yourToken")
+                        + "<p>");
           } else {
             htmlOutput =
                 new String(
