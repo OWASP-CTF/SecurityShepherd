@@ -73,6 +73,21 @@ public class UrlAccess1Admin extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
 
+      // This endpoint is only reachable via a hidden Ajax call, but hiding the URL is not access
+      // control: any authenticated user who reads the page's JavaScript source can invoke it
+      // directly. Enforce that the caller actually holds the "admin" role server-side.
+      if (!Validate.validateAdminSession(ses)) {
+        log.fatal(
+            "User "
+                + ses.getAttribute("userName").toString()
+                + " attempted to access "
+                + levelName
+                + " without administrative privileges");
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        out.write(errors.getString("error.funky"));
+        return;
+      }
+
       try {
         String userData = request.getParameter("userData");
         boolean tamperedRequest = !userData.equalsIgnoreCase("4816283");
