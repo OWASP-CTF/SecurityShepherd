@@ -63,9 +63,11 @@ if (request.getSession() != null)
 		}
 		String userId = Encode.forHtml(ses.getAttribute("userStamp").toString());
 		
-		//Set CSRF Challenge 4 CsrfToken
-		String csrfChal4Token = Setter.setCsrfChallengeFourCsrfToken(userId, Hash.randomString().trim(), ApplicationRoot);
-		ses.setAttribute("csrfChallengeFourNonce", csrfChal4Token);
+		//Set CSRF Challenge 4 CsrfToken and bind it to the user that owns this session
+		String rawUserId = ses.getAttribute("userStamp").toString();
+		String csrfChal4Token = Setter.setCsrfChallengeFourCsrfToken(rawUserId, Hash.randomString().trim(), ApplicationRoot);
+		CsrfSynchronizerTokens.setToken(ses,
+			servlets.module.challenge.CsrfChallengeTargetFour.CSRF_TOKEN_NAME, rawUserId, csrfChal4Token);
 %>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -97,8 +99,7 @@ if (request.getSession() != null)
 			<%= bundle.getString("challenge.whereIdIsUserBeenIncremented.2") %>
 			<%=bundle.getString("challenge.yourIdIs") %>
 			<%= userId %>
-			<%=bundle.getString("challenge.yourCsrfTokenIs") %>
-			<a><%= csrfChal4Token %></a><%= bundle.getString("challenge.yourIdIs.1") %>
+			<%= bundle.getString("challenge.yourIdIs.1") %>
 			<br /> <br />
 			<%= bundle.getString("challenge.useForumForIframe") %>
 			<% 
