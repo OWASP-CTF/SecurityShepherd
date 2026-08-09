@@ -4,7 +4,9 @@ import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
@@ -128,7 +130,10 @@ public class BrokenCryptoHomeMade extends HttpServlet {
                 BrokenCryptoHomeMade.generateUserSolutionKeyOnly(
                     BrokenCryptoHomeMade.challenges.get(4).get(1),
                     ses.getAttribute("userName").toString());
-            if (submittedSolution.equals(expectedSolution)) {
+            if (submittedSolution != null
+                && MessageDigest.isEqual(
+                    submittedSolution.getBytes(StandardCharsets.UTF_8),
+                    expectedSolution.getBytes(StandardCharsets.UTF_8))) {
               log.debug("Correct Solution Submitted for 'This Challenge'. Returning Key");
               htmlOutput =
                   "<h2 class='title'>"
@@ -145,8 +150,6 @@ public class BrokenCryptoHomeMade extends HttpServlet {
                           (String) ses.getAttribute("userName"))
                       + "</a>";
             } else {
-              log.debug("Expected: " + expectedSolution);
-              log.debug("Got     : " + submittedSolution);
               htmlOutput =
                   "<h2 class='title'>"
                       + bundle.getString("insecureCryptoStorage.homemade.badanswer")
@@ -214,6 +217,11 @@ public class BrokenCryptoHomeMade extends HttpServlet {
           String name = new String();
           if (request.getParameter("name") != null) {
             name = request.getParameter("name").toString();
+          }
+          String authenticatedName = ses.getAttribute("userName").toString();
+          if (!name.equals(authenticatedName)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
           }
           if (name.length() < 4) {
             htmlOutput = bundle.getString("insecureCryptoStorage.homemade.nameTooShort");

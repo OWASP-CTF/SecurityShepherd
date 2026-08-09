@@ -9,16 +9,18 @@ import org.junit.jupiter.api.Test;
 class XssFilterTest {
 
   @Test
-  void levelOne_replacesScriptTag() {
+  void levelOne_htmlEncodesScriptTag() {
     String result = XssFilter.levelOne("<script>alert(1)</script>");
-    assertFalse(result.contains("script"));
-    assertTrue(result.contains("scr.pt"));
+    assertFalse(result.contains("<"));
+    assertFalse(result.contains(">"));
+    assertTrue(result.contains("script"));
   }
 
   @Test
   void levelOne_caseInsensitive() {
     String result = XssFilter.levelOne("<SCRIPT>alert(1)</SCRIPT>");
-    assertFalse(result.toLowerCase().contains("script"));
+    assertFalse(result.contains("<"));
+    assertFalse(result.contains(">"));
   }
 
   @Test
@@ -30,56 +32,64 @@ class XssFilterTest {
   @Test
   void levelTwo_replacesOnclick() {
     String result = XssFilter.levelTwo("<img onclick=\"alert(1)\">");
-    assertFalse(result.contains("onclick"));
+    assertFalse(result.contains("<"));
+    assertFalse(result.contains("\""));
   }
 
   @Test
   void levelTwo_replacesOnmouseover() {
     String result = XssFilter.levelTwo("<div onmouseover=\"alert(1)\">");
-    assertFalse(result.contains("onmouseover"));
+    assertFalse(result.contains("<"));
+    assertFalse(result.contains("\""));
   }
 
   @Test
   void levelTwo_replacesOnload() {
     String result = XssFilter.levelTwo("<body onload=\"alert(1)\">");
-    assertFalse(result.contains("onload"));
+    assertFalse(result.contains("<"));
+    assertFalse(result.contains("\""));
   }
 
   @Test
   void levelTwo_replacesOnerror() {
     String result = XssFilter.levelTwo("<img onerror=\"alert(1)\">");
-    assertFalse(result.contains("onerror"));
+    assertFalse(result.contains("<"));
+    assertFalse(result.contains("\""));
   }
 
   @Test
   void levelTwo_screwsHtmlEncodings() {
     String result = XssFilter.levelTwo("&#x6f;nclick");
-    assertFalse(result.contains("&"));
-    assertFalse(result.contains(":"));
+    assertFalse(result.contains("&#x6f;"));
+    assertTrue(result.contains("&amp;#x6f;"));
   }
 
   @Test
   void levelThree_replacesScriptTag() {
     String result = XssFilter.levelThree("<script>alert(1)</script>");
-    assertFalse(result.contains("script"));
+    assertFalse(result.contains("<"));
+    assertFalse(result.contains(">"));
   }
 
   @Test
   void levelThree_removesJavascriptTriggers() {
     String result = XssFilter.levelThree("<div onclick=\"alert(1)\">");
-    assertFalse(result.contains("onclick"));
+    assertFalse(result.contains("<"));
+    assertFalse(result.contains("\""));
   }
 
   @Test
   void levelFour_replacesScriptRecursively() {
     String result = XssFilter.levelFour("<scrscriptipt>alert(1)</scrscriptipt>");
-    assertFalse(result.contains("script"));
+    assertFalse(result.contains("<"));
+    assertFalse(result.contains(">"));
   }
 
   @Test
   void levelFour_removesJavascriptTriggers() {
     String result = XssFilter.levelFour("<img onerror=\"alert(1)\">");
-    assertFalse(result.contains("onerror"));
+    assertFalse(result.contains("<"));
+    assertFalse(result.contains("\""));
   }
 
   @Test
@@ -90,15 +100,15 @@ class XssFilterTest {
   }
 
   @Test
-  void encodeForHtml_restoresFirstQuote() {
+  void encodeForHtml_encodesAllQuotes() {
     String result = XssFilter.encodeForHtml("\"test\"");
-    assertTrue(result.startsWith("\""));
+    assertFalse(result.contains("\""));
   }
 
   @Test
-  void encodeForHtml_encodesOnHandler() {
+  void encodeForHtml_preservesHarmlessText() {
     String result = XssFilter.encodeForHtml("onclick");
-    assertFalse(result.contains("on"));
+    assertEquals("onclick", result);
   }
 
   @Test
@@ -133,9 +143,9 @@ class XssFilterTest {
   }
 
   @Test
-  void anotherBadUrlValidate_onlyReplacesFirstAngleBrackets() {
+  void anotherBadUrlValidate_encodesAllAngleBrackets() {
     String result = XssFilter.anotherBadUrlValidate("http://example.com/<a><b>");
     long count = result.chars().filter(c -> c == '<').count();
-    assertTrue(count <= 1);
+    assertEquals(0, count);
   }
 }

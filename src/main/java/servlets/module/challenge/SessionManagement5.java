@@ -17,6 +17,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
 import utils.Hash;
+import utils.PasswordHash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -91,7 +92,6 @@ public class SessionManagement5 extends HttpServlet {
           subPass = (String) passObj;
         }
         log.debug("subName = " + subName);
-        log.debug("subPass = " + subPass);
 
         log.debug("Getting ApplicationRoot");
         String ApplicationRoot = getServletContext().getRealPath("");
@@ -107,50 +107,34 @@ public class SessionManagement5 extends HttpServlet {
         callstmt.execute();
         log.debug("Changes committed.");
 
-        callstmt = conn.prepareStatement("SELECT userName, userRole FROM users WHERE userName = ?");
+        callstmt =
+            conn.prepareStatement(
+                "SELECT userName, userRole, userPassword FROM users WHERE userName = ?");
         callstmt.setString(1, subName);
         log.debug("Executing findUser");
         ResultSet resultSet = callstmt.executeQuery();
         // Is the username valid?
-        if (resultSet.next()) {
+        boolean userFound = resultSet.next();
+        if (PasswordHash.verify(userFound ? resultSet.getString(3) : null, subPass) && userFound) {
           log.debug("User found");
           // Is the user an Admin?
           if (resultSet.getString(2).equalsIgnoreCase("admin")) {
             log.debug("Admin Detected");
-            callstmt =
-                conn.prepareStatement(
-                    "SELECT userName, userRole FROM users WHERE userName = ? AND userPassword ="
-                        + " SHA(?)");
-            callstmt.setString(1, subName);
-            callstmt.setString(2, subPass);
-            log.debug("Executing Login Check");
-            ResultSet resultSet2 = callstmt.executeQuery();
-            if (resultSet2.next()) {
-              log.debug("Successful Admin Login");
-              // Get key and add it to the output
-              String userKey =
-                  Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
+            String userKey =
+                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
 
-              htmlOutput =
-                  "<h2 class='title'>"
-                      + bundle.getString("response.welcome")
-                      + " "
-                      + Encode.forHtml(resultSet2.getString(1))
-                      + "</h2>"
-                      + "<p>"
-                      + bundle.getString("response.resultKey")
-                      + " <a>"
-                      + userKey
-                      + "</a>"
-                      + "</p>";
-            } else {
-              userAddress =
-                  bundle.getString("response.badPass")
-                      + " <a>"
-                      + Encode.forHtml(resultSet.getString(1))
-                      + "</a><br/>";
-              htmlOutput = makeTable(userAddress, bundle);
-            }
+            htmlOutput =
+                "<h2 class='title'>"
+                    + bundle.getString("response.welcome")
+                    + " "
+                    + Encode.forHtml(resultSet.getString(1))
+                    + "</h2>"
+                    + "<p>"
+                    + bundle.getString("response.resultKey")
+                    + " <a>"
+                    + userKey
+                    + "</a>"
+                    + "</p>";
           } else {
             log.debug("Successful Pleb Login");
             htmlOutput =

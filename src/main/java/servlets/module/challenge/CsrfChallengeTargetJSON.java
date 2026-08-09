@@ -8,6 +8,7 @@ import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.Scanner;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -67,6 +68,15 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
       boolean result = false;
       HttpSession ses = request.getSession(true);
       if (Validate.validateSession(ses)) {
+        Cookie tokenCookie = Validate.getToken(request.getCookies());
+        Object tokenHeader = request.getHeader("csrfToken");
+        String contentType = request.getContentType();
+        if (contentType == null
+            || !contentType.toLowerCase(Locale.ROOT).startsWith("application/json")
+            || !Validate.validateTokens(tokenCookie, tokenHeader)) {
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
+        }
         ShepherdLogManager.setRequestIp(
             request.getRemoteAddr(),
             request.getHeader("X-Forwarded-For"),
@@ -82,20 +92,13 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
         log.debug("User Submitted - " + plusId);
         String userId = (String) ses.getAttribute("userStamp");
         if (!userId.equals(plusId)) {
-          String ApplicationRoot = getServletContext().getRealPath("");
-          String userName = (String) ses.getAttribute("userName");
-          String attackerName = Getter.getUserName(ApplicationRoot, plusId);
-          if (attackerName != null) {
-            log.debug(userName + " is been CSRF'd by " + attackerName);
-
-            log.debug("Attempting to Increment ");
-            String moduleHash = CsrfChallengeJSON.getLevelHash();
-            String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
-            result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
-          } else {
-            log.error("UserId '" + plusId + "' could not be found.");
-          }
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
         }
+        String applicationRoot = getServletContext().getRealPath("");
+        String moduleHash = CsrfChallengeJSON.getLevelHash();
+        String moduleId = Getter.getModuleIdFromHash(applicationRoot, moduleHash);
+        result = Setter.updateCsrfCounter(applicationRoot, moduleId, userId);
 
         if (result) {
           out.write(csrfGenerics.getString("target.incrementSuccess"));

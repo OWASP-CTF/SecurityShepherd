@@ -127,8 +127,8 @@ public class PoorValidation2 extends HttpServlet {
   }
 
   private static int validateAmount(int amount) {
-    if (amount < 0) {
-      amount = 0;
+    if (amount < 0 || amount > 1000) {
+      throw new IllegalArgumentException("Item amount is outside the allowed range");
     }
     return amount;
   }

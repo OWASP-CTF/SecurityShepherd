@@ -15,8 +15,8 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.owasp.encoder.Encode;
 import utils.Hash;
+import utils.PasswordHash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -87,6 +87,13 @@ public class SessionManagement2ChangePassword extends HttpServlet {
         }
         log.debug("subEmail = " + subEmail);
 
+        String authenticatedUser = (String) ses.getAttribute("sessionManagement2User");
+        String authenticatedAddress = (String) ses.getAttribute("sessionManagement2Address");
+        if (authenticatedUser == null || !subEmail.equals(authenticatedAddress)) {
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
+        }
+
         log.debug("Getting ApplicationRoot");
         String ApplicationRoot = getServletContext().getRealPath("");
 
@@ -96,9 +103,9 @@ public class SessionManagement2ChangePassword extends HttpServlet {
               Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
           log.debug("Checking credentials");
           PreparedStatement callstmt =
-              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userAddress = ?");
-          callstmt.setString(1, newPassword);
-          callstmt.setString(2, subEmail);
+              conn.prepareStatement("UPDATE users SET userPassword = ? WHERE userName = ?");
+          callstmt.setString(1, PasswordHash.hash(newPassword));
+          callstmt.setString(2, authenticatedUser);
           log.debug("Executing resetPassword");
           callstmt.execute();
           log.debug("Statement executed");
@@ -108,13 +115,13 @@ public class SessionManagement2ChangePassword extends HttpServlet {
           callstmt.execute();
           log.debug("Changes committed.");
 
-          htmlOutput = Encode.forHtml(newPassword);
+          htmlOutput = "<p>Password changed.</p>";
           Database.closeConnection(conn);
         } catch (SQLException e) {
           log.error(levelName + " SQL Error: " + e.toString());
         }
         log.debug("Outputting HTML");
-        out.write(bundle.getString("response.changedTo") + " " + htmlOutput);
+        out.write(htmlOutput);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());

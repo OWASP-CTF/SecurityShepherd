@@ -7,6 +7,7 @@ import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -64,6 +65,12 @@ public class CsrfChallengeTargetThree extends HttpServlet {
       boolean result = false;
       HttpSession ses = request.getSession(true);
       if (Validate.validateSession(ses)) {
+        Cookie tokenCookie = Validate.getToken(request.getCookies());
+        Object tokenParameter = request.getParameter("csrfToken");
+        if (!Validate.validateTokens(tokenCookie, tokenParameter)) {
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
+        }
         ShepherdLogManager.setRequestIp(
             request.getRemoteAddr(),
             request.getHeader("X-Forwarded-For"),
@@ -71,32 +78,15 @@ public class CsrfChallengeTargetThree extends HttpServlet {
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
         String plusId = request.getParameter("userid");
         log.debug("User Submitted - " + plusId);
-        String csrfParam = null;
-        if (request.getParameter("csrfToken") != null) {
-          csrfParam = (String) request.getParameter("csrfToken");
-          if (csrfParam.isEmpty()) {
-            csrfParam = null;
-          }
-        }
-
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId) && csrfParam != null) {
-          String ApplicationRoot = getServletContext().getRealPath("");
-          String userName = (String) ses.getAttribute("userName");
-          String attackerName = Getter.getUserName(ApplicationRoot, plusId);
-          if (attackerName != null) {
-            log.debug(userName + " is been CSRF'd by " + attackerName);
-
-            log.debug("Attempting to Increment ");
-            String moduleHash = CsrfChallengeThree.getLevelHash();
-            String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
-            result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
-          } else {
-            log.error("UserId '" + plusId + "' could not be found.");
-          }
-        } else {
-          log.debug("No CSRF Token found");
+        if (!userId.equals(plusId)) {
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
         }
+        String applicationRoot = getServletContext().getRealPath("");
+        String moduleHash = CsrfChallengeThree.getLevelHash();
+        String moduleId = Getter.getModuleIdFromHash(applicationRoot, moduleHash);
+        result = Setter.updateCsrfCounter(applicationRoot, moduleId, userId);
 
         if (result) {
           out.write(csrfGenerics.getString("target.incrementSuccess"));
