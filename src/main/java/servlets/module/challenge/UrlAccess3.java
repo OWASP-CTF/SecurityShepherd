@@ -46,8 +46,8 @@ public class UrlAccess3 extends HttpServlet {
    * vouches for its value. Because of that it must never be trusted to answer an authorization
    * question - not even when it happens to spell out a privileged-sounding name - so this servlet
    * no longer branches on its content at all. There is no legitimate, server-verified way for a
-   * request to actually be the sub-schema's super admin, so that response is simply unreachable
-   * now rather than gated behind an easily-forged claim.
+   * request to actually be the sub-schema's super admin, so that response is simply unreachable now
+   * rather than gated behind an easily-forged claim.
    *
    * @param userId Red herring that is pre set to d3d9446802a44259755d38e6d163e820
    * @param secure Red herring that is pre set to true
