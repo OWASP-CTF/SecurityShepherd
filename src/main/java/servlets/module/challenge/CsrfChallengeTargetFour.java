@@ -102,26 +102,19 @@ public class CsrfChallengeTargetFour extends HttpServlet {
         log.debug("csrfToken Submitted - '" + csrfToken + "'");
         log.debug("storedCsrf Token is - '" + storedToken + "'");
 
-        if (!userId.equals(plusId)) {
-          if (validCsrfToken(ApplicationRoot, csrfToken)) // Poor CSRF Validation Method
-          {
-            log.debug("'Valid' Nonce Value Submitted");
-            String userName = (String) ses.getAttribute("userName");
-            String attackerName = Getter.getUserName(ApplicationRoot, plusId);
-            if (attackerName != null) {
-              log.debug(userName + " is been CSRF'd by " + attackerName);
-
-              log.debug("Attempting to Increment ");
-              String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
-              result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
-            } else {
-              log.error("UserId '" + plusId + "' could not be found in system.");
-            }
-          } else {
-            log.debug("User " + plusId + " CSRF attack failed due to invalid nonce");
-          }
+        // The per-session nonce issued to this user is the anti-CSRF token: it is stored server
+        // side against their userId and a cross-site page cannot read it. Require both a nonce that
+        // belongs to this session and that the request only acts on the session owner's own
+        // counter,
+        // so a forged cross-site request can no longer drive the state change.
+        if (validCsrfToken(ApplicationRoot, csrfToken, userId) && userId.equals(plusId)) {
+          String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
+          result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, userId);
         } else {
-          log.debug("User " + userId + " is attacking themselves");
+          log.debug(
+              "User "
+                  + plusId
+                  + " CSRF attempt refused due to invalid nonce or cross-user request");
         }
 
         if (result) {
@@ -139,15 +132,17 @@ public class CsrfChallengeTargetFour extends HttpServlet {
   }
 
   /**
-   * CSRF Validator that checks if user submitted CSRF token is in the DB. This function does not
-   * filter the CSRF table for CSRF tokens belonging to the user submitting the request. It will
-   * return true as long as the token exists in the database, regardless of who owns the token
+   * CSRF Validator that checks if the user submitted CSRF token is the token issued to the user
+   * making the request. The token is only accepted when it both exists in the database and is owned
+   * by the session the request was made from, so a nonce handed to one user cannot be replayed
+   * against another.
    *
    * @param ApplicationRoot Running context of the application
    * @param csrfToken CSRF Token value to search DB for
+   * @param userId Identifier of the user the request was authenticated as
    * @return Returns true if the CSRF Token is Deemed valid
    */
-  private static boolean validCsrfToken(String ApplicationRoot, String csrfToken) {
+  private static boolean validCsrfToken(String ApplicationRoot, String csrfToken, String userId) {
     log.debug("*** CSRF4.validCsrfToken ***");
     boolean result = false;
     Connection conn;
@@ -157,11 +152,12 @@ public class CsrfChallengeTargetFour extends HttpServlet {
 
       PreparedStatement prepstmt =
           conn.prepareStatement(
-              "SELECT count(csrfTokenscol) FROM csrfTokens WHERE csrfTokenscol = ?");
+              "SELECT count(csrfTokenscol) FROM csrfTokens WHERE csrfTokenscol = ? AND userId = ?");
       prepstmt.setString(1, csrfToken);
+      prepstmt.setString(2, userId);
       ResultSet rs = prepstmt.executeQuery();
-      result = rs.next(); // If there is a row then the CSRF token was in the DB. Therefore CSRF
-      // Validated
+      // count() always returns a row, so the count itself has to be checked
+      result = rs.next() && rs.getInt(1) > 0;
       Database.closeConnection(conn);
 
     } catch (SQLException e) {

@@ -8,6 +8,7 @@ import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.Scanner;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -73,6 +74,15 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
 
+        // Require a non-simple JSON content type. A cross-site page can auto-submit a simple form
+        // POST, but it cannot set application/json without triggering a pre-flighted CORS request,
+        // so rejecting anything else removes the forgeable form-post entry point.
+        String contentType = request.getContentType();
+        if (contentType == null || !contentType.toLowerCase().contains("application/json")) {
+          response.sendError(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE);
+          return;
+        }
+
         log.debug("Getting JSON String");
         String jsonData = extractPostRequestBody(request);
         log.debug("POST body: " + jsonData);
@@ -80,22 +90,26 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
         log.debug("Getting userId");
         String plusId = (String) json.get("userId");
         log.debug("User Submitted - " + plusId);
-        String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId)) {
-          String ApplicationRoot = getServletContext().getRealPath("");
-          String userName = (String) ses.getAttribute("userName");
-          String attackerName = Getter.getUserName(ApplicationRoot, plusId);
-          if (attackerName != null) {
-            log.debug(userName + " is been CSRF'd by " + attackerName);
-
-            log.debug("Attempting to Increment ");
-            String moduleHash = CsrfChallengeJSON.getLevelHash();
-            String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
-            result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
-          } else {
-            log.error("UserId '" + plusId + "' could not be found.");
-          }
+        Cookie tokenCookie = Validate.getToken(request.getCookies());
+        Object tokenParmeter = json.optString("csrfToken", request.getParameter("csrfToken"));
+        // The state change rode on the session cookie alone, so an off-site page could trigger it
+        // in the victim's browser. Require the per-session anti-CSRF token, which a cross-site
+        // request cannot read, before performing the counter increment.
+        if (!Validate.validateTokens(tokenCookie, tokenParmeter)) {
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
         }
+        String userId = (String) ses.getAttribute("userStamp");
+        // Only the token-bearing owner of this session may increment their own counter; nothing in
+        // a request naming another user establishes that user's intent.
+        if (!userId.equals(plusId)) {
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
+        }
+        String applicationRoot = getServletContext().getRealPath("");
+        String moduleHash = CsrfChallengeJSON.getLevelHash();
+        String moduleId = Getter.getModuleIdFromHash(applicationRoot, moduleHash);
+        result = Setter.updateCsrfCounter(applicationRoot, moduleId, userId);
 
         if (result) {
           out.write(csrfGenerics.getString("target.incrementSuccess"));
