@@ -89,7 +89,7 @@ public class SqlInjection4 extends HttpServlet {
         conn = Database.getChallengeConnection(ApplicationRoot, "SqlChallengeFour");
         PreparedStatement stmt =
             conn.prepareStatement(
-                "SELECT userName FROM users WHERE userName = ? AND userPassword = ?");
+                "SELECT userName FROM users WHERE userName = ? AND userPassword = SHA(?)");
         stmt.setString(1, theUserName);
         stmt.setString(2, thePassword);
         log.debug("Gathering result set");

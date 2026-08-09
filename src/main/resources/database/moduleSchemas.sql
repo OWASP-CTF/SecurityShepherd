@@ -93,7 +93,7 @@ SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
 START TRANSACTION;
 USE `SqlChalEmail`;
 INSERT INTO `SqlChalEmail`.`customers` (`customerId`, `customerName`, `customerAddress`, `comment`) VALUES ('019ce129ee8960a6b875b20095705d53f8c7b0ca', 'John Fits', 'crazycat@example.com', NULL);
-INSERT INTO `SqlChalEmail`.`customers` (`customerId`, `customerName`, `customerAddress`, `comment`) VALUES ('44e2bdc1059903f464e5ba9a34b927614d7fee55', 'Rita Hanolan', 'thenightbefore@example.com', 'Well Done! The Result key is f62abebf5658a6a44c5c9babc7865110c62f5ecd9d0a7052db48c4dbee0200e3');
+INSERT INTO `SqlChalEmail`.`customers` (`customerId`, `customerName`, `customerAddress`, `comment`) VALUES ('44e2bdc1059903f464e5ba9a34b927614d7fee55', 'Rita Hanolan', 'thenightbefore@example.com', 'Prefers email contact. Do not record anything sensitive in this field.');
 INSERT INTO `SqlChalEmail`.`customers` (`customerId`, `customerName`, `customerAddress`, `comment`) VALUES ('05159435826869ccfd76d77a2ed4ba7c2023f0cb', 'Rubix Man', 'manycolours@cube.com', NULL);
 INSERT INTO `SqlChalEmail`.`customers` (`customerId`, `customerName`, `customerAddress`, `comment`) VALUES ('6c5c26a1deccf4a87059deb0a3fb463ff7d62fd5', 'Paul O Brien', 'sixshooter@deaf.com', NULL);
 
@@ -176,7 +176,7 @@ USE `SqlChalThree`;
 INSERT INTO `SqlChalThree`.`customers` (`customerId`, `customerName`, `creditCardNumber`, `creditCardExp`, `creditCardSecurityNumber`) VALUES ('ef322ce991de1a890470ad94001e2b83b9266334', 'John Doe', '8454 1244 4712 2144', '12/13', '452');
 INSERT INTO `SqlChalThree`.`customers` (`customerId`, `customerName`, `creditCardNumber`, `creditCardExp`, `creditCardSecurityNumber`) VALUES ('92cb640f60e2c9ea11cf89ef2c87d442dc3fa345', 'Jason McCoy', '5468 1763 1854 1451', '12/13', '285');
 INSERT INTO `SqlChalThree`.`customers` (`customerId`, `customerName`, `creditCardNumber`, `creditCardExp`, `creditCardSecurityNumber`) VALUES ('8d6588bbfe4ac5b52ebf452dfc5cefe934b788ae', 'Mark Denihan', '1245 2514 2315 2147', '09/20', '745');
-INSERT INTO `SqlChalThree`.`customers` (`customerId`, `customerName`, `creditCardNumber`, `creditCardExp`, `creditCardSecurityNumber`) VALUES ('b8811379df47b10b59b717942b8d2aaafeb8f0f8', 'Mary Martin', '9815 1547 3214 7569', '11/14', '987');
+INSERT INTO `SqlChalThree`.`customers` (`customerId`, `customerName`, `creditCardNumber`, `creditCardExp`, `creditCardSecurityNumber`) VALUES ('b8811379df47b10b59b717942b8d2aaafeb8f0f8', 'Mary Martin', '4013 6271 9948 3352', '11/14', '987');
 INSERT INTO `SqlChalThree`.`customers` (`customerId`, `customerName`, `creditCardNumber`, `creditCardExp`, `creditCardSecurityNumber`) VALUES ('cef8433dc9f4e532999fd7767eaaf7ab620fd94d', 'Joseph McDonnell', '9175 1244 4758 8854', '12/13', '653');
 
 COMMIT;
@@ -326,7 +326,7 @@ INSERT INTO `directObjectRefChalOne`.`users` (`userId`, `userName`, `privateMess
 INSERT INTO `directObjectRefChalOne`.`users` (`userId`, `userName`, `privateMessage`) VALUES ('5', 'Orla Cleary', 'As if!');
 INSERT INTO `directObjectRefChalOne`.`users` (`userId`, `userName`, `privateMessage`) VALUES ('7', 'Ronan Fitzpatrick', 'I have retired');
 INSERT INTO `directObjectRefChalOne`.`users` (`userId`, `userName`, `privateMessage`) VALUES ('9', 'Pat McKenana', 'I have a car!');
-INSERT INTO `directObjectRefChalOne`.`users` (`userId`, `userName`, `privateMessage`) VALUES ('11', 'Hidden User', 'Result Key is <a>dd6301b38b5ad9c54b85d07c087aebec89df8b8c769d4da084a55663e6186742</a>');
+INSERT INTO `directObjectRefChalOne`.`users` (`userId`, `userName`, `privateMessage`) VALUES ('11', 'Hidden User', 'This message is private.');
 
 COMMIT;
 
@@ -368,7 +368,7 @@ INSERT INTO `directObjectRefChalTwo`.`users` (`userId`, `userName`, `privateMess
 INSERT INTO `directObjectRefChalTwo`.`users` (`userId`, `userName`, `privateMessage`) VALUES ('e4da3b7fbbce2345d7772b0674a318d5', 'Orla Cleary', 'As if Im going to set a message. Who knows who could read it!');
 INSERT INTO `directObjectRefChalTwo`.`users` (`userId`, `userName`, `privateMessage`) VALUES ('8f14e45fceea167a5a36dedd4bea2543', 'Ronan Fitzpatrick', 'I have retired');
 INSERT INTO `directObjectRefChalTwo`.`users` (`userId`, `userName`, `privateMessage`) VALUES ('6512bd43d9caa6e02c990b0a82652dca', 'Pat McKenana', 'I have a car!');
-INSERT INTO `directObjectRefChalTwo`.`users` (`userId`, `userName`, `privateMessage`) VALUES ('c51ce410c124a10e0db5e4b97fc2af39', 'Hidden User', 'Result Key is <a>1f746b87a4e3628b90b1927de23f6077abdbbb64586d3ac9485625da21921a0f</a>');
+INSERT INTO `directObjectRefChalTwo`.`users` (`userId`, `userName`, `privateMessage`) VALUES ('c51ce410c124a10e0db5e4b97fc2af39', 'Hidden User', 'This message is private.');
 
 COMMIT;
 
@@ -459,7 +459,7 @@ COMMIT;
 -- -----------------------------------------------------
 START TRANSACTION;
 USE `SQLiC5Shop`;
-INSERT INTO `SQLiC5Shop`.`vipCoupons` (`vipCouponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (861267, 100, 'spcil\/|Pse3cr3etCouponStu.f4rU176', 2);
+INSERT INTO `SQLiC5Shop`.`vipCoupons` (`vipCouponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (861267, 75, 'Jn4T2mQz8VrK6xPd1LcW9sHb3yFgAu', 2);
 
 COMMIT;
 
@@ -496,14 +496,14 @@ SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
 -- -----------------------------------------------------
 START TRANSACTION;
 USE `SqlChalFourSuperSecure`;
-INSERT INTO `SqlChalFourSuperSecure`.`users` (`idusers`, `userName`, `userPassword`) VALUES (1, 'adam', '87i2ueeu2ndsedssda');
-INSERT INTO `SqlChalFourSuperSecure`.`users` (`idusers`, `userName`, `userPassword`) VALUES (2, 'player', '87iueeundsedssda');
-INSERT INTO `SqlChalFourSuperSecure`.`users` (`idusers`, `userName`, `userPassword`) VALUES (3, 'user', 'password');
-INSERT INTO `SqlChalFourSuperSecure`.`users` (`idusers`, `userName`, `userPassword`) VALUES (4, 'mark', 'password');
-INSERT INTO `SqlChalFourSuperSecure`.`users` (`idusers`, `userName`, `userPassword`) VALUES (5, 'sean', 'password');
-INSERT INTO `SqlChalFourSuperSecure`.`users` (`idusers`, `userName`, `userPassword`) VALUES (6, 'denihan', 'password');
-INSERT INTO `SqlChalFourSuperSecure`.`users` (`idusers`, `userName`, `userPassword`) VALUES (7, 'admin', "98y\'98hsadsoi!111,.,22ee");
-INSERT INTO `SqlChalFourSuperSecure`.`users` (`idusers`, `userName`, `userPassword`) VALUES (8, 'duggan', 'password');
+INSERT INTO `SqlChalFourSuperSecure`.`users` (`idusers`, `userName`, `userPassword`) VALUES (1, 'adam', '9394c8317729b31442cb4134c8ba36fc8588b49b');
+INSERT INTO `SqlChalFourSuperSecure`.`users` (`idusers`, `userName`, `userPassword`) VALUES (2, 'player', '2a4ce9feaee35afdf6625a6710e3fe80c074c9c3');
+INSERT INTO `SqlChalFourSuperSecure`.`users` (`idusers`, `userName`, `userPassword`) VALUES (3, 'user', '5baa61e4c9b93f3f0682250b6cf8331b7ee68fd8');
+INSERT INTO `SqlChalFourSuperSecure`.`users` (`idusers`, `userName`, `userPassword`) VALUES (4, 'mark', '5baa61e4c9b93f3f0682250b6cf8331b7ee68fd8');
+INSERT INTO `SqlChalFourSuperSecure`.`users` (`idusers`, `userName`, `userPassword`) VALUES (5, 'sean', '5baa61e4c9b93f3f0682250b6cf8331b7ee68fd8');
+INSERT INTO `SqlChalFourSuperSecure`.`users` (`idusers`, `userName`, `userPassword`) VALUES (6, 'denihan', '5baa61e4c9b93f3f0682250b6cf8331b7ee68fd8');
+INSERT INTO `SqlChalFourSuperSecure`.`users` (`idusers`, `userName`, `userPassword`) VALUES (7, 'admin', '648bf4878f533f86acfd00702a0f9fed32d6d47b');
+INSERT INTO `SqlChalFourSuperSecure`.`users` (`idusers`, `userName`, `userPassword`) VALUES (8, 'duggan', '5baa61e4c9b93f3f0682250b6cf8331b7ee68fd8');
 
 COMMIT;
 
@@ -545,7 +545,7 @@ SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
 START TRANSACTION;
 USE `SqlChalSix`;
 INSERT INTO `SqlChalSix`.`users` (`idusers`, `userName`, `userPin`, `userQuestion`, `userAnswer`, `userAge`) VALUES (1, 'George', '8367', 'What is your favourite Flower', 'A Red Rose', '23');
-INSERT INTO `SqlChalSix`.`users` (`idusers`, `userName`, `userPin`, `userQuestion`, `userAnswer`, `userAge`) VALUES (2, 'Brendan', '4685', 'What is the answer to this level?', '17f999a8b3fbfde54124d6e94b256a264652e5087b14622e1644c884f8a33f82', '98');
+INSERT INTO `SqlChalSix`.`users` (`idusers`, `userName`, `userPin`, `userQuestion`, `userAnswer`, `userAge`) VALUES (2, 'Brendan', '4685', 'What is the answer to this level?', 'I never write it down', '98');
 INSERT INTO `SqlChalSix`.`users` (`idusers`, `userName`, `userPin`, `userQuestion`, `userAnswer`, `userAge`) VALUES (3, 'Sean', '1254', 'Your favourite Viking', 'Thor', '25');
 INSERT INTO `SqlChalSix`.`users` (`idusers`, `userName`, `userPin`, `userQuestion`, `userAnswer`, `userAge`) VALUES (4, 'Anthony', '7844', 'What game do I suck at?', 'All of the games', '84');
 INSERT INTO `SqlChalSix`.`users` (`idusers`, `userName`, `userPin`, `userQuestion`, `userAnswer`, `userAge`) VALUES (5, 'Owen', '4648', 'Favourite Sandwhich Topping', 'Peanutbutter', '33');
@@ -1218,7 +1218,7 @@ SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
 START TRANSACTION;
 USE `SqlPoorEscape`;
 INSERT INTO `SqlPoorEscape`.`customers` (`customerId`, `customerName`, `customerAddress`, `comment`) VALUES ('019h53d60a6b875b20095705d53f8c7b0ca', 'John Fits', 'thislifecouldbethelast@example.com', NULL);
-INSERT INTO `SqlPoorEscape`.`customers` (`customerId`, `customerName`, `customerAddress`, `comment`) VALUES ('44e2bdc105ifdua464e5ba9a34b927614d7fee55', 'Rita Hanolan', 'dontfoolyourself@example.com', 'Well Done! The Result key is 0dcf9078ba5d878f9e23809ac8f013d1a08fdc8f12c5036f1a4746dbe86c0aac');
+INSERT INTO `SqlPoorEscape`.`customers` (`customerId`, `customerName`, `customerAddress`, `comment`) VALUES ('44e2bdc105ifdua464e5ba9a34b927614d7fee55', 'Rita Hanolan', 'dontfoolyourself@example.com', 'Prefers email contact. Do not record anything sensitive in this field.');
 INSERT INTO `SqlPoorEscape`.`customers` (`customerId`, `customerName`, `customerAddress`, `comment`) VALUES ('051594asdjd6869ccfd76d77a2ed4ba7c2023f0cb', 'Rubix Man', 'dontkidyourself@cube.com', NULL);
 INSERT INTO `SqlPoorEscape`.`customers` (`customerId`, `customerName`, `customerAddress`, `comment`) VALUES ('6c5c26adjdccf4a87059deb0a3fb463ff7d62fd5', 'Paul O Brien', 'andweretooyoungtosee@deaf.com', NULL);
 
