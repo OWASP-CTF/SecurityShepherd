@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import utils.CsrfNonce;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -72,7 +73,9 @@ public class CsrfChallengeTargetTwo extends HttpServlet {
         String plusId = request.getParameter("userId");
         log.debug("User Submitted - " + plusId);
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId)) {
+        if (!CsrfNonce.isValid(ses, request.getParameter("csrfToken"))) {
+          log.debug("Request did not carry this session's CSRF nonce");
+        } else if (!userId.equals(plusId)) {
           String ApplicationRoot = getServletContext().getRealPath("");
           String userName = (String) ses.getAttribute("userName");
           String attackerName = Getter.getUserName(ApplicationRoot, plusId);

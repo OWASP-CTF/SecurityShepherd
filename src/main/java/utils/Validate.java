@@ -203,6 +203,21 @@ public class Validate {
   }
 
   /**
+   * Whitelists the http and https URL schemes, rejecting script bearing schemes like javascript:
+   * and data:
+   *
+   * @param theUrl URL submitted by a user
+   * @return Boolean value reflecting if the URL is safe to place in a URI attribute
+   */
+  public static boolean isHttpUrl(String theUrl) {
+    if (theUrl == null) {
+      return false;
+    }
+    String scheme = theUrl.toLowerCase();
+    return scheme.startsWith("http://") || scheme.startsWith("https://");
+  }
+
+  /**
    * Session is checked for credentials and ensures that they have not been modified and that they
    * are valid for an administrator
    *
