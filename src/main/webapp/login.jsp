@@ -120,7 +120,7 @@
 										<fmt:message key="generic.text.username" />
 										:</td>
 								<td><input type="text" name="login" value=""
-									autocomplete="username" autofocus />
+									autocomplete="OFF" autofocus />
 									</p></td>
 							</tr>
 							<tr>
@@ -128,8 +128,7 @@
 										<fmt:message key="generic.text.password" />
 										:&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 										&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
-								<td><input type="password" name="pwd"
-									autocomplete="current-password" /><br /></td>
+								<td><input type="password" name="pwd" autocomplete="OFF" /><br /></td>
 							</tr>
 							<tr>
 								<td colspan="2" align="center"><fmt:message

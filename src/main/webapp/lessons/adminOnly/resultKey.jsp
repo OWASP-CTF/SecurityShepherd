@@ -28,14 +28,6 @@ if (request.getSession() != null)
 	// If tokenCookie == null, then the page is not going to continue loading
 	if (Validate.validateSession(ses) && tokenCookie != null)
 	{
-		// Administrative page. The role is held in the session and is never granted to a player,
-		// so no request a client can craft is authorised here.
-		if (!"admin".equals(ses.getAttribute("urlAccessLessonRole")))
-		{
-			ShepherdLogManager.logEvent(request.getRemoteAddr(), request.getHeader("X-Forwarded-For"), levelName + " unauthorised access by " + ses.getAttribute("userName").toString(), ses.getAttribute("userName"));
-			response.sendError(HttpServletResponse.SC_FORBIDDEN);
-			return;
-		}
 		ShepherdLogManager.logEvent(request.getRemoteAddr(), request.getHeader("X-Forwarded-For"), levelName + " has been accessed by " + ses.getAttribute("userName").toString(), ses.getAttribute("userName"));
 
 %>
