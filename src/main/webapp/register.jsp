@@ -130,7 +130,7 @@ if(ses.getAttribute("errorMessage") != null)
 											<font color="red"><small>* </small></font>:
 										</p></td>
 									<td><input type="password" id="passWord"
-										autocomplete="OFF" minlength="8" maxlength="512" required /></td>
+										autocomplete="new-password" minlength="8" maxlength="512" required /></td>
 								</tr>
 								<tr>
 									<td><p>
@@ -138,7 +138,7 @@ if(ses.getAttribute("errorMessage") != null)
 											<font color="red"><small>* </small></font>:
 										</p></td>
 									<td><input type="password" id="passWordConfirm"
-										autocomplete="OFF" minlength="8" maxlength="512" required /></td>
+										autocomplete="new-password" minlength="8" maxlength="512" required /></td>
 								</tr>
 								<tr>
 									<td><p>
