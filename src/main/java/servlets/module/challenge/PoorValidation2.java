@@ -129,10 +129,10 @@ public class PoorValidation2 extends HttpServlet {
   }
 
   /**
-   * Amounts submitted by the client are clamped to a sane, bounded range so that neither a
-   * negative quantity nor an absurdly large one (previously able to overflow the int-based cost
-   * arithmetic into a negative total and trigger the free-oranges response) can reach the cost
-   * calculation below.
+   * Amounts submitted by the client are clamped to a sane, bounded range so that neither a negative
+   * quantity nor an absurdly large one (previously able to overflow the int-based cost arithmetic
+   * into a negative total and trigger the free-oranges response) can reach the cost calculation
+   * below.
    */
   private static final int MAX_ITEM_AMOUNT = 1000;
 

@@ -82,9 +82,9 @@ public class PoorValidation2IT {
 
   /**
    * Exploit attempt: previously, a huge positive orangeAmount overflowed the int-based cost
-   * arithmetic (orangeAmount * 3000) around to a negative number, driving finalCost below zero
-   * and unlocking the free-oranges response without a legitimate zero/low-cost order. With the
-   * fix (amount clamped to a max + long arithmetic) this must no longer succeed.
+   * arithmetic (orangeAmount * 3000) around to a negative number, driving finalCost below zero and
+   * unlocking the free-oranges response without a legitimate zero/low-cost order. With the fix
+   * (amount clamped to a max + long arithmetic) this must no longer succeed.
    */
   @Test
   public void testIntegerOverflowExploitFails() throws Exception {
@@ -107,7 +107,9 @@ public class PoorValidation2IT {
             + servletResponse);
   }
 
-  /** Legitimate small order (one of each item) must still complete normally with the right total. */
+  /**
+   * Legitimate small order (one of each item) must still complete normally with the right total.
+   */
   @Test
   public void testLegitimateOrderStillWorks() throws Exception {
     signIn();
