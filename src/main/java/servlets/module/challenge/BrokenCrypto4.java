@@ -69,6 +69,7 @@ public class BrokenCrypto4 extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
       String applicationRoot = getServletContext().getRealPath("");
+      Connection conn = null;
       try {
         // Get and validate cart amounts
         int pineappleAmount =
@@ -94,7 +95,7 @@ public class BrokenCrypto4 extends HttpServlet {
         int perCentOffBanana = 0; // Will search for coupons in DB and update this int
 
         htmlOutput = new String();
-        Connection conn = Database.getChallengeConnection(applicationRoot, "CryptoChallengeShop");
+        conn = Database.getChallengeConnection(applicationRoot, "CryptoChallengeShop");
         log.debug("Looking for Coupons");
         PreparedStatement prepstmt =
             conn.prepareStatement("SELECT itemId, perCentOff FROM coupons WHERE couponCode = ?");
@@ -125,7 +126,6 @@ public class BrokenCrypto4 extends HttpServlet {
         } catch (Exception e) {
           log.debug("Could Not Find Coupon: " + e.toString());
         }
-        conn.close();
 
         // Work Out Final Cost
         pineappleCost = pineappleCost - (pineappleCost * (perCentOffPineapple / 100));
@@ -162,6 +162,8 @@ public class BrokenCrypto4 extends HttpServlet {
       } catch (Exception e) {
         log.debug("Didn't complete order: " + e.toString());
         htmlOutput += "<p>" + bundle.getString("insecureCryptoStorage.4.orderFailed") + "</p>";
+      } finally {
+        Database.closeConnection(conn);
       }
       try {
         Thread.sleep(1000);

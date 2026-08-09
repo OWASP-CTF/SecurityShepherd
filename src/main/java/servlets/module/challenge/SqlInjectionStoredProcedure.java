@@ -3,10 +3,10 @@ package servlets.module.challenge;
 import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -70,17 +70,17 @@ public class SqlInjectionStoredProcedure extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
 
+      Connection conn = null;
       try {
         String userIdentity = request.getParameter("userIdentity");
         log.debug("User Submitted - " + userIdentity);
         String ApplicationRoot = getServletContext().getRealPath("");
 
         log.debug("Getting Connection to Database");
-        Connection conn =
-            Database.getChallengeConnection(ApplicationRoot, "SqlChallengeStoredProc");
-        // CallableStatement callstmt = conn.prepareCall("CALL findUser('" + userIdentity + "');");
-        Statement stmt = conn.createStatement();
-        ResultSet resultSet = stmt.executeQuery("CALL findUser('" + userIdentity + "');");
+        conn = Database.getChallengeConnection(ApplicationRoot, "SqlChallengeStoredProc");
+        CallableStatement callstmt = conn.prepareCall("{CALL findUser(?)}");
+        callstmt.setString(1, userIdentity);
+        ResultSet resultSet = callstmt.executeQuery();
 
         int i = 0;
         htmlOutput = "<h2 class='title'>" + bundle.getString("response.searchResults") + "</h2>";
@@ -106,7 +106,6 @@ public class SqlInjectionStoredProcedure extends HttpServlet {
                   + "</td></tr>";
           i++;
         }
-        conn.close();
         htmlOutput += "</table>";
         if (i == 0) {
           htmlOutput = "<p>" + bundle.getString("response.noResults") + "</p>";
@@ -123,6 +122,8 @@ public class SqlInjectionStoredProcedure extends HttpServlet {
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
+      } finally {
+        Database.closeConnection(conn);
       }
       log.debug("Outputting HTML");
       out.write(htmlOutput);
