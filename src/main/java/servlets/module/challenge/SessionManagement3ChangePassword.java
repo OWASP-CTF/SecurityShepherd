@@ -46,14 +46,9 @@ public class SessionManagement3ChangePassword extends HttpServlet {
 
   // private static String levelResult = ""; //This Servlet does not return a result
 
-  // The account the challenge page hands to every visitor. Every seeded password is stored in
-  // plain text against a SHA(?) comparison, so no account can sign in until this one is reset.
-  private static final String GUEST_ACCOUNT = "guest12";
-
   /**
-   * Function used by Session Management Challenge Three to change the password of a sub schema
-   * account. The account is the one signed in on the server side session, or the guest account the
-   * page issues when nobody is signed in - never the client controlled "current" cookie.
+   * Function used by Session Management Challenge Three to change the password of the account
+   * signed in on this session
    *
    * @param newPassword the password which to use to update the accounts password
    */
@@ -80,14 +75,13 @@ public class SessionManagement3ChangePassword extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
       log.debug(levelName + " - Change Password - Servlet");
-      Connection conn = null;
       try {
         log.debug("Getting Challenge Parameters");
         Object passNewObj = request.getParameter("newPassword");
-        String subName = (String) ses.getAttribute(SessionManagement3.SUB_USER);
-        if (subName == null) {
-          subName = GUEST_ACCOUNT;
-        }
+        // The account comes from the sign in this session already proved, not from a cookie the
+        // caller writes. The cookie carried a base64'd name, so any account could be named.
+        Object signedInObj = ses.getAttribute(SessionManagement3.SUB_USER);
+        String subName = signedInObj instanceof String ? (String) signedInObj : new String();
         String subNewPass = new String();
         if (passNewObj != null) {
           subNewPass = (String) passNewObj;
@@ -95,11 +89,12 @@ public class SessionManagement3ChangePassword extends HttpServlet {
         log.debug("subName = " + subName);
         log.debug("subPass = " + subNewPass);
 
-        if (subNewPass.length() >= 6) {
+        if (!subName.isEmpty() && subNewPass.length() >= 6) {
           log.debug("Getting ApplicationRoot");
           String ApplicationRoot = getServletContext().getRealPath("");
 
-          conn = Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalThree");
+          Connection conn =
+              Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalThree");
           log.debug("Changing password for user: " + subName);
           log.debug("Changing password to: " + subNewPass);
           PreparedStatement callstmt;
@@ -118,7 +113,7 @@ public class SessionManagement3ChangePassword extends HttpServlet {
 
           htmlOutput = "<p>" + bundle.getString("reset.password") + "</p>";
         } else {
-          log.debug("Invalid password submitted");
+          log.debug("invalid password submitted: " + subNewPass);
           htmlOutput = "<p>" + bundle.getString("reset.failed") + "</p>";
         }
         log.debug("Outputting HTML");
@@ -126,8 +121,6 @@ public class SessionManagement3ChangePassword extends HttpServlet {
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - Change Password - " + e.toString());
-      } finally {
-        Database.closeConnection(conn);
       }
     } else {
       log.error(levelName + " servlet accessed with no session");
