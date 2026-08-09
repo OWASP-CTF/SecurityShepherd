@@ -94,7 +94,6 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
 
         Object ansObj = request.getParameter("subAnswer");
         String subAns = Validate.validateParameter(ansObj, 35);
-        log.debug("subAnswer = " + subAns);
         Object emailObj = request.getParameter("subEmail");
         String subEmail = Validate.validateParameter(emailObj, 60);
         log.debug("subEmail = " + subEmail);

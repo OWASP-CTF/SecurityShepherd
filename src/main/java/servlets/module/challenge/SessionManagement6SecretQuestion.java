@@ -86,7 +86,6 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
         log.debug("subEmail = " + subEmail);
         Object ansObj = request.getParameter("subAnswer");
         String subAns = Validate.validateParameter(ansObj, 128);
-        log.debug("subAnswer = " + subAns);
 
         String ApplicationRoot = getServletContext().getRealPath("");
         try {

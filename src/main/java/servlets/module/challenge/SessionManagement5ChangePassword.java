@@ -16,6 +16,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import utils.PasswordHash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -122,10 +123,9 @@ public class SessionManagement5ChangePassword extends HttpServlet {
           log.debug("Changing password for user: " + userName);
           PreparedStatement callstmt;
 
-          callstmt =
-              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userName = ?");
+          callstmt = conn.prepareStatement("UPDATE users SET userPassword = ? WHERE userName = ?");
 
-          callstmt.setString(1, newPass);
+          callstmt.setString(1, PasswordHash.hash(newPass));
           callstmt.setString(2, userName);
 
           log.debug("Executing changePassword");

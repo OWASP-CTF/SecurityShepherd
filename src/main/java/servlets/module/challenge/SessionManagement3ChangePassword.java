@@ -14,6 +14,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import utils.PasswordHash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -89,7 +90,6 @@ public class SessionManagement3ChangePassword extends HttpServlet {
           return;
         }
         log.debug("subName = " + subName);
-        log.debug("subPass = " + subNewPass);
 
         if (subNewPass.length() >= 6) {
           log.debug("Getting ApplicationRoot");
@@ -98,12 +98,10 @@ public class SessionManagement3ChangePassword extends HttpServlet {
           Connection conn =
               Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalThree");
           log.debug("Changing password for user: " + subName);
-          log.debug("Changing password to: " + subNewPass);
           PreparedStatement callstmt;
 
-          callstmt =
-              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userName = ?");
-          callstmt.setString(1, subNewPass);
+          callstmt = conn.prepareStatement("UPDATE users SET userPassword = ? WHERE userName = ?");
+          callstmt.setString(1, PasswordHash.hash(subNewPass));
           callstmt.setString(2, subName);
           log.debug("Executing changePassword");
           callstmt.execute();
@@ -115,7 +113,7 @@ public class SessionManagement3ChangePassword extends HttpServlet {
 
           htmlOutput = "<p>" + bundle.getString("reset.password") + "</p>";
         } else {
-          log.debug("invalid password submitted: " + subNewPass);
+          log.debug("Invalid password submitted");
           htmlOutput = "<p>" + bundle.getString("reset.failed") + "</p>";
         }
         log.debug("Outputting HTML");

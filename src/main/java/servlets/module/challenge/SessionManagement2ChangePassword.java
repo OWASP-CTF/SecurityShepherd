@@ -16,6 +16,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import utils.Hash;
+import utils.PasswordHash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -102,8 +103,8 @@ public class SessionManagement2ChangePassword extends HttpServlet {
               Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
           log.debug("Checking credentials");
           PreparedStatement callstmt =
-              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userName = ?");
-          callstmt.setString(1, newPassword);
+              conn.prepareStatement("UPDATE users SET userPassword = ? WHERE userName = ?");
+          callstmt.setString(1, PasswordHash.hash(newPassword));
           callstmt.setString(2, authenticatedUser);
           log.debug("Executing resetPassword");
           callstmt.execute();

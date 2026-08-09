@@ -18,6 +18,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
 import utils.Hash;
+import utils.PasswordHash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -94,7 +95,6 @@ public class SessionManagement2 extends HttpServlet {
           subPass = (String) passObj;
         }
         log.debug("subName = " + subName);
-        log.debug("subPass = " + subPass);
 
         log.debug("Getting ApplicationRoot");
         String ApplicationRoot = getServletContext().getRealPath("");
@@ -112,13 +112,12 @@ public class SessionManagement2 extends HttpServlet {
 
         callstmt =
             conn.prepareStatement(
-                "SELECT userName, userAddress FROM users WHERE userName = ? AND userPassword ="
-                    + " SHA(?)");
+                "SELECT userName, userAddress, userPassword FROM users WHERE userName = ?");
         callstmt.setString(1, subName);
-        callstmt.setString(2, subPass);
         log.debug("Executing authUser");
         ResultSet resultSet = callstmt.executeQuery();
-        if (resultSet.next()) {
+        boolean userFound = resultSet.next();
+        if (PasswordHash.verify(userFound ? resultSet.getString(3) : null, subPass) && userFound) {
           log.debug("Successful Login");
           ses.setAttribute("sessionManagement2User", resultSet.getString(1));
           ses.setAttribute("sessionManagement2Address", resultSet.getString(2));
