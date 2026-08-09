@@ -235,9 +235,11 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
                 Database.closeConnection(conn);
               }
             } catch (SQLException e) {
-              log.debug(levelName + " SQL Error: " + e.toString());
-              log.debug("Outputting error to user");
-              htmlOutput = new String(e.toString());
+              // The raw exception names tables, columns and the failed statement - useful to an
+              // attacker refining a query, not to a legitimate caller. Log it and return the
+              // same generic message this endpoint already uses for "no such user."
+              log.error(levelName + " SQL Error: " + e.toString());
+              htmlOutput = bundle.getString("question.noQuestion");
             }
           } else {
             log.debug("Tampered cookie detected");

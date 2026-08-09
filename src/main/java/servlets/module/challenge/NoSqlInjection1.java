@@ -150,13 +150,13 @@ public class NoSqlInjection1 extends HttpServlet {
           }
 
         } catch (MongoTimeoutException e) {
+          // The driver's own error text names the database and collection behind this query -
+          // log it, don't hand it back.
           log.fatal(bundle.getString("result.mongoError") + e.toString());
-          htmlOutput +=
-              "<p>Mongo Timeout Occurred</p>" + "<p>" + Encode.forHtml(e.toString()) + "</p>";
+          htmlOutput += "<p>Mongo Timeout Occurred</p>";
         } catch (MongoException e) {
           log.error(bundle.getString("result.mongoError") + e.toString());
-          htmlOutput +=
-              "<p>An error was detected!</p>" + "<p>" + Encode.forHtml(e.toString()) + "</p>";
+          htmlOutput += "<p>An error was detected!</p>";
         } catch (Exception e) {
           out.write("An Error Occurred! You must be getting funky!");
           log.fatal(levelName + " - " + e.toString());
@@ -166,12 +166,10 @@ public class NoSqlInjection1 extends HttpServlet {
         }
       } catch (MongoSocketException e) {
         log.error(bundle.getString("result.mongoError") + e.toString());
-        htmlOutput +=
-            "<p>An error was detected!</p>" + "<p>" + Encode.forHtml(e.toString()) + "</p>";
+        htmlOutput += "<p>An error was detected!</p>";
       } catch (MongoException e) {
         log.fatal("MongoDb Error caught - " + e.toString());
-        htmlOutput +=
-            "<p>An error was detected!</p>" + "<p>" + Encode.forHtml(e.toString()) + "</p>";
+        htmlOutput += "<p>An error was detected!</p>";
       } catch (Exception e) {
         log.fatal(levelName + " - " + e);
       }

@@ -118,14 +118,10 @@ public class SqlInjection3 extends HttpServlet {
           htmlOutput = "<p>" + bundle.getString("response.table.noResults") + "</p>";
         }
       } catch (SQLException e) {
-        log.debug("SQL Error caught - " + e.toString());
-        htmlOutput +=
-            "<p>"
-                + errors.getString("error.detected")
-                + "</p>"
-                + "<p>"
-                + Encode.forHtml(e.toString())
-                + "</p>";
+        // The database's own error text names tables, columns and the failed statement - useful
+        // for refining an attack, not for a legitimate caller. Log it and stop there.
+        log.error("SQL Error caught - " + e.toString());
+        htmlOutput += "<p>" + errors.getString("error.detected") + "</p>";
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
