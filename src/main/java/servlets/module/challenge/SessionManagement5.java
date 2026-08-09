@@ -47,6 +47,9 @@ public class SessionManagement5 extends HttpServlet {
       "7aed58f3a00087d56c844ed9474c671f8999680556c127a19ee79fa5d7a132e1";
   private static String levelResult = "a15b8ea0b8a3374a1dedc326dfbe3dbae26";
 
+  // The account a reset applies to, recorded when its password was proven.
+  public static final String SUB_USER = "sessionManagement5SubUser";
+
   /**
    * Users must use this functionality to sign in as an administrator to retrieve the result key.
    *
@@ -77,7 +80,6 @@ public class SessionManagement5 extends HttpServlet {
 
       String htmlOutput = new String();
       log.debug(levelName + " Servlet Accessed");
-      Connection conn = null;
       try {
         log.debug("Getting Challenge Parameters");
         Object nameObj = request.getParameter("subUserName");
@@ -98,7 +100,8 @@ public class SessionManagement5 extends HttpServlet {
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
 
-        conn = Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalFive");
+        Connection conn =
+            Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalFive");
         log.debug("Checking credentials");
         PreparedStatement callstmt;
 
@@ -107,8 +110,8 @@ public class SessionManagement5 extends HttpServlet {
         callstmt.execute();
         log.debug("Changes committed.");
 
-        // The credentials are checked in one query, so a wrong user name and a wrong password are
-        // indistinguishable and accounts cannot be enumerated with the sign in form
+        // Only the administrator branch used to check the password. Every other account signed in
+        // on a name alone, so the guest accounts were an unauthenticated way into the sub schema.
         callstmt =
             conn.prepareStatement(
                 "SELECT userName, userRole FROM users WHERE userName = ? AND userPassword ="
@@ -118,21 +121,27 @@ public class SessionManagement5 extends HttpServlet {
         log.debug("Executing Login Check");
         ResultSet resultSet = callstmt.executeQuery();
         if (resultSet.next()) {
+          log.debug("User found");
+          ses.setAttribute(SUB_USER, resultSet.getString(1));
+          // Is the user an Admin?
           if (resultSet.getString(2).equalsIgnoreCase("admin")) {
             log.debug("Successful Admin Login");
             // Get key and add it to the output
             String userKey =
                 Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
+
             htmlOutput =
                 "<h2 class='title'>"
                     + bundle.getString("response.welcome")
                     + " "
                     + Encode.forHtml(resultSet.getString(1))
-                    + "</h2><p>"
+                    + "</h2>"
+                    + "<p>"
                     + bundle.getString("response.resultKey")
                     + " <a>"
                     + userKey
-                    + "</a></p>";
+                    + "</a>"
+                    + "</p>";
           } else {
             log.debug("Successful Pleb Login");
             htmlOutput =
@@ -145,17 +154,15 @@ public class SessionManagement5 extends HttpServlet {
                     + "</p><br/><br/>";
           }
         } else {
-          log.debug("Incorrect credentials");
           userAddress = bundle.getString("response.badUser") + "<br/>";
           htmlOutput = makeTable(userAddress, bundle);
         }
+        Database.closeConnection(conn);
         log.debug("Outputting HTML");
         out.write(htmlOutput);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
-      } finally {
-        Database.closeConnection(conn);
       }
     } else {
       log.error(levelName + " servlet accessed with no session");
