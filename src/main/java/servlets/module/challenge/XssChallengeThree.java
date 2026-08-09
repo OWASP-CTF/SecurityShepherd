@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
 import utils.FindXSS;
 import utils.Hash;
 import utils.ShepherdLogManager;
@@ -76,8 +77,14 @@ public class XssChallengeThree extends HttpServlet {
         Object tokenParmeter = request.getParameter("csrfToken");
         if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
           String searchTerm = request.getParameter("searchTerm");
+          if (searchTerm == null) {
+            searchTerm = "";
+          }
           log.debug("User Submitted - " + searchTerm);
-          searchTerm = XssFilter.levelThree(searchTerm);
+          // The search term is reflected straight back into an HTML body context. Contextual
+          // output encoding at the point of output is the control that makes it inert; the
+          // legacy keyword stripping is kept only for backwards compatibility.
+          searchTerm = Encode.forHtml(XssFilter.levelThree(searchTerm));
           log.debug("After Filtering - " + searchTerm);
           String htmlOutput = new String();
           if (FindXSS.search(searchTerm)) {

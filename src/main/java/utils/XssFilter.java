@@ -1,6 +1,7 @@
 package utils;
 
 import java.net.MalformedURLException;
+import java.net.URISyntaxException;
 import java.net.URL;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -28,66 +29,28 @@ public class XssFilter {
 
   private static final Logger log = LogManager.getLogger(XssFilter.class);
 
+  /** Help link handed back when a submission is not a usable http(s) URL. */
+  private static final String HOW_TO_MAKE_A_URL_URL =
+      "https://www.google.com/search?q=What+does+a+HTTP+link+look+like";
+
   /**
-   * A method to badly validate a URL
+   * A method to validate a URL
    *
    * @param input URL to validate
-   * @return A poorly validated URL (XSS RISK)
+   * @return A validated, HTML encoded http(s) URL
    */
   public static String anotherBadUrlValidate(String input) {
-    String howToMakeAUrlUrl =
-        new String("https://www.google.com/search?q=What+does+a+HTTP+link+look+like");
-    input = input.toLowerCase();
-    if (input.startsWith("http")) {
-      try {
-        URL theUrl =
-            new URL(
-                input
-                    .replaceAll("#", "&#x23;")
-                    .replaceFirst("<", "&#x3c;")
-                    .replaceFirst(">", "&#x3e;")
-                    .replaceFirst("\"", "&quot;"));
-        input = theUrl.toString();
-      } catch (MalformedURLException e) {
-        log.debug("Could not Cast URL from input: " + e.toString());
-        input = howToMakeAUrlUrl;
-      }
-    } else {
-      log.debug("Was not a HTTP URL");
-      input = howToMakeAUrlUrl;
-    }
-    return input;
+    return validateHttpUrlForHtmlAttribute(input);
   }
 
   /**
-   * White lists for specific URL types but doesn't sanitise it well
+   * White lists http(s) URLs and encodes the survivor for the HTML attribute it is written into
    *
-   * @param input
-   * @return
+   * @param input Untrusted URL submitted by a user
+   * @return An HTML encoded http(s) URL, or a help link when the submission is not one
    */
   public static String badUrlValidate(String input) {
-    String howToMakeAUrlUrl =
-        new String("https://www.google.com/search?q=What+does+a+HTTP+link+look+like");
-    input = input.toLowerCase();
-    if (input.startsWith("http")) {
-      try {
-        URL theUrl =
-            new URL(
-                input
-                    .replaceAll("#", "&#x23;")
-                    .replaceAll("<", "&#x3c;")
-                    .replaceAll(">", "&#x3e;")
-                    .replaceFirst("\"", "&quot;"));
-        input = theUrl.toString();
-      } catch (MalformedURLException e) {
-        log.debug("Could not Cast URL from input: " + e.toString());
-        input = howToMakeAUrlUrl;
-      }
-    } else {
-      log.debug("Was not a HTTP URL");
-      input = howToMakeAUrlUrl;
-    }
-    return input;
+    return validateHttpUrlForHtmlAttribute(input);
   }
 
   /**
@@ -191,5 +154,33 @@ public class XssFilter {
   private static String screwHtmlEncodings(String input) {
     input = input.replaceAll("&", "!").replaceAll(":", "!");
     return input;
+  }
+
+  /**
+   * Accepts only syntactically valid http(s) URLs and encodes the survivor for the double quoted
+   * HTML attribute it is written into. Anything else is replaced with a help link.
+   *
+   * @param input Untrusted URL submitted by a user
+   * @return An HTML encoded URL that cannot break out of the attribute it is placed in
+   */
+  private static String validateHttpUrlForHtmlAttribute(String input) {
+    String validatedUrl = HOW_TO_MAKE_A_URL_URL;
+    if (input != null) {
+      try {
+        URL theUrl = new URL(input);
+        // java.net.URL lower cases the scheme for us, so an allow list comparison is enough
+        String protocol = theUrl.getProtocol();
+        if ("http".equals(protocol) || "https".equals(protocol)) {
+          // Strict RFC 3986 parse. Rejects quotes, angle brackets and white space outright
+          validatedUrl = theUrl.toURI().toString();
+        } else {
+          log.debug("Was not a HTTP URL");
+        }
+      } catch (MalformedURLException | URISyntaxException e) {
+        log.debug("Could not Cast URL from input: " + e.toString());
+      }
+    }
+    // Contextual output encoding for the href attribute the URL is written into
+    return Encode.forHtml(validatedUrl);
   }
 }

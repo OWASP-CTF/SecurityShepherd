@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
 import utils.FindXSS;
 import utils.Hash;
 import utils.ShepherdLogManager;
@@ -77,8 +78,14 @@ public class XssChallengeTwo extends HttpServlet {
         Object tokenParmeter = request.getParameter("csrfToken");
         if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
           String searchTerm = request.getParameter("searchTerm");
+          if (searchTerm == null) {
+            searchTerm = "";
+          }
           log.debug("User Submitted - " + searchTerm);
-          searchTerm = XssFilter.levelTwo(searchTerm);
+          // The search term is reflected straight back into an HTML body context. Contextual
+          // output encoding at the point of output is the control that makes it inert; the
+          // legacy event handler blacklist is kept only for backwards compatibility.
+          searchTerm = Encode.forHtml(XssFilter.levelTwo(searchTerm));
           log.debug("After Filtering - " + searchTerm);
           String htmlOutput = new String();
           if (FindXSS.search(searchTerm)) {
@@ -116,7 +123,7 @@ public class XssChallengeTwo extends HttpServlet {
         out.write(errors.getString("error.noSession"));
       }
     } catch (Exception e) {
-      out.write(errors.getString("errors.funky"));
+      out.write(errors.getString("error.funky"));
       log.fatal(levelName + " - " + e.toString());
     }
   }
