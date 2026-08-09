@@ -4,9 +4,9 @@ import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -131,10 +131,13 @@ public class SqlInjectionLesson extends HttpServlet {
     String[][] result = new String[10][3];
     try {
       Connection conn = Database.getSqlInjLessonConnection(ApplicationRoot);
-      Statement stmt;
-      stmt = conn.createStatement();
-      ResultSet resultSet =
-          stmt.executeQuery("SELECT * FROM tb_users WHERE username = '" + username + "'");
+      // The name was concatenated into the statement, so a quote in it ended the string literal
+      // and the rest of the value was read as query text. Binding it sends the value separately
+      // from the statement, where it can only ever be compared as a name.
+      PreparedStatement prepstmt =
+          conn.prepareStatement("SELECT * FROM tb_users WHERE username = ?");
+      prepstmt.setString(1, username);
+      ResultSet resultSet = prepstmt.executeQuery();
       log.debug("Opening Result Set from query");
       for (int i = 0; resultSet.next(); i++) {
         log.debug("Row " + i + ": User ID = " + resultSet.getString(1));
