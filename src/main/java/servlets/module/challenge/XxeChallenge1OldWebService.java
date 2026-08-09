@@ -130,8 +130,17 @@ public class XxeChallenge1OldWebService extends HttpServlet {
     Document doc;
     String result;
 
+    // Doctype declarations - and with them external general/parameter entities, external DTDs
+    // and XInclude - are refused outright rather than merely restricted. A submitted document
+    // that named a path on the server used to be read straight back into the response; with
+    // every one of these disabled there is no declaration left that could point the parser at
+    // anything outside the document it was actually given.
     DocumentBuilder dBuilder =
-        XmlDocumentBuilder.xmlDocBuilder(false, true, true, true, true, true);
+        XmlDocumentBuilder.xmlDocBuilder(true, false, false, false, false, false);
+    if (dBuilder == null) {
+      log.error("Could not build an XML parser that refuses doctype declarations");
+      return null;
+    }
     InputSource is = new InputSource(xmlEmail);
 
     try {
