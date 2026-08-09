@@ -17,7 +17,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -109,35 +108,18 @@ public class SecurityMisconfigStealTokens extends HttpServlet {
                           "securityMisconfig.servlet.stealTokens.notComplete.message")
                       + "<p>");
         } else {
-          // User submitted something different from their cookie
-          boolean notUsersTokenButValid = validToken(userId, cookieValue, applicationRoot);
-          if (notUsersTokenButValid) {
-            log.debug("Valid Cookie of another User Dectected");
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("securityMisconfig.servlet.stealTokens.complete")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("securityMisconfig.servlet.stealTokens.youDidIt")
-                    + " "
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
-          } else {
-            htmlOutput =
-                new String(
-                    "<h2 class='title'>"
-                        + bundle.getString("securityMisconfig.servlet.stealTokens.notComplete")
-                        + "</h2>"
-                        + "<p>"
-                        + bundle.getString(
-                            "securityMisconfig.servlet.stealTokens.notComplete.yourToken")
-                        + "<p>");
-          }
+          // A token belonging to somebody else is not proof of anything. Refuse it instead of
+          // acting on it, so a stolen cookie cannot be replayed against this session.
+          log.debug("Rejected a token that does not belong to this session");
+          htmlOutput =
+              new String(
+                  "<h2 class='title'>"
+                      + bundle.getString("securityMisconfig.servlet.stealTokens.notComplete")
+                      + "</h2>"
+                      + "<p>"
+                      + bundle.getString(
+                          "securityMisconfig.servlet.stealTokens.notComplete.yourToken")
+                      + "<p>");
         }
       } catch (Exception e) {
         out.write(errors.getString("securityMisconfig.servlet.stealTokens.notComplete.yourToken"));
@@ -185,47 +167,5 @@ public class SecurityMisconfigStealTokens extends HttpServlet {
       log.debug("Found token: " + userToken);
     }
     return userToken;
-  }
-
-  /**
-   * Method to validate if a token exists in the database which does not belong to the user
-   * submitting the request
-   *
-   * @param userId The ID of the user submitting the request
-   * @param token The token submitted in the request
-   * @param applicationRoot Running context of the application
-   * @return Boolean depicting if the token exists in the database and does not belong to the user
-   *     submitting the request
-   * @throws SQLException
-   */
-  public static boolean validToken(String userId, String token, String applicationRoot)
-      throws SQLException {
-    boolean validToken = false;
-    log.debug("Checking token:" + token);
-    Connection conn =
-        Database.getChallengeConnection(applicationRoot, "SecurityMisconfigStealToken");
-    try {
-      CallableStatement validateTokenCs = conn.prepareCall("call validToken(?, ?)");
-      validateTokenCs.setString(1, userId);
-      validateTokenCs.setString(2, token);
-      log.debug("Executing validToken procedure...");
-      ResultSet tokenRs = validateTokenCs.executeQuery();
-      if (tokenRs.next()) {
-        if (tokenRs.getInt(1) > 0) {
-          log.debug("Valid Token Detected");
-          validToken = true;
-        }
-      } else {
-        log.error("No Results From validToken Call");
-        throw new SQLException("No results from validToken Call. Empty Result Set");
-      }
-      tokenRs.close();
-    } catch (SQLException e) {
-      log.error("Could not verify token: " + e.toString());
-      throw e;
-    } finally {
-      Database.closeConnection(conn);
-    }
-    return validToken;
   }
 }

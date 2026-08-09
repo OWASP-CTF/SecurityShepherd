@@ -91,10 +91,13 @@ public class SessionManagement5ChangePassword extends HttpServlet {
         // The account to reset is the one the token was issued for, never one named in the request
         String issuedToken = (String) ses.getAttribute(SessionManagement5SetToken.RESET_TOKEN);
         String userName = (String) ses.getAttribute(SessionManagement5SetToken.RESET_USER);
+        Long expires = (Long) ses.getAttribute(SessionManagement5SetToken.RESET_EXPIRES);
         log.debug("userName = " + userName);
 
         if (issuedToken == null
             || userName == null
+            || expires == null
+            || expires < System.currentTimeMillis()
             || !MessageDigest.isEqual(
                 issuedToken.getBytes(StandardCharsets.UTF_8),
                 token.getBytes(StandardCharsets.UTF_8))) {
@@ -129,6 +132,7 @@ public class SessionManagement5ChangePassword extends HttpServlet {
           // A reset token is good for one password change only
           ses.removeAttribute(SessionManagement5SetToken.RESET_TOKEN);
           ses.removeAttribute(SessionManagement5SetToken.RESET_USER);
+          ses.removeAttribute(SessionManagement5SetToken.RESET_EXPIRES);
 
           htmlOutput = "<p>" + bundle.getString("changePass.success") + "</p>";
         }

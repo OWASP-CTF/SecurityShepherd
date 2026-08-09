@@ -75,6 +75,7 @@ public class SessionManagement2ChangePassword extends HttpServlet {
       out.print(getServletInfo());
 
       log.debug(levelName + " Servlet accessed");
+      String htmlOutput = new String();
       try {
         log.debug("Getting Challenge Parameter");
         Object emailObj = request.getParameter("subEmail");
@@ -83,6 +84,13 @@ public class SessionManagement2ChangePassword extends HttpServlet {
           subEmail = (String) emailObj;
         }
         log.debug("subEmail = " + subEmail);
+
+        String authenticatedUser = (String) ses.getAttribute("sessionManagement2User");
+        String authenticatedAddress = (String) ses.getAttribute("sessionManagement2Address");
+        if (authenticatedUser == null || !subEmail.equals(authenticatedAddress)) {
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
+        }
 
         log.debug("Getting ApplicationRoot");
         String ApplicationRoot = getServletContext().getRealPath("");
@@ -93,9 +101,9 @@ public class SessionManagement2ChangePassword extends HttpServlet {
           conn = Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
           log.debug("Checking credentials");
           PreparedStatement callstmt =
-              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userAddress = ?");
+              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userName = ?");
           callstmt.setString(1, newPassword);
-          callstmt.setString(2, subEmail);
+          callstmt.setString(2, authenticatedUser);
           log.debug("Executing resetPassword");
           callstmt.execute();
           log.debug("Statement executed");
@@ -104,6 +112,7 @@ public class SessionManagement2ChangePassword extends HttpServlet {
           callstmt = conn.prepareStatement("COMMIT");
           callstmt.execute();
           log.debug("Changes committed.");
+          htmlOutput = "<p>Password changed.</p>";
 
         } catch (SQLException e) {
           log.error(levelName + " SQL Error: " + e.toString());
@@ -111,7 +120,7 @@ public class SessionManagement2ChangePassword extends HttpServlet {
           Database.closeConnection(conn);
         }
         log.debug("Outputting HTML");
-        out.write(bundle.getString("response.changedTo"));
+        out.write(htmlOutput);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());

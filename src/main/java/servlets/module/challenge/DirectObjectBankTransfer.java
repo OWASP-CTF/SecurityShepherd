@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.CallableStatement;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Locale;
 import java.util.ResourceBundle;
@@ -87,7 +88,8 @@ public class DirectObjectBankTransfer extends HttpServlet {
         log.debug("Receiver Account Number - " + receiverAccountNumber);
         String transferAmountString = request.getParameter("transferAmount");
         log.debug("Transfer Amount - " + transferAmountString);
-        float tranferAmount = Float.parseFloat(transferAmountString);
+        // Parsed and compared as a double: a long balance loses precision in a float
+        double tranferAmount = Double.parseDouble(transferAmountString);
 
         // Data Validation
         // Positive Transfer Amount?
@@ -121,10 +123,21 @@ public class DirectObjectBankTransfer extends HttpServlet {
           CallableStatement callstmt = conn.prepareCall("CALL transferFunds(?, ?, ?)");
           callstmt.setString(1, senderAccountNumber);
           callstmt.setString(2, receiverAccountNumber);
-          callstmt.setFloat(3, tranferAmount);
-          callstmt.execute();
-          log.debug("Successfully ran Transfer Funds procedure.");
-          htmlOutput = bundle.getString("transfer.success");
+          callstmt.setDouble(3, tranferAmount);
+          // The procedure re-checks the balance inside the transaction that debits it, so two
+          // concurrent transfers cannot both pass the check above and overdraw the account
+          ResultSet transferResult = callstmt.executeQuery();
+          if (transferResult.next() && transferResult.getInt(1) > 0) {
+            log.debug("Successfully ran Transfer Funds procedure.");
+            htmlOutput = bundle.getString("transfer.success");
+          } else {
+            log.debug("Transfer rejected, sender had insufficient funds");
+            htmlOutput =
+                bundle.getString("transfer.error.occurred")
+                    + " "
+                    + bundle.getString("transfer.error.notEnoughCash");
+          }
+          transferResult.close();
         } else {
           log.debug("Invalid Data Detected: " + errorMessage);
           htmlOutput = bundle.getString("transfer.error.occurred") + " " + errorMessage;

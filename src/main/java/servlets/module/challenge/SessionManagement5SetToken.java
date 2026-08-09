@@ -53,6 +53,7 @@ public class SessionManagement5SetToken extends HttpServlet {
   public static String levelHash = SessionManagement5.levelHash;
   public static final String RESET_USER = "sessionManagement5ResetUser";
   public static final String RESET_TOKEN = "sessionManagement5ResetToken";
+  public static final String RESET_EXPIRES = "sessionManagement5ResetExpires";
 
   /**
    * Used to apparently send a message to a user with a token to reset their password.
@@ -117,6 +118,7 @@ public class SessionManagement5SetToken extends HttpServlet {
           // account it was issued for and never returned in this response
           ses.setAttribute(RESET_USER, resultSet.getString(1));
           ses.setAttribute(RESET_TOKEN, Hash.randomString());
+          ses.setAttribute(RESET_EXPIRES, System.currentTimeMillis() + (10 * 60 * 1000));
           htmlOutput =
               bundle.getString("setToken.sentTo.1")
                   + " '"

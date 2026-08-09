@@ -120,6 +120,8 @@ public class SessionManagement2 extends HttpServlet {
         ResultSet resultSet = callstmt.executeQuery();
         if (resultSet.next()) {
           log.debug("Successful Login");
+          ses.setAttribute("sessionManagement2User", resultSet.getString(1));
+          ses.setAttribute("sessionManagement2Address", resultSet.getString(2));
           // Get key and add it to the output
           String userKey =
               Hash.generateUserSolution(
