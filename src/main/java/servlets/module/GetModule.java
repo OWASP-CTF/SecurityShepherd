@@ -123,6 +123,12 @@ public class GetModule extends HttpServlet {
             log.debug("CTF isn't running, access denied");
             out.write("../blockedMessage.jsp");
 
+          } else if (!isAdmin
+              && ModulePlan.isIncrementalFloor()
+              && !Getter.isNextIncrementalModule(ApplicationRoot, moduleId, userId)) {
+            log.debug("Module is not next in the user's incremental progression");
+            out.write("../blockedMessage.jsp");
+
           } else if (ModuleBlock.blockerEnabled && ModuleBlock.blockerId.compareTo(moduleId) == 0) {
             log.debug("Blocker Detected; Returning Message");
             out.write("../blockedMessage.jsp");

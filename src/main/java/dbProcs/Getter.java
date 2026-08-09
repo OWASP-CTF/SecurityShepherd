@@ -2247,6 +2247,45 @@ public class Getter {
   }
 
   /**
+   * Returns whether a module is the next available module for a user in incremental mode.
+   *
+   * @param ApplicationRoot The current running context of the application
+   * @param moduleId The requested module identifier
+   * @param userId The requesting user's identifier
+   * @return true when every earlier open module has been completed by the user
+   */
+  public static boolean isNextIncrementalModule(
+      String ApplicationRoot, String moduleId, String userId) {
+    log.debug("*** Getter.isNextIncrementalModule ***");
+    try (Connection conn = Database.getCoreConnection(ApplicationRoot);
+        PreparedStatement requestedModule =
+            conn.prepareStatement(
+                "SELECT incrementalRank FROM modules WHERE moduleId = ? AND moduleStatus = 'open'")) {
+      requestedModule.setString(1, moduleId);
+      try (ResultSet requestedModuleResult = requestedModule.executeQuery()) {
+        if (!requestedModuleResult.next()) {
+          return false;
+        }
+
+        try (PreparedStatement incompleteEarlierModules =
+            conn.prepareStatement(
+                "SELECT COUNT(*) FROM modules m LEFT JOIN results r ON m.moduleId = r.moduleId"
+                    + " AND r.userId = ? WHERE m.moduleStatus = 'open'"
+                    + " AND m.incrementalRank < ? AND r.finishTime IS NULL")) {
+          incompleteEarlierModules.setString(1, userId);
+          incompleteEarlierModules.setInt(2, requestedModuleResult.getInt(1));
+          try (ResultSet incompleteModules = incompleteEarlierModules.executeQuery()) {
+            return incompleteModules.next() && incompleteModules.getInt(1) == 0;
+          }
+        }
+      }
+    } catch (SQLException e) {
+      log.error("isNextIncrementalModule Error: " + e.toString());
+      return false;
+    }
+  }
+
+  /**
    * @param ApplicationRoot The current running context of the application
    * @return Result set containing admin info in the order userId, userName and userAddress
    */
