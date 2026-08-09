@@ -93,50 +93,67 @@ public class DirectObject2 extends HttpServlet {
       try {
         String userId = request.getParameter("userId[]");
         log.debug("User Submitted - " + userId);
-        boolean authorised = userId != null && authorisedUserIds.contains(userId);
-        if (!authorised) {
-          log.debug("Refusing profile the user is not authorised to read");
-        }
-        String ApplicationRoot = getServletContext().getRealPath("");
-        log.debug("Servlet root = " + ApplicationRoot);
+        // Indirect object mapping: the request parameter is only ever used to select one of the
+        // profile identifiers this challenge itself publishes. Any other value is refused before
+        // the database is consulted, so a guessed or enumerated identifier can never address
+        // another user's row and attacker input never reaches the query.
+        int profileIndex = userId == null ? -1 : authorisedUserIds.indexOf(userId);
         String htmlOutput = new String();
-
-        Connection conn =
-            Database.getChallengeConnection(ApplicationRoot, "directObjectRefChalTwo");
-        PreparedStatement prepstmt =
-            conn.prepareStatement("SELECT userName, privateMessage FROM users WHERE userId = ?");
-        prepstmt.setString(1, userId);
-        ResultSet resultSet = prepstmt.executeQuery();
-        if (authorised && resultSet.next()) {
-          log.debug("Found user: " + resultSet.getString(1));
-          String userName = resultSet.getString(1);
-          String privateMessage = resultSet.getString(2);
-          htmlOutput =
-              "<h2 class='title'>"
-                  + userName
-                  + "'s "
-                  + bundle.getString("response.message")
-                  + "</h2>"
-                  + "<p>"
-                  + privateMessage
-                  + "</p>";
-        } else {
-          log.debug("No Profile Found");
-
+        if (profileIndex < 0) {
+          log.debug("Refusing profile the user is not authorised to read");
           htmlOutput =
               "<h2 class='title'>"
                   + bundle.getString("response.notFound")
                   + "</h2><p>"
                   + bundle.getString("response.notFoundMessage.1")
                   + " '"
-                  + Encode.forHtml(userId)
+                  + Encode.forHtml(userId == null ? "" : userId)
                   + "' "
                   + bundle.getString("response.notFoundMessage.2")
                   + "</p>";
+        } else {
+          // Only the server-side canonical identifier is bound into the query
+          String canonicalUserId = authorisedUserIds.get(profileIndex);
+          String ApplicationRoot = getServletContext().getRealPath("");
+          log.debug("Servlet root = " + ApplicationRoot);
+
+          Connection conn =
+              Database.getChallengeConnection(ApplicationRoot, "directObjectRefChalTwo");
+          PreparedStatement prepstmt =
+              conn.prepareStatement("SELECT userName, privateMessage FROM users WHERE userId = ?");
+          prepstmt.setString(1, canonicalUserId);
+          ResultSet resultSet = prepstmt.executeQuery();
+          if (resultSet.next()) {
+            log.debug("Found user: " + resultSet.getString(1));
+            String userName = resultSet.getString(1);
+            String privateMessage = resultSet.getString(2);
+            htmlOutput =
+                "<h2 class='title'>"
+                    + userName
+                    + "'s "
+                    + bundle.getString("response.message")
+                    + "</h2>"
+                    + "<p>"
+                    + privateMessage
+                    + "</p>";
+          } else {
+            log.debug("No Profile Found");
+
+            htmlOutput =
+                "<h2 class='title'>"
+                    + bundle.getString("response.notFound")
+                    + "</h2><p>"
+                    + bundle.getString("response.notFoundMessage.1")
+                    + " '"
+                    + Encode.forHtml(canonicalUserId)
+                    + "' "
+                    + bundle.getString("response.notFoundMessage.2")
+                    + "</p>";
+          }
+          Database.closeConnection(conn);
         }
         log.debug("Outputting HTML");
         out.write(htmlOutput);
-        Database.closeConnection(conn);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
