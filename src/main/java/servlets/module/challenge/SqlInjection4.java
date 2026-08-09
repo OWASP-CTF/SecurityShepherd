@@ -4,9 +4,9 @@ import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -78,11 +78,11 @@ public class SqlInjection4 extends HttpServlet {
       String htmlOutput = new String();
 
       try {
-        String theUserName = request.getParameter("theUserName");
+        String theUserName = Validate.validateParameter(request.getParameter("theUserName"), 128);
         log.debug("User Submitted - " + theUserName);
         theUserName = SqlFilter.levelFour(theUserName);
         log.debug("Filtered to " + theUserName);
-        String thePassword = request.getParameter("thePassword");
+        String thePassword = Validate.validateParameter(request.getParameter("thePassword"), 128);
         log.debug("thePassword Submitted - " + thePassword);
         thePassword = SqlFilter.levelFour(thePassword);
         log.debug("Filtered to " + thePassword);
@@ -90,49 +90,49 @@ public class SqlInjection4 extends HttpServlet {
         log.debug("Servlet root = " + ApplicationRoot);
 
         log.debug("Getting Connection to Database");
-        Connection conn = Database.getChallengeConnection(ApplicationRoot, "SqlChallengeFour");
-        Statement stmt = conn.createStatement();
-        log.debug("Gathering result set");
-        ResultSet resultSet =
-            stmt.executeQuery(
-                "SELECT userName FROM users WHERE userName = '"
-                    + theUserName
-                    + "' AND userPassword = '"
-                    + thePassword
-                    + "'");
+        String theQuery = "SELECT userName FROM users WHERE userName = ? AND userPassword = ?";
+        try (Connection conn =
+                Database.getChallengeConnection(ApplicationRoot, "SqlChallengeFour");
+            PreparedStatement prepStmt = conn.prepareStatement(theQuery)) {
+          prepStmt.setString(1, theUserName);
+          prepStmt.setString(2, thePassword);
 
-        int i = 0;
-        htmlOutput = "<h2 class='title'>" + bundle.getString("response.loginResults") + "</h2>";
+          int i = 0;
+          htmlOutput = "<h2 class='title'>" + bundle.getString("response.loginResults") + "</h2>";
 
-        log.debug("Opening Result Set from query");
-        if (resultSet.next()) {
-          log.debug("Signed in as " + resultSet.getString(1));
-          htmlOutput +=
-              "<p>"
-                  + bundle.getString("response.signedInAs")
-                  + ""
-                  + Encode.forHtml(resultSet.getString(1))
-                  + "</p>";
-          if (resultSet.getString(1).equalsIgnoreCase("admin")) {
-            htmlOutput +=
-                "<p>"
-                    + bundle.getString("response.adminResultKey")
-                    + ""
-                    + "<a>"
-                    + Encode.forHtml(levelResult)
-                    + "</a>";
-          } else {
-            htmlOutput += "<p>" + bundle.getString("response.adminsFun") + "</p>";
+          log.debug("Gathering result set");
+          try (ResultSet resultSet = prepStmt.executeQuery()) {
+            log.debug("Opening Result Set from query");
+            if (resultSet.next()) {
+              log.debug("Signed in as " + resultSet.getString(1));
+              htmlOutput +=
+                  "<p>"
+                      + bundle.getString("response.signedInAs")
+                      + ""
+                      + Encode.forHtml(resultSet.getString(1))
+                      + "</p>";
+              if (resultSet.getString(1).equalsIgnoreCase("admin")) {
+                htmlOutput +=
+                    "<p>"
+                        + bundle.getString("response.adminResultKey")
+                        + ""
+                        + "<a>"
+                        + Encode.forHtml(levelResult)
+                        + "</a>";
+              } else {
+                htmlOutput += "<p>" + bundle.getString("response.adminsFun") + "</p>";
+              }
+              i++;
+            }
           }
-          i++;
-        }
-        if (i == 0) {
-          htmlOutput =
-              "<h2 class='title'>"
-                  + bundle.getString("response.loginResults")
-                  + "</h2><p>"
-                  + bundle.getString("response.superSecure")
-                  + "</p>";
+          if (i == 0) {
+            htmlOutput =
+                "<h2 class='title'>"
+                    + bundle.getString("response.loginResults")
+                    + "</h2><p>"
+                    + bundle.getString("response.superSecure")
+                    + "</p>";
+          }
         }
       } catch (SQLException e) {
         log.debug("SQL Error caught - " + e.toString());

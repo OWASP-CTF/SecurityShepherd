@@ -95,12 +95,13 @@ public class SqlInjection5 extends HttpServlet {
         Connection conn =
             Database.getChallengeConnection(applicationRoot, "SqlInjectionChallenge5Shop");
         log.debug("Looking for Coupons");
+        // Ordinary checkout redeems ordinary coupons only. The vipCoupons table holds
+        // VIP-exclusive offers, so unioning it in here let any customer redeem a coupon they were
+        // never entitled to. VIP coupons are validated by the VIP coupon check, which is the flow
+        // that establishes entitlement.
         PreparedStatement prepstmt =
-            conn.prepareStatement(
-                "SELECT itemId, perCentOff FROM coupons WHERE couponCode = ?"
-                    + "UNION SELECT itemId, perCentOff FROM vipCoupons WHERE couponCode = ?");
+            conn.prepareStatement("SELECT itemId, perCentOff FROM coupons WHERE couponCode = ?");
         prepstmt.setString(1, couponCode);
-        prepstmt.setString(2, couponCode);
         ResultSet coupons = prepstmt.executeQuery();
         try {
           if (coupons.next()) {
