@@ -158,22 +158,11 @@ public class SessionManagement6 extends HttpServlet {
                       + "</a>"
                       + "</p>";
             } else {
-              log.debug("Incorrect credentials, checking if user name correct");
-              callstmt = conn.prepareStatement("SELECT userAddress FROM users WHERE userName = ?");
-              callstmt.setString(1, subName);
-              log.debug("Executing getAddress");
-              resultSet = callstmt.executeQuery();
-              if (resultSet.next()) {
-                log.debug("User Found");
-                userAddress =
-                    ""
-                        + bundle.getString("response.badPass")
-                        + " <a>"
-                        + Encode.forHtml(resultSet.getString(1))
-                        + "</a><br/>";
-              } else {
-                userAddress = "" + bundle.getString("response.badUser") + "<br/>";
-              }
+              // One message for every failure. Returning the account's address on a bad
+              // password confirmed which user names exist and handed over the address the
+              // secret-question recovery flow keys on.
+              log.debug("Incorrect credentials");
+              userAddress = bundle.getString("response.badCredentials") + "<br/>";
               htmlOutput = makeTable(userAddress, bundle);
             }
             Database.closeConnection(conn);

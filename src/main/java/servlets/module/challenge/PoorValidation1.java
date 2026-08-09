@@ -37,6 +37,10 @@ import utils.Validate;
 public class PoorValidation1 extends HttpServlet {
 
   private static final String levelName = "Poor Validation 2";
+
+  /** Largest quantity of any one item a single order may contain. */
+  private static final int MAX_ORDER_AMOUNT = 9000;
+
   private static String levelSolution =
       "d30475881612685092e5ec469317dcc5ccc1f548a97bfdb041236b5bba7627bf";
   public static String levelHash =
@@ -66,25 +70,28 @@ public class PoorValidation1 extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
       try {
-        int pineappleAmount = Integer.parseInt(request.getParameter("pineappleAmount"));
+        int pineappleAmount =
+            validateAmount(Integer.parseInt(request.getParameter("pineappleAmount")));
         log.debug("pineappleAmount - " + pineappleAmount);
-        int orangeAmount = Integer.parseInt(request.getParameter("orangeAmount"));
+        int orangeAmount = validateAmount(Integer.parseInt(request.getParameter("orangeAmount")));
         log.debug("orangeAmount - " + orangeAmount);
-        int appleAmount = Integer.parseInt(request.getParameter("appleAmount"));
+        int appleAmount = validateAmount(Integer.parseInt(request.getParameter("appleAmount")));
         log.debug("appleAmount - " + appleAmount);
-        int bananaAmount = Integer.parseInt(request.getParameter("bananaAmount"));
+        int bananaAmount = validateAmount(Integer.parseInt(request.getParameter("bananaAmount")));
         log.debug("bananaAmount - " + bananaAmount);
 
         // Working out costs
-        int pineappleCost = pineappleAmount * 30;
-        int orangeCost = orangeAmount * 3000;
-        int appleCost = appleAmount * 45;
-        int bananaCost = bananaAmount * 15;
+        // ASVS 2.2: quantities are bounded, and the arithmetic runs in long so a large
+        // order cannot overflow into a negative total.
+        long pineappleCost = (long) pineappleAmount * 30;
+        long orangeCost = (long) orangeAmount * 3000;
+        long appleCost = (long) appleAmount * 45;
+        long bananaCost = (long) bananaAmount * 15;
 
         htmlOutput = new String();
 
         // Work Out Final Cost
-        int finalCost = pineappleCost + appleCost + bananaCost + orangeCost;
+        long finalCost = pineappleCost + appleCost + bananaCost + orangeCost;
 
         // Output Order
         htmlOutput =
@@ -121,5 +128,20 @@ public class PoorValidation1 extends HttpServlet {
     } else {
       log.error(levelName + " servlet accessed with no session");
     }
+  }
+
+  /**
+   * A basket quantity must be a positive number within a sane bound. Without this, an order of
+   * negative fruit produced a negative total and handed out the result key (ASVS 2.2.1).
+   *
+   * @param amount Quantity submitted for one kind of fruit
+   * @return The quantity, when it is acceptable
+   * @throws IllegalArgumentException when the quantity is negative or implausibly large
+   */
+  private static int validateAmount(int amount) throws IllegalArgumentException {
+    if (amount < 0 || amount > MAX_ORDER_AMOUNT) {
+      throw new IllegalArgumentException("Order quantity out of range");
+    }
+    return amount;
   }
 }

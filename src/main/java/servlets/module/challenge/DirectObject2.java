@@ -6,8 +6,12 @@ import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.Set;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -43,6 +47,21 @@ public class DirectObject2 extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(DirectObject2.class);
   private static String levelName = "Insecure Direct Object Reference Challenge Two";
+
+  /**
+   * The records this challenge exposes. Authorization is decided here, not by whichever identifier
+   * the client happens to send (ASVS 8.2.2).
+   */
+  private static final Set<String> PERMITTED_USER_IDS =
+      Collections.unmodifiableSet(
+          new HashSet<String>(
+              Arrays.asList(
+                  "c81e728d9d4c2f636f067f89cc14862c",
+                  "eccbc87e4b5ce2fe28308fd9f2a7baf3",
+                  "e4da3b7fbbce2345d7772b0674a318d5",
+                  "8f14e45fceea167a5a36dedd4bea2543",
+                  "6512bd43d9caa6e02c990b0a82652dca")));
+
   public static String levelHash =
       "vc9b78627df2c032ceaf7375df1d847e47ed7abac2a4ce4cb6086646e0f313a4";
 
@@ -79,6 +98,21 @@ public class DirectObject2 extends HttpServlet {
         log.debug("Servlet root = " + ApplicationRoot);
         String htmlOutput = new String();
 
+        if (userId == null || !PERMITTED_USER_IDS.contains(userId)) {
+          log.debug("Rejected request for a record this user may not read");
+          out.write(
+              "<h2 class='title'>"
+                  + bundle.getString("response.notFound")
+                  + "</h2><p>"
+                  + bundle.getString("response.notFoundMessage.1")
+                  + " '"
+                  + Encode.forHtml(userId)
+                  + "' "
+                  + bundle.getString("response.notFoundMessage.2")
+                  + "</p>");
+          return;
+        }
+
         Connection conn =
             Database.getChallengeConnection(ApplicationRoot, "directObjectRefChalTwo");
         PreparedStatement prepstmt =
@@ -87,8 +121,8 @@ public class DirectObject2 extends HttpServlet {
         ResultSet resultSet = prepstmt.executeQuery();
         if (resultSet.next()) {
           log.debug("Found user: " + resultSet.getString(1));
-          String userName = resultSet.getString(1);
-          String privateMessage = resultSet.getString(2);
+          String userName = Encode.forHtml(resultSet.getString(1));
+          String privateMessage = Encode.forHtml(resultSet.getString(2));
           htmlOutput =
               "<h2 class='title'>"
                   + userName

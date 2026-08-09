@@ -6,8 +6,12 @@ import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.Set;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -43,6 +47,14 @@ public class DirectObject1 extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(DirectObject1.class);
   private static String levelName = "Insecure Direct Object Challenge Challenge One";
+
+  /**
+   * The records this challenge exposes. Authorization is decided here, not by whichever identifier
+   * the client happens to send (ASVS 8.2.2).
+   */
+  private static final Set<String> PERMITTED_USER_IDS =
+      Collections.unmodifiableSet(new HashSet<String>(Arrays.asList("1", "3", "5", "7", "9")));
+
   public static String levelHash =
       "o9a450a64cc2a196f55878e2bd9a27a72daea0f17017253f87e7ebd98c71c98c";
 
@@ -79,6 +91,21 @@ public class DirectObject1 extends HttpServlet {
         log.debug("Servlet root = " + ApplicationRoot);
         String htmlOutput = new String();
 
+        if (userId == null || !PERMITTED_USER_IDS.contains(userId)) {
+          log.debug("Rejected request for a record this user may not read");
+          out.write(
+              "<h2 class='title'>"
+                  + bundle.getString("response.notFound")
+                  + "</h2><p>"
+                  + bundle.getString("response.notFoundMessage.1")
+                  + " '"
+                  + Encode.forHtml(userId)
+                  + "' "
+                  + bundle.getString("response.notFoundMessage.2")
+                  + "</p>");
+          return;
+        }
+
         Connection conn =
             Database.getChallengeConnection(ApplicationRoot, "directObjectRefChalOne");
         PreparedStatement prepstmt =
@@ -87,8 +114,8 @@ public class DirectObject1 extends HttpServlet {
         ResultSet resultSet = prepstmt.executeQuery();
         if (resultSet.next()) {
           log.debug("Found user: " + resultSet.getString(1));
-          String userName = resultSet.getString(1);
-          String privateMessage = resultSet.getString(2);
+          String userName = Encode.forHtml(resultSet.getString(1));
+          String privateMessage = Encode.forHtml(resultSet.getString(2));
           htmlOutput =
               "<h2 class='title'>"
                   + userName

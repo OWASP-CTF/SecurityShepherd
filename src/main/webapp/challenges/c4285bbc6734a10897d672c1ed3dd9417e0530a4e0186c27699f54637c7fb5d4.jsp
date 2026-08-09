@@ -65,12 +65,18 @@ String i18nLevelName = bundle.getString("securityMisconfig.stealTokens.challenge
 		String userId = Encode.forHtml(ses.getAttribute("userStamp").toString());
 		String challengeUrl = request.getRequestURL().toString();
 		ShepherdLogManager.logEvent(request.getRemoteAddr(), request.getHeader("X-Forwarded-For"), levelName +".jsp: DEBUG: Challenge URL " + challengeUrl);
-		//Changing URL to HTTP
-		challengeUrl = challengeUrl.replaceAll("(?i)https", "http");
+		//The challenge URL keeps its original scheme; downgrading it to HTTP would have sent
+		//the session token over an unencrypted connection (ASVS 12.2).
 		//Set User  Cookie
 		try
 		{
 			Cookie userCookie = new Cookie("securityMisconfigLesson", SecurityMisconfigStealTokens.getUserToken(userId, applicationRoot));
+			// ASVS 3.3: a session token must be out of reach of scripts and must never travel
+			// in the clear. Without these flags the token could be read by injected JavaScript
+			// or captured off a plain HTTP request.
+			userCookie.setHttpOnly(true);
+			userCookie.setSecure(true);
+			userCookie.setPath(request.getContextPath() + "/");
 	        response.addCookie(userCookie);
 		}
 		catch(Exception e)

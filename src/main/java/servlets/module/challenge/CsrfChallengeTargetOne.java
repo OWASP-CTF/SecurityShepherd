@@ -7,6 +7,7 @@ import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -46,7 +47,14 @@ public class CsrfChallengeTargetOne extends HttpServlet {
    *
    * @param userId User identifier to be incremented
    */
+  // The endpoint still answers GET so the page keeps working, but the anti-forgery token is
+  // required either way, so an img/iframe load cannot trigger the state change (ASVS 3.5.1).
   public void doGet(HttpServletRequest request, HttpServletResponse response)
+      throws ServletException, IOException {
+    doPost(request, response);
+  }
+
+  public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
     // Setting IpAddress To Log and taking header for original IP if forwarded from proxy
     ShepherdLogManager.setRequestIp(request.getRemoteAddr(), request.getHeader("X-Forwarded-For"));
@@ -69,6 +77,15 @@ public class CsrfChallengeTargetOne extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+        // ASVS 3.5.1: a state-changing request must carry an anti-forgery token bound to the
+        // caller's own session, so a cross-site request cannot forge it.
+        Cookie tokenCookie = Validate.getToken(request.getCookies());
+        Object tokenParameter = request.getParameter("csrfToken");
+        if (!Validate.validateTokens(tokenCookie, tokenParameter)) {
+          log.debug("Rejected request with missing or mismatched CSRF token");
+          out.write(csrfGenerics.getString("target.incrementFailed"));
+          return;
+        }
         String plusId = request.getParameter("userid");
         log.debug("User Submitted - " + plusId);
         String userId = (String) ses.getAttribute("userStamp");

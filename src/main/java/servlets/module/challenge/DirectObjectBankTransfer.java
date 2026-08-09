@@ -73,7 +73,14 @@ public class DirectObjectBankTransfer extends HttpServlet {
       String errorMessage = new String();
       String applicationRoot = getServletContext().getRealPath("");
       try {
-        String senderAccountNumber = request.getParameter("senderAccountNumber");
+        // ASVS 8.2.2: money only ever leaves the account this session signed in to. The sender
+        // account used to come from the request, so any caller could debit any account.
+        String senderAccountNumber = (String) ses.getAttribute("directObjectBankAccount");
+        if (senderAccountNumber == null) {
+          log.debug("No bank account signed in on this session");
+          out.write(errors.getString("error.noSession"));
+          return;
+        }
         log.debug("Sender Account Number - " + senderAccountNumber);
         String receiverAccountNumber = request.getParameter("receiverAccountNumber");
         log.debug("Receiver Account Number - " + receiverAccountNumber);

@@ -47,6 +47,11 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(SessionManagement6SecretQuestion.class);
   private static String levelName = "Session Management Challenge Six (Secret Question)";
+
+  /** Session-scoped count of secret-answer attempts, and the cap on them. */
+  private static final String ANSWER_ATTEMPTS = "sessionManagement6AnswerAttempts";
+
+  private static final int MAX_ANSWER_ATTEMPTS = 5;
   private static String levelHash =
       "b5e1020e3742cf2c0880d4098146c4dde25ebd8ceab51807bad88ff47c316ece";
 
@@ -92,6 +97,18 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
 
         String ApplicationRoot = getServletContext().getRealPath("");
         try {
+          // ASVS 2.4: the recovery answer comes from a small, guessable set, so the number of
+          // attempts a session may make is capped. Without this the flow was brute-forceable.
+          Integer attempts = (Integer) ses.getAttribute(ANSWER_ATTEMPTS);
+          if (attempts == null) {
+            attempts = Integer.valueOf(0);
+          }
+          if (attempts.intValue() >= MAX_ANSWER_ATTEMPTS) {
+            log.debug("Secret answer attempt limit reached for this session");
+            out.write("<b>" + bundle.getString("question.tooManyAttempts") + "</b>");
+            return;
+          }
+          ses.setAttribute(ANSWER_ATTEMPTS, Integer.valueOf(attempts.intValue() + 1));
           if (Validate.isValidEmailAddress(subEmail) && subAns.length() > 5) {
             Connection conn =
                 Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalSix");
@@ -225,10 +242,8 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
                         ApplicationRoot, "BrokenAuthAndSessMangChalSix");
                 log.debug("Getting Secret Question");
                 PreparedStatement callstmt =
-                    conn.prepareStatement(
-                        "SELECT secretQuestion FROM users WHERE userAddress = \""
-                            + subEmail
-                            + "\"");
+                    conn.prepareStatement("SELECT secretQuestion FROM users WHERE userAddress = ?");
+                callstmt.setString(1, subEmail);
                 ResultSet rs = callstmt.executeQuery();
                 if (rs.next()) {
                   log.debug("'Valid' User Detected");
@@ -245,8 +260,7 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
               }
             } catch (SQLException e) {
               log.debug(levelName + " SQL Error: " + e.toString());
-              log.debug("Outputting error to user");
-              htmlOutput = new String(e.toString());
+              htmlOutput = new String(bundle.getString("question.invalidData"));
             }
           } else {
             log.debug("Tampered cookie detected");

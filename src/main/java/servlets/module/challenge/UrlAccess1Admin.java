@@ -43,6 +43,13 @@ public class UrlAccess1Admin extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(UrlAccess1Admin.class);
   private static String levelResult = "c776572b6a9d5b5c6e4aa672a4771213";
+
+  /**
+   * This sub-application's role, held server-side. An administrative function must verify the
+   * caller holds it (ASVS 8.2.1); being signed in to Shepherd is not authorisation.
+   */
+  private static final String SUB_APP_ROLE = "urlAccess1SubAppRole";
+
   private static String levelName = "URL Access 1 (Admin)"; // Used for Logging
 
   /**
@@ -74,6 +81,13 @@ public class UrlAccess1Admin extends HttpServlet {
       String htmlOutput = new String();
 
       try {
+        // ASVS 8.2.1: function-level access control. This endpoint was reachable by any
+        // signed-in user who knew the URL, which is the whole point of the challenge.
+        if (!"administrator".equals(ses.getAttribute(SUB_APP_ROLE))) {
+          log.debug("Rejected administrative request from a non-administrator");
+          out.write(errors.getString("error.shouldNotBeHere"));
+          return;
+        }
         String userData = request.getParameter("userData");
         boolean tamperedRequest = !userData.equalsIgnoreCase("4816283");
         if (!tamperedRequest) {

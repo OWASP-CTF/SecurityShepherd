@@ -3,10 +3,10 @@ package servlets.module.challenge;
 import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -78,9 +78,9 @@ public class SqlInjectionStoredProcedure extends HttpServlet {
         log.debug("Getting Connection to Database");
         Connection conn =
             Database.getChallengeConnection(ApplicationRoot, "SqlChallengeStoredProc");
-        // CallableStatement callstmt = conn.prepareCall("CALL findUser('" + userIdentity + "');");
-        Statement stmt = conn.createStatement();
-        ResultSet resultSet = stmt.executeQuery("CALL findUser('" + userIdentity + "');");
+        CallableStatement callstmt = conn.prepareCall("CALL findUser(?)");
+        callstmt.setString(1, userIdentity);
+        ResultSet resultSet = callstmt.executeQuery();
 
         int i = 0;
         htmlOutput = "<h2 class='title'>" + bundle.getString("response.searchResults") + "</h2>";
@@ -113,13 +113,8 @@ public class SqlInjectionStoredProcedure extends HttpServlet {
         }
       } catch (SQLException e) {
         log.debug("SQL Error caught - " + e.toString());
-        htmlOutput +=
-            "<p>"
-                + errors.getString("error.detected")
-                + "</p>"
-                + "<p>"
-                + Encode.forHtml(e.toString())
-                + "</p>";
+        // Detail stays server-side; echoing JDBC text back enables error-based injection.
+        htmlOutput += "<p>" + errors.getString("error.detected") + "</p>";
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());

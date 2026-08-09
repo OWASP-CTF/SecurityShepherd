@@ -47,6 +47,11 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(SessionManagement7SecretQuestion.class);
   private static String levelName = "Session Management Challenge 7 (Secret Question)";
+
+  /** Session-scoped count of secret-answer attempts, and the cap on them. */
+  private static final String ANSWER_ATTEMPTS = "sessionManagement7AnswerAttempts";
+
+  private static final int MAX_ANSWER_ATTEMPTS = 5;
   private static String levelHash =
       "269d55bc0e0ff635dcaeec8533085e5eae5d25e8646dcd4b05009353c9cf9c80";
   // To catch most requests before calling the DB, the in comming Answers must be one of the
@@ -101,6 +106,18 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
         Object emailObj = request.getParameter("subEmail");
         String subEmail = Validate.validateParameter(emailObj, 60);
         log.debug("subEmail = " + subEmail);
+        // ASVS 2.4: the recovery answer comes from a small, guessable set, so the number of
+        // attempts a session may make is capped. Without this the flow was brute-forceable.
+        Integer attempts = (Integer) ses.getAttribute(ANSWER_ATTEMPTS);
+        if (attempts == null) {
+          attempts = Integer.valueOf(0);
+        }
+        if (attempts.intValue() >= MAX_ANSWER_ATTEMPTS) {
+          log.debug("Secret answer attempt limit reached for this session");
+          out.write("<b>" + bundle.getString("question.tooManyAttempts") + "</b>");
+          return;
+        }
+        ses.setAttribute(ANSWER_ATTEMPTS, Integer.valueOf(attempts.intValue() + 1));
         if (validAnswer(subAns)) {
           log.debug("Submitted answer is a possible valid answer");
           String ApplicationRoot = getServletContext().getRealPath("");

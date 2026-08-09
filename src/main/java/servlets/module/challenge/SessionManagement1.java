@@ -5,12 +5,10 @@ import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import utils.Hash;
@@ -43,6 +41,9 @@ public class SessionManagement1 extends HttpServlet {
   public static String levelHash =
       "dfd6bfba1033fa380e378299b6a998c759646bd8aea02511482b8ce5d707f93a";
   private static String levelResult = "db7b1da5d7a43c7100a6f01bb0c";
+
+  /** Session attribute holding this sub-application's role. Server-owned; never client-settable. */
+  private static final String SUB_APP_ROLE = "sessionManagement1SubAppRole";
 
   /**
    * Users must take advance of the broken session management in this application by modifying the
@@ -77,38 +78,31 @@ public class SessionManagement1 extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
-        Cookie userCookies[] = request.getCookies();
-        int i = 0;
-        Cookie theCookie = null;
-        for (i = 0; i < userCookies.length; i++) {
-          if (userCookies[i].getName().compareTo("checksum") == 0) {
-            theCookie = userCookies[i];
-            break; // End Loop, because we found the token
-          }
+        // The sub-application's role is server-owned: it is initialised to guest and nothing
+        // in the request can promote it. The old "checksum" cookie let the client assert its
+        // own role, and keying off Shepherd's admin role would just move the trust, since a
+        // real administrator is not an administrator of this sub-application.
+        String subAppRole = (String) ses.getAttribute(SUB_APP_ROLE);
+        if (subAppRole == null) {
+          subAppRole = "guest";
+          ses.setAttribute(SUB_APP_ROLE, subAppRole);
         }
         String htmlOutput = null;
-        if (theCookie != null) {
-          log.debug("Cookie value: " + theCookie.getValue());
-          byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
-          String decodedCookie = new String(decodedCookieBytes, "UTF-8");
-          log.debug("Decoded Cookie: " + decodedCookie);
-
-          if (decodedCookie.equals("userRole=administrator")) {
-            log.debug("Challenge Complete");
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("response.adminClub")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("response.welcomeAdmin")
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
-          }
+        if ("administrator".equals(subAppRole)) {
+          log.debug("Administrator session confirmed");
+          // Get key and add it to the output
+          String userKey =
+              Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
+          htmlOutput =
+              "<h2 class='title'>"
+                  + bundle.getString("response.adminClub")
+                  + "</h2>"
+                  + "<p>"
+                  + bundle.getString("response.welcomeAdmin")
+                  + "<a>"
+                  + userKey
+                  + "</a>"
+                  + "</p>";
         }
         if (htmlOutput == null) {
           log.debug("Challenge Not Complete");

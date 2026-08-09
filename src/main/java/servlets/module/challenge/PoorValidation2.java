@@ -37,6 +37,10 @@ import utils.Validate;
 public class PoorValidation2 extends HttpServlet {
 
   private static final String levelName = "Poor Validation 2";
+
+  /** Largest quantity of any one item a single order may contain. */
+  private static final int MAX_ORDER_AMOUNT = 9000;
+
   private static String levelSolution =
       "05adf1e4afeb5550faf7edbec99170b40e79168ecb3a5da19943f05a3fe08c8e";
   public static String levelHash =
@@ -80,15 +84,15 @@ public class PoorValidation2 extends HttpServlet {
         log.debug("bananaAmount - " + bananaAmount);
 
         // Working out costs
-        int pineappleCost = pineappleAmount * 30;
-        int orangeCost = orangeAmount * 3000;
-        int appleCost = appleAmount * 45;
-        int bananaCost = bananaAmount * 15;
+        long pineappleCost = (long) pineappleAmount * 30;
+        long orangeCost = (long) orangeAmount * 3000;
+        long appleCost = (long) appleAmount * 45;
+        long bananaCost = (long) bananaAmount * 15;
 
         htmlOutput = new String();
 
         // Work Out Final Cost
-        int finalCost = pineappleCost + orangeCost + bananaCost + appleCost;
+        long finalCost = pineappleCost + orangeCost + bananaCost + appleCost;
 
         // Output Order
         htmlOutput =
@@ -126,9 +130,12 @@ public class PoorValidation2 extends HttpServlet {
     }
   }
 
-  private static int validateAmount(int amount) {
-    if (amount < 0) {
-      amount = 0;
+  private static int validateAmount(int amount) throws IllegalArgumentException {
+    // Clamping negatives alone left the total open to integer overflow: a large enough
+    // quantity multiplied by the unit price wrapped past Integer.MAX_VALUE and came back
+    // negative, which satisfied the "free oranges" condition (ASVS 2.2.1).
+    if (amount < 0 || amount > MAX_ORDER_AMOUNT) {
+      throw new IllegalArgumentException("Order quantity out of range");
     }
     return amount;
   }

@@ -47,6 +47,15 @@ public class SessionManagement5 extends HttpServlet {
       "7aed58f3a00087d56c844ed9474c671f8999680556c127a19ee79fa5d7a132e1";
   private static String levelResult = "a15b8ea0b8a3374a1dedc326dfbe3dbae26";
 
+  /** Server-side password reset state. The client never sees or supplies these. */
+  protected static final String RESET_TOKEN = "sessionManagement5ResetToken";
+
+  protected static final String RESET_TOKEN_USER = "sessionManagement5ResetTokenUser";
+  protected static final String RESET_TOKEN_ISSUED = "sessionManagement5ResetTokenIssued";
+
+  /** A reset token is good for ten minutes from issue. */
+  protected static final long RESET_TOKEN_TTL_MILLIS = 10L * 60L * 1000L;
+
   /**
    * Users must use this functionality to sign in as an administrator to retrieve the result key.
    *
