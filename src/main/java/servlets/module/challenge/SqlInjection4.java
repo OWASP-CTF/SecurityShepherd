@@ -18,7 +18,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
 import utils.ShepherdLogManager;
-import utils.SqlFilter;
 import utils.Validate;
 
 /**
@@ -80,12 +79,11 @@ public class SqlInjection4 extends HttpServlet {
       try {
         String theUserName = request.getParameter("theUserName");
         log.debug("User Submitted - " + theUserName);
-        theUserName = SqlFilter.levelFour(theUserName);
-        log.debug("Filtered to " + theUserName);
+        // The values are bound below, so the old scrubbing filter is not needed - and it was
+        // destructive: it lower-cased the input and removed every apostrophe, so the one account
+        // whose password contains an apostrophe could never sign in through it.
         String thePassword = request.getParameter("thePassword");
         log.debug("thePassword Submitted - " + thePassword);
-        thePassword = SqlFilter.levelFour(thePassword);
-        log.debug("Filtered to " + thePassword);
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
 
