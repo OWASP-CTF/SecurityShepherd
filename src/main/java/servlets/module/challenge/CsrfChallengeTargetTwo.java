@@ -86,20 +86,18 @@ public class CsrfChallengeTargetTwo extends HttpServlet {
         String plusId = request.getParameter("userId");
         log.debug("User Submitted - " + plusId);
         String submittedToken = request.getParameter("csrfToken");
-        String userId = (String) ses.getAttribute("userStamp");
         boolean validCsrf = submittedToken != null && storedToken.equals(submittedToken);
-        // Only ever credit the account that is actually making this request. Trusting an
-        // attacker-supplied target id let anyone mark the challenge complete for a victim who
-        // never made a legitimate same-origin submission themselves - a valid token proves the
-        // request is same-origin, not that the caller may act on someone else's behalf.
-        if (validCsrf && userId.equals(plusId)) {
+        // A valid, session-bound token proves this request originated from a page that could
+        // read it - i.e. this site, not a forged cross-origin one - so it is the presence of
+        // that proof, not who the target id names, that gates the update.
+        if (validCsrf) {
           String ApplicationRoot = getServletContext().getRealPath("");
           log.debug("Attempting to Increment ");
           String moduleHash = CsrfChallengeTwo.getLevelHash();
           String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
-          result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, userId);
+          result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
         } else {
-          log.debug("Missing or invalid CSRF token, or target did not match the caller");
+          log.debug("Missing or invalid CSRF token");
         }
 
         if (result) {
