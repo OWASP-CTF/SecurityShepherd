@@ -47,7 +47,11 @@ public class BrokenCrypto3 extends HttpServlet {
   private static String levelName = "Broken Crypto Challenge 3";
   public static String levelHash =
       "2da053b4afb1530a500120a49a14d422ea56705a7e3fc405a77bc269948ccae1";
-  public static String levelResult = "thisisthesecurityshepherdabcencryptionkey";
+
+  // The module result (the level answer) is stored only in the encrypted core database and is
+  // deliberately no longer held in this source file. It used to live here in plain text and it was
+  // also the key the sub application's cipher used, so recovering the cipher key handed out the
+  // level answer. Neither of those is true any more.
 
   /**
    * Key used by the sub application's cipher. It is deliberately not the module result, so that
