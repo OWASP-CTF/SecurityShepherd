@@ -75,12 +75,14 @@ public class ChangePassword extends HttpServlet {
           boolean validData = false;
           boolean passwordChange = false;
           boolean validPassword = false;
+          // Confirming with equalsIgnoreCase let "Password1" match "password1" - a case
+          // difference the login form (which hashes case-sensitively) would never accept - so
+          // a mistyped confirmation could silently lock a user into a password that isn't the
+          // one they think they set. Confirmation must match exactly.
           validData =
-              newPassword.equalsIgnoreCase(passwordConfirm)
-                  && !newPassword.isEmpty()
-                  && newPassword != null;
+              newPassword != null && newPassword.equals(passwordConfirm) && !newPassword.isEmpty();
           passwordChange = !currentPassword.equalsIgnoreCase(newPassword);
-          validPassword = newPassword.length() > 4 && newPassword.length() <= 512;
+          validPassword = Validate.isValidPassword(newPassword);
           if (validData && passwordChange && validPassword) {
             log.debug("Validating Current Password");
             String user[] = Getter.authUser(ApplicationRoot, userName, currentPassword);
