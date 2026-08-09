@@ -158,22 +158,12 @@ public class SessionManagement6 extends HttpServlet {
                       + "</a>"
                       + "</p>";
             } else {
-              log.debug("Incorrect credentials, checking if user name correct");
-              callstmt = conn.prepareStatement("SELECT userAddress FROM users WHERE userName = ?");
-              callstmt.setString(1, subName);
-              log.debug("Executing getAddress");
-              resultSet = callstmt.executeQuery();
-              if (resultSet.next()) {
-                log.debug("User Found");
-                userAddress =
-                    ""
-                        + bundle.getString("response.badPass")
-                        + " <a>"
-                        + Encode.forHtml(resultSet.getString(1))
-                        + "</a><br/>";
-              } else {
-                userAddress = "" + bundle.getString("response.badUser") + "<br/>";
-              }
+              // Do not reveal whether the submitted user name exists, nor that user's
+              // email address - a distinct message and a lookup keyed off subName would let
+              // an attacker enumerate valid user names and harvest their mailbox addresses.
+              // Respond with one generic message regardless of which credential was wrong.
+              log.debug("Incorrect credentials");
+              userAddress = "" + bundle.getString("response.badLogin") + "<br/>";
               htmlOutput = makeTable(userAddress, bundle);
             }
             Database.closeConnection(conn);
