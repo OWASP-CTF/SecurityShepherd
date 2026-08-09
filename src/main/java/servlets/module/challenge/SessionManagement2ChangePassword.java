@@ -85,13 +85,6 @@ public class SessionManagement2ChangePassword extends HttpServlet {
         }
         log.debug("subEmail = " + subEmail);
 
-        String authenticatedUser = (String) ses.getAttribute("sessionManagement2User");
-        String authenticatedAddress = (String) ses.getAttribute("sessionManagement2Address");
-        if (authenticatedUser == null || !subEmail.equals(authenticatedAddress)) {
-          response.sendError(HttpServletResponse.SC_FORBIDDEN);
-          return;
-        }
-
         log.debug("Getting ApplicationRoot");
         String ApplicationRoot = getServletContext().getRealPath("");
 
@@ -101,9 +94,9 @@ public class SessionManagement2ChangePassword extends HttpServlet {
           conn = Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
           log.debug("Checking credentials");
           PreparedStatement callstmt =
-              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userName = ?");
+              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userAddress = ?");
           callstmt.setString(1, newPassword);
-          callstmt.setString(2, authenticatedUser);
+          callstmt.setString(2, subEmail);
           log.debug("Executing resetPassword");
           callstmt.execute();
           log.debug("Statement executed");
@@ -115,7 +108,7 @@ public class SessionManagement2ChangePassword extends HttpServlet {
           // The new password is deliberately never written into the response. The confirmation
           // itself still comes from this challenge's own bundle rather than a hardcoded string,
           // so the wording stays translatable and specific to this level.
-          htmlOutput = "<p>" + bundle.getString("response.changedTo") + "</p>";
+          htmlOutput = "<p>" + bundle.getString("response.passwordReset") + "</p>";
 
         } catch (SQLException e) {
           log.error(levelName + " SQL Error: " + e.toString());
