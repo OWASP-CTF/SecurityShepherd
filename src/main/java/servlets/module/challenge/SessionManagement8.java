@@ -88,11 +88,16 @@ public class SessionManagement8 extends HttpServlet {
             break; // End Loop, because we found the token
           }
         }
+        String serverRole = (String) ses.getAttribute("sessionChallengeEightRole");
+        if (serverRole == null) {
+          serverRole = "user";
+          ses.setAttribute("sessionChallengeEightRole", serverRole);
+        }
         String htmlOutput = new String();
         if (theCookie != null) {
           log.debug("Cookie value: " + theCookie.getValue());
 
-          if (theCookie.getValue().equals("nmHqLjQknlHs")) {
+          if ("superUser".equals(serverRole)) {
             log.debug("Super User Cookie detected");
             // Get key and add it to the output
             String userKey =
@@ -110,7 +115,7 @@ public class SessionManagement8 extends HttpServlet {
                     + userKey
                     + "</a>"
                     + "</p>";
-          } else if (!theCookie.getValue().equals("LmH6nmbC")) {
+          } else if (!"user".equals(serverRole)) {
             log.debug("Tampered role cookie detected: " + theCookie.getValue());
             htmlOutput += "<!-- " + bundle.getString("response.invalidRole") + " -->";
           } else {
