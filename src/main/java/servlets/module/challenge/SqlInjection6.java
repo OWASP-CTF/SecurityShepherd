@@ -81,7 +81,9 @@ public class SqlInjection6 extends HttpServlet {
         Connection conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSix");
         log.debug("Looking for users");
         PreparedStatement prepstmt =
-            conn.prepareStatement("SELECT userName FROM users WHERE userPin = ?");
+            // The pin is the credential for this sub application, so it is stored as a digest
+            // rather than in clear and compared in that form.
+            conn.prepareStatement("SELECT userName FROM users WHERE userPin = SHA2(?, 256)");
         prepstmt.setString(1, userPin);
         ResultSet users = prepstmt.executeQuery();
         String levelAnswer = ChallengeAnswer.forLevel(applicationRoot, levelHash);

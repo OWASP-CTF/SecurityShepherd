@@ -552,6 +552,8 @@ INSERT INTO `SqlChalSix`.`users` (`idusers`, `userName`, `userPin`, `userQuestio
 INSERT INTO `SqlChalSix`.`users` (`idusers`, `userName`, `userPin`, `userQuestion`, `userAnswer`, `userAge`) VALUES (5, 'Owen', '4648', 'Favourite Sandwhich Topping', 'Peanutbutter', '33');
 INSERT INTO `SqlChalSix`.`users` (`idusers`, `userName`, `userPin`, `userQuestion`, `userAnswer`, `userAge`) VALUES (6, 'Eoin', '2653', 'Where did I holiday in the summer of 69?', 'The Dark Side of the Moon', '12');
 INSERT INTO `SqlChalSix`.`users` (`idusers`, `userName`, `userPin`, `userQuestion`, `userAnswer`, `userAge`) VALUES (7, 'David', '3598', 'This is how we get ants', "Don\'t get me started", '6');
+-- The pin is a credential, so it is stored as a digest rather than in clear.
+UPDATE `SqlChalSix`.`users` SET `userPin` = SHA2(`userPin`, 256);
 
 COMMIT;
 
@@ -961,6 +963,9 @@ INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `use
 INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (60, 'User 22', 'de027fnNys6687as!fault', 'Mr2Jim2@User.com', 'default');
 INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (61, 'User 23', 'defau027fnNys6687as!lt', 'Mr2Jone3@User.com', 'default');
 INSERT INTO `sqlInjectSeven`.`users` (`userId`, `userName`, `userPassword`, `userEmail`, `userRole`) VALUES (62, 'User 10', 'def027fnNys6687as!ault', 'Mrs0@User.com', 'default');
+-- Credentials are stored as digests. In clear, anyone who could read this script, the
+-- table or a backup could sign in as any of these users.
+UPDATE `sqlInjectSeven`.`users` SET `userPassword` = SHA2(`userPassword`, 256);
 
 COMMIT;
 

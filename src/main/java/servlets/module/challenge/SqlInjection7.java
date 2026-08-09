@@ -79,7 +79,12 @@ public class SqlInjection7 extends HttpServlet {
             log.debug("Signing in with subitted details");
             PreparedStatement prepstmt =
                 conn.prepareStatement(
-                    "SELECT userName FROM users WHERE userEmail = ? AND userPassword = ?;");
+                    // The stored credential is a digest, not the password itself. Holding it in
+                    // clear meant anyone who could read the table, a backup or the schema script
+                    // could sign in as any of these users, and the comparison here was the plain
+                    // text against the plain text.
+                    "SELECT userName FROM users WHERE userEmail = ? AND userPassword ="
+                        + " SHA2(?, 256);");
             prepstmt.setString(1, subEmail);
             prepstmt.setString(2, subPassword);
             ResultSet users = prepstmt.executeQuery();
