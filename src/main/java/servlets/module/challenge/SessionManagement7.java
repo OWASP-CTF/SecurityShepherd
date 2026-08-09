@@ -102,7 +102,6 @@ public class SessionManagement7 extends HttpServlet {
             Object passObj = request.getParameter("subPassword");
             String subName = new String();
             String subPass = new String();
-            String userAddress = new String();
             if (nameObj != null) {
               subName = (String) nameObj;
             }
@@ -157,22 +156,8 @@ public class SessionManagement7 extends HttpServlet {
                       + "</a>"
                       + "</p>";
             } else {
-              log.debug("Incorrect credentials, checking if user name correct");
-              callstmt = conn.prepareStatement("SELECT userAddress FROM users WHERE userName = ?");
-              callstmt.setString(1, subName);
-              log.debug("Executing getAddress");
-              resultSet = callstmt.executeQuery();
-              if (resultSet.next()) {
-                log.debug("User Found");
-                userAddress =
-                    bundle.getString("response.badPass")
-                        + " <a>"
-                        + Encode.forHtml(resultSet.getString(1))
-                        + "</a><br/>";
-              } else {
-                userAddress = bundle.getString("response.badUser") + "<br/>";
-              }
-              htmlOutput = makeTable(userAddress, bundle);
+              log.debug("Incorrect credentials");
+              htmlOutput = makeTable(bundle.getString("response.badUser") + "<br/>", bundle);
             }
             Database.closeConnection(conn);
             log.debug("Outputting HTML");
