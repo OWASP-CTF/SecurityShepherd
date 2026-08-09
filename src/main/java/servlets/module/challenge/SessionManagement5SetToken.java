@@ -107,19 +107,20 @@ public class SessionManagement5SetToken extends HttpServlet {
         callstmt.setString(1, userName);
         log.debug("Executing findUser");
         ResultSet resultSet = callstmt.executeQuery();
-        // Is the username valid?
+        // The same acknowledgement whichever way the lookup goes. Reporting "not found" for a name
+        // and "sent to that name" for another told a caller which accounts exist, which is the
+        // only thing standing between them and aiming the reset at an administrator.
         if (resultSet.next()) {
           log.debug("User found");
-          htmlOutput =
-              bundle.getString("setToken.sentTo.1")
-                  + " '"
-                  + Encode.forHtml(userName)
-                  + "' "
-                  + bundle.getString("setToken.sentTo.2");
         } else {
           log.debug("User not Found");
-          htmlOutput = bundle.getString("response.badUser") + "" + Encode.forHtml(userName);
         }
+        htmlOutput =
+            bundle.getString("setToken.sentTo.1")
+                + " '"
+                + Encode.forHtml(userName)
+                + "' "
+                + bundle.getString("setToken.sentTo.2");
         Database.closeConnection(conn);
         log.debug("Outputting HTML");
         out.write(htmlOutput);
