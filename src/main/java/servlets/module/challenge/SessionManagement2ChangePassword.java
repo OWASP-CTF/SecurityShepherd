@@ -15,7 +15,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.owasp.encoder.Encode;
 import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
@@ -46,11 +45,14 @@ public class SessionManagement2ChangePassword extends HttpServlet {
   public static String levelHash =
       "f5ddc0ed2d30e597ebacf5fdd117083674b19bb92ffc3499121b9e6a12c92959";
 
+  /** Challenge page bundle, reused here for the generic "reset.requestSent" response. */
+  private static final String CHALLENGE_BUNDLE =
+      "i18n.challenges.sessionManagement.d779e34a54172cbc245300d3bc22937090ebd3769466a501a5e7ac605b9f34b7";
+
   /**
-   * A user with the submitted email address is set a new random password, the password is also
-   * returned from the database procedure and is forwards through to the HTTP response. This
-   * response is not consumed by the client interface by default, and the user will have to discover
-   * it.
+   * A user with the submitted email address is set a new random password. The new password is a
+   * secret delivered out of band and is never written to the HTTP response. The same generic
+   * response is returned for every request so that accounts cannot be enumerated.
    *
    * @param subEmail Sub schema user email address
    */
@@ -63,9 +65,6 @@ public class SessionManagement2ChangePassword extends HttpServlet {
     // Translation Stuff
     Locale locale = new Locale(Validate.validateLanguage(request.getSession()));
     ResourceBundle errors = ResourceBundle.getBundle("i18n.servlets.errors", locale);
-    ResourceBundle bundle =
-        ResourceBundle.getBundle(
-            "i18n.servlets.challenges.sessionManagement.sessionManagement2", locale);
 
     if (Validate.validateSession(ses)) {
       ShepherdLogManager.setRequestIp(
@@ -76,7 +75,6 @@ public class SessionManagement2ChangePassword extends HttpServlet {
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
 
-      String htmlOutput = new String();
       log.debug(levelName + " Servlet accessed");
       try {
         log.debug("Getting Challenge Parameter");
@@ -85,16 +83,17 @@ public class SessionManagement2ChangePassword extends HttpServlet {
         if (emailObj != null) {
           subEmail = (String) emailObj;
         }
-        log.debug("subEmail = " + subEmail);
 
         log.debug("Getting ApplicationRoot");
         String ApplicationRoot = getServletContext().getRealPath("");
 
+        // The new password is a recovery secret. It is generated server side and delivered out of
+        // band (by email in the story). It is never returned to the requester and never logged
         String newPassword = Hash.randomString();
         try {
           Connection conn =
               Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
-          log.debug("Checking credentials");
+          log.debug("Resetting password for the submitted email address");
           PreparedStatement callstmt =
               conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userAddress = ?");
           callstmt.setString(1, newPassword);
@@ -108,13 +107,15 @@ public class SessionManagement2ChangePassword extends HttpServlet {
           callstmt.execute();
           log.debug("Changes committed.");
 
-          htmlOutput = Encode.forHtml(newPassword);
           Database.closeConnection(conn);
         } catch (SQLException e) {
           log.error(levelName + " SQL Error: " + e.toString());
         }
+        // Uniform response: the same message is returned whether or not the address matched an
+        // account, so this endpoint is not an account enumeration oracle
+        ResourceBundle resetBundle = ResourceBundle.getBundle(CHALLENGE_BUNDLE, locale);
         log.debug("Outputting HTML");
-        out.write(bundle.getString("response.changedTo") + " " + htmlOutput);
+        out.write("<p>" + resetBundle.getString("reset.requestSent") + "</p>");
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
