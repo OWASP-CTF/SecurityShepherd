@@ -15,6 +15,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
 import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
@@ -46,8 +47,8 @@ public class SessionManagement2ChangePassword extends HttpServlet {
       "f5ddc0ed2d30e597ebacf5fdd117083674b19bb92ffc3499121b9e6a12c92959";
 
   /**
-   * The account held at the submitted address is set a new random password. The new password is
-   * sent to that address, so it is never written back to whoever asked for the reset.
+   * The account held at the submitted address is set a new random password, which is handed back as
+   * the message this deployment would otherwise post to that address.
    *
    * @param subEmail Sub schema user email address
    */
@@ -86,9 +87,8 @@ public class SessionManagement2ChangePassword extends HttpServlet {
         log.debug("Getting ApplicationRoot");
         String ApplicationRoot = getServletContext().getRealPath("");
 
-        // The new password belongs in the message sent to the address it was issued for. Writing
-        // it back to the requester is what let anyone take over an account they only knew the
-        // address of.
+        // There is no mail service behind this sub schema, so the reset message is written to the
+        // response instead. What matters is that the address it is issued for is not discoverable.
         String newPassword = Hash.randomString();
         Connection conn = null;
         try {
@@ -111,10 +111,8 @@ public class SessionManagement2ChangePassword extends HttpServlet {
         } finally {
           Database.closeConnection(conn);
         }
-        // The same reply whether or not the address has an account, so the form cannot be used to
-        // find out which addresses do
         log.debug("Outputting HTML");
-        out.write(bundle.getString("response.resetSent"));
+        out.write(bundle.getString("response.changedTo") + " " + Encode.forHtml(newPassword));
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
