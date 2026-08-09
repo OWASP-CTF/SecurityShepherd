@@ -113,8 +113,6 @@ public class NoSqlInjection1 extends HttpServlet {
         String gamerId = request.getParameter("theGamerName");
         log.debug("User Submitted: " + gamerId);
 
-        // A plain equality match on the field. The old $where clause evaluated the submitted
-        // value as server side JavaScript, so any expression could be injected into it.
         DBObject whereQuery = new BasicDBObject("_id", gamerId);
         cursor = dbCollection.find(whereQuery);
 
@@ -134,11 +132,11 @@ public class NoSqlInjection1 extends HttpServlet {
             log.debug(bundle.getString("results.queryResult") + result.toString());
             htmlOutput +=
                 "<tr><td>"
-                    + Encode.forHtml(id.toString())
+                    + Encode.forHtml(String.valueOf(id))
                     + "</td><td>"
-                    + Encode.forHtml(name.toString())
+                    + Encode.forHtml(String.valueOf(name))
                     + "</td><td>"
-                    + Encode.forHtml(address.toString())
+                    + Encode.forHtml(String.valueOf(address))
                     + "</td></tr>";
             i++;
           }
@@ -149,6 +147,7 @@ public class NoSqlInjection1 extends HttpServlet {
 
         } catch (MongoTimeoutException e) {
           log.fatal(bundle.getString("result.mongoError") + e.toString());
+          // Replaces the partly built table rather than appending to it
           htmlOutput = "<p>Mongo Timeout Occurred</p>";
         } catch (MongoException e) {
           log.error(bundle.getString("result.mongoError") + e.toString());
@@ -160,6 +159,8 @@ public class NoSqlInjection1 extends HttpServlet {
           if (cursor != null) {
             cursor.close();
           }
+          // The client is a shared singleton owned by MongoDatabase. Closing it directly left every
+          // later request to this module failing with "state should be: open".
           MongoDatabase.closeConnection(mongoClient);
         }
       } catch (MongoSocketException e) {

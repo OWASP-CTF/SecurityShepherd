@@ -12,6 +12,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -67,22 +68,22 @@ public class UrlAccess2Admin extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
 
+      // Administrative function. The role is held in the session and is never granted to a player,
+      // so no request a client can craft is authorised here.
+      if (!"admin".equals(ses.getAttribute("urlAccess2Role"))) {
+        log.debug(
+            "Unauthorised admin function request by: " + ses.getAttribute("userName").toString());
+        out.write(
+            "<h2 class='title'>"
+                + bundle.getString("response.failure")
+                + "</h2>"
+                + "<p>"
+                + bundle.getString("response.failue.message")
+                + "</p>");
+        return;
+      }
+
       try {
-        // This is an administrator only function. Access is enforced against the authenticated
-        // principal here, rather than relying on the URL not being linked from the user page.
-        // The grant is scoped to this challenge and is held server side. Testing the platform
-        // administrator role instead was no protection at all: it is a role the caller may
-        // already hold for reasons that have nothing to do with this sub application, and if
-        // they do, the check waves them straight through to the function it is guarding.
-        boolean authorised = Boolean.TRUE.equals(ses.getAttribute("urlAccess2AdminGrant"));
-        if (!authorised) {
-          // Refuse outright rather than answering 200 with a failure page. An administrator
-          // only function that replies the same way to everyone is still reachable; the caller
-          // simply reads a different sentence. The refusal has to be the response itself.
-          log.error(levelName + " admin function requested without the admin role");
-          response.sendError(HttpServletResponse.SC_FORBIDDEN);
-          return;
-        }
         String userData = request.getParameter("adminData");
         boolean tamperedRequest = !userData.equalsIgnoreCase("youAreAnAdminOfAwesomenessWoopWoop");
         if (!tamperedRequest) {
@@ -91,15 +92,20 @@ public class UrlAccess2Admin extends HttpServlet {
           log.debug("User Submitted - " + userData);
         }
 
-        if (authorised && !tamperedRequest) {
-          // Acknowledges the action only. This function used to return the module result key
-          // to any caller that found the URL, so the secret is no longer part of the response.
+        if (!tamperedRequest) {
+          String userKey =
+              Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
           htmlOutput =
               "<h2 class='title'>"
                   + bundle.getString("admin.clicked")
                   + "</h2>"
                   + "<p>"
-                  + bundle.getString("message.boring")
+                  + bundle.getString("admin.keyMessage.1")
+                  + "<br /> "
+                  + "<a>"
+                  + userKey
+                  + "</a><br />"
+                  + bundle.getString("admin.keyMessage.2")
                   + "</p>";
         } else {
           htmlOutput =

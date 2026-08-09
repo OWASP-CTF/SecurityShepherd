@@ -73,7 +73,9 @@
 		<h2 class="title"><%= i18nLevelName %></h2>
 		<p>
 			<%= bundle.getString("insecureCryptoStorage.1.whatToDo") %>
-			<br /> <br /> <a>Cryptographic material is no longer exposed in page content.</a>
+			<br /> <br /> <a>Ymj wjxzqy pjd ktw ymnx qjxxts nx ymj ktqqtbnsl
+				xywnsl;
+				rdqtajqdmtwxjwzssnslymwtzlmymjknjqibmjwjfwjdtzltnslbnymdtzwgnlf</a>
 		</p>
 	</div>
 	<script>			

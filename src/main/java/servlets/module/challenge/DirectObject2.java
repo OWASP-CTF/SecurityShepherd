@@ -6,6 +6,8 @@ import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -16,7 +18,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
-import utils.IndirectReferenceMap;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -44,16 +45,15 @@ public class DirectObject2 extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(DirectObject2.class);
   private static String levelName = "Insecure Direct Object Reference Challenge Two";
-
-  /**
-   * Names this challenge's set of indirect references. Digesting a small number does not make it
-   * unguessable, so the page publishes a per session handle for each profile it offers and the row
-   * identifier is never client supplied.
-   */
-  public static final String referenceNamespace = "directObjectRefChalTwo";
-
   public static String levelHash =
       "vc9b78627df2c032ceaf7375df1d847e47ed7abac2a4ce4cb6086646e0f313a4";
+  private static final List<String> visibleProfileIds =
+      Arrays.asList(
+          "c81e728d9d4c2f636f067f89cc14862c",
+          "eccbc87e4b5ce2fe28308fd9f2a7baf3",
+          "e4da3b7fbbce2345d7772b0674a318d5",
+          "8f14e45fceea167a5a36dedd4bea2543",
+          "6512bd43d9caa6e02c990b0a82652dca");
 
   /**
    * The user must abuse this functionality to reveal a hidden user. The result key is hidden in
@@ -81,59 +81,56 @@ public class DirectObject2 extends HttpServlet {
       log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
+      Connection conn = null;
       try {
-        // What arrives is the handle the page published, not the identifier of a row. Resolving
-        // it against the handles issued to this session is the authorisation decision: a handle
-        // this session was never given resolves to nothing, so the identifiers cannot be
-        // reproduced by digesting the numbers they were made from.
-        String submittedReference = request.getParameter("userId[]");
-        log.debug("User Submitted - " + submittedReference);
-        String userId = IndirectReferenceMap.resolve(ses, referenceNamespace, submittedReference);
+        String userId = request.getParameter("userId[]");
+        log.debug("User Submitted - " + userId);
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
-        String htmlOutput = new String();
+        String htmlOutput =
+            "<h2 class='title'>"
+                + bundle.getString("response.notFound")
+                + "</h2><p>"
+                + bundle.getString("response.notFoundMessage.1")
+                + " '"
+                + Encode.forHtml(userId)
+                + "' "
+                + bundle.getString("response.notFoundMessage.2")
+                + "</p>";
 
-        Connection conn = Database.getChallengeConnection(ApplicationRoot, referenceNamespace);
-        ResultSet resultSet = null;
-        if (userId != null) {
+        // Only the profiles presented to the user on the challenge page may be read by them
+        if (visibleProfileIds.contains(userId)) {
+          conn = Database.getChallengeConnection(ApplicationRoot, "directObjectRefChalTwo");
           PreparedStatement prepstmt =
               conn.prepareStatement("SELECT userName, privateMessage FROM users WHERE userId = ?");
           prepstmt.setString(1, userId);
-          resultSet = prepstmt.executeQuery();
-        }
-        if (resultSet != null && resultSet.next()) {
-          log.debug("Found user: " + resultSet.getString(1));
-          String userName = resultSet.getString(1);
-          String privateMessage = resultSet.getString(2);
-          htmlOutput =
-              "<h2 class='title'>"
-                  + userName
-                  + "'s "
-                  + bundle.getString("response.message")
-                  + "</h2>"
-                  + "<p>"
-                  + privateMessage
-                  + "</p>";
+          ResultSet resultSet = prepstmt.executeQuery();
+          if (resultSet.next()) {
+            log.debug("Found user: " + resultSet.getString(1));
+            String userName = resultSet.getString(1);
+            String privateMessage = resultSet.getString(2);
+            htmlOutput =
+                "<h2 class='title'>"
+                    + userName
+                    + "'s "
+                    + bundle.getString("response.message")
+                    + "</h2>"
+                    + "<p>"
+                    + privateMessage
+                    + "</p>";
+          } else {
+            log.debug("No Profile Found");
+          }
         } else {
-          log.debug("No Profile Found");
-
-          htmlOutput =
-              "<h2 class='title'>"
-                  + bundle.getString("response.notFound")
-                  + "</h2><p>"
-                  + bundle.getString("response.notFoundMessage.1")
-                  + " '"
-                  + Encode.forHtml(submittedReference)
-                  + "' "
-                  + bundle.getString("response.notFoundMessage.2")
-                  + "</p>";
+          log.debug("Profile requested that was never presented to the user: " + userId);
         }
         log.debug("Outputting HTML");
         out.write(htmlOutput);
-        Database.closeConnection(conn);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
+      } finally {
+        Database.closeConnection(conn);
       }
     } else {
       log.error(levelName + " servlet accessed with no session");

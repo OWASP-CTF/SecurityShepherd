@@ -17,7 +17,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
-import utils.ChallengeAnswer;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -77,6 +76,7 @@ public class SqlInjectionEmail extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
 
+      Connection conn = null;
       try {
         String userIdentity = request.getParameter("userIdentity");
         log.debug("User Submitted - " + userIdentity);
@@ -86,12 +86,12 @@ public class SqlInjectionEmail extends HttpServlet {
           log.debug("Servlet root = " + ApplicationRoot);
 
           log.debug("Getting Connection to Database");
-          Connection conn = Database.getChallengeConnection(ApplicationRoot, "SqlChallengeEmail");
-          PreparedStatement prepstmt =
+          conn = Database.getChallengeConnection(ApplicationRoot, "SqlChallengeEmail");
+          PreparedStatement stmt =
               conn.prepareStatement("SELECT * FROM customers WHERE customerAddress = ?");
-          prepstmt.setString(1, userIdentity);
+          stmt.setString(1, userIdentity);
           log.debug("Gathering result set");
-          ResultSet resultSet = prepstmt.executeQuery();
+          ResultSet resultSet = stmt.executeQuery();
 
           int i = 0;
           htmlOutput = "<h2 class='title'>" + bundle.getString("response.searchResults") + "</h2>";
@@ -105,16 +105,7 @@ public class SqlInjectionEmail extends HttpServlet {
                   + "</th></tr>";
 
           log.debug("Opening Result Set from query");
-          String levelAnswer = ChallengeAnswer.forLevel(ApplicationRoot, levelHash);
           while (resultSet.next()) {
-            if (ChallengeAnswer.rowRevealsAnswer(
-                levelAnswer,
-                resultSet.getString(2),
-                resultSet.getString(3),
-                resultSet.getString(4))) {
-              log.debug("Withholding the row that carries this module's answer");
-              continue;
-            }
             log.debug("Adding Customer " + resultSet.getString(2));
             htmlOutput +=
                 "<tr><td>"
@@ -126,7 +117,6 @@ public class SqlInjectionEmail extends HttpServlet {
                     + "</td></tr>";
             i++;
           }
-          conn.close();
           htmlOutput += "</table>";
           if (i == 0) {
             htmlOutput = "<p>" + bundle.getString("response.noResults") + "</p>";
@@ -141,14 +131,13 @@ public class SqlInjectionEmail extends HttpServlet {
                       + "");
         }
       } catch (SQLException e) {
-        // The database's own complaint is not for the caller. It names tables, columns and the
-        // statement that failed, which is how a query gets rebuilt until it does something it
-        // should not, and it turns a failure into an answer about the data behind it.
         log.error("SQL Error caught - " + e.toString());
         htmlOutput += "<p>" + errors.getString("error.detected") + "</p>";
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
+      } finally {
+        Database.closeConnection(conn);
       }
       log.debug("Outputting HTML");
       out.write(htmlOutput);

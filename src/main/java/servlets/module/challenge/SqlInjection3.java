@@ -17,7 +17,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
-import utils.ChallengeAnswer;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -79,6 +78,7 @@ public class SqlInjection3 extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
 
+      Connection conn = null;
       try {
         String theUserName = request.getParameter("theUserName");
         log.debug("User Submitted - " + theUserName);
@@ -86,12 +86,12 @@ public class SqlInjection3 extends HttpServlet {
         log.debug("Servlet root = " + ApplicationRoot);
 
         log.debug("Getting Connection to Database");
-        Connection conn = Database.getChallengeConnection(ApplicationRoot, "SqlChallengeThree");
-        PreparedStatement prepstmt =
+        conn = Database.getChallengeConnection(ApplicationRoot, "SqlChallengeThree");
+        PreparedStatement stmt =
             conn.prepareStatement("SELECT customerName FROM customers WHERE customerName = ?");
-        prepstmt.setString(1, theUserName);
+        stmt.setString(1, theUserName);
         log.debug("Gathering result set");
-        ResultSet resultSet = prepstmt.executeQuery();
+        ResultSet resultSet = stmt.executeQuery();
 
         int i = 0;
         htmlOutput = "<h2 class='title'>" + bundle.getString("response.searchResults") + "</h2>";
@@ -99,12 +99,7 @@ public class SqlInjection3 extends HttpServlet {
         htmlOutput += "<table><tr><th>" + bundle.getString("response.table.name") + "</th></tr>";
 
         log.debug("Opening Result Set from query");
-        String levelAnswer = ChallengeAnswer.forLevel(ApplicationRoot, levelHash);
         while (resultSet.next()) {
-          if (ChallengeAnswer.rowRevealsAnswer(levelAnswer, resultSet.getString(1))) {
-            log.debug("Withholding the row that carries this module's answer");
-            continue;
-          }
           log.debug("Adding Customer " + resultSet.getString(1));
           htmlOutput += "<tr><td>" + Encode.forHtml(resultSet.getString(1)) + "</td></tr>";
           i++;
@@ -113,19 +108,20 @@ public class SqlInjection3 extends HttpServlet {
         if (i == 0) {
           htmlOutput = "<p>" + bundle.getString("response.noResults") + "</p>";
         }
-        // The pool this came from holds twenty connections for this schema and does not reclaim
-        // what a handler forgets to return, so never closing takes the challenge offline for
-        // good once it has been called twenty times.
-        Database.closeConnection(conn);
       } catch (SQLException e) {
-        // The database's own complaint is not for the caller. It names tables, columns and the
-        // statement that failed, which is how a query gets rebuilt until it does something it
-        // should not, and it turns a failure into an answer about the data behind it.
-        log.error("SQL Error caught - " + e.toString());
-        htmlOutput += "<p>" + errors.getString("error.detected") + "</p>";
+        log.debug("SQL Error caught - " + e.toString());
+        htmlOutput +=
+            "<p>"
+                + errors.getString("error.detected")
+                + "</p>"
+                + "<p>"
+                + Encode.forHtml(e.toString())
+                + "</p>";
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
+      } finally {
+        Database.closeConnection(conn);
       }
       log.debug("Outputting HTML");
       out.write(htmlOutput);

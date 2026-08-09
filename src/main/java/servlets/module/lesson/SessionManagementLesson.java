@@ -40,7 +40,6 @@ public class SessionManagementLesson extends HttpServlet {
   private static String levelName = "Session Management Lesson";
   public static String levelHash =
       "b8c19efd1a7cc64301f239f9b9a7a32410a0808138bbefc98986030f9ea83806";
-  private static String levelResult = "6594dec9ff7c4e60d9f8945ca0d4";
 
   /**
    * Controller is tracking the user completion through the "lessonComplete" cookie. If this cookie
@@ -78,26 +77,18 @@ public class SessionManagementLesson extends HttpServlet {
             break; // End Loop, because we found the token
           }
         }
-        String htmlOutput = null;
-        if (theCookie != null) {
-          log.debug("Cookie value: " + theCookie.getValue());
-
-          // The tracking cookie is written by the browser and records nothing the server ever
-          // witnessed, so whatever it says the user did, it cannot mark the lesson as complete.
-          if (!theCookie.getValue().equals("lessonNotComplete")) {
-            log.error(levelName + " received a lesson tracking cookie that had been edited");
-          }
+        // The cookie is written by the browser, so it decides nothing. The page only ever writes
+        // "lessonNotComplete"; any other value arrived from an edited cookie jar.
+        if (theCookie != null && !theCookie.getValue().equals("lessonNotComplete")) {
+          log.error(levelName + " received an edited lesson tracking cookie");
         }
-        if (htmlOutput == null) {
-          log.debug("Lesson Not Complete");
-          htmlOutput =
-              "<h2 class='title'>"
-                  + bundle.getString("response.lessonNotComplete")
-                  + "</h2>"
-                  + "<p>"
-                  + bundle.getString("response.youDidntDoIt")
-                  + "</p>";
-        }
+        String htmlOutput =
+            "<h2 class='title'>"
+                + bundle.getString("response.lessonNotComplete")
+                + "</h2>"
+                + "<p>"
+                + bundle.getString("response.youDidntDoIt")
+                + "</p>";
         log.debug("Outputting HTML");
         out.write(htmlOutput);
       } else {

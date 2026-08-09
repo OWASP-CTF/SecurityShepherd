@@ -100,7 +100,11 @@ public class SLS extends HttpServlet {
           ses = request.getSession(true);
           // Remove cookie
           Cookie emptyCookie = new Cookie("token", "");
-          // Match the flags the token was issued with so the clearing cookie replaces it.
+          if (request.getRequestURL().toString().startsWith("https")) {
+            emptyCookie.setSecure(true);
+          }
+          // The replacement has to carry the flags the token was issued with, otherwise the browser
+          // keeps the signed in token alongside it and logging out leaves it usable.
           emptyCookie.setHttpOnly(true);
           emptyCookie.setPath("/");
           response.addCookie(emptyCookie);

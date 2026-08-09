@@ -41,8 +41,6 @@ import utils.Validate;
 public class SqlInjection7 extends HttpServlet {
 
   private static final String levelName = "SQLi C7";
-  private static String levelHash =
-      "8c2dd7e9818e5c6a9f8562feefa002dc0e455f0e92c8a46ab0cf519b1547eced";
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(SqlInjection7.class);
 
@@ -66,6 +64,7 @@ public class SqlInjection7 extends HttpServlet {
       String htmlOutput = new String();
       String applicationRoot = getServletContext().getRealPath("");
 
+      Connection conn = null;
       try {
         String subEmail = Validate.validateParameter(request.getParameter("subEmail"), 60);
         log.debug("subEmail - " + subEmail.replaceAll("\n", " \\\\n ")); // Escape \n's
@@ -73,8 +72,8 @@ public class SqlInjection7 extends HttpServlet {
         log.debug("subPassword - " + subPassword);
         boolean validEmail =
             Validate.isValidEmailAddress(subEmail.replaceAll("\n", "")); // Ignore \n 's
-        if (!subPassword.isEmpty() && !subPassword.isEmpty() && validEmail) {
-          Connection conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSeven");
+        if (!subEmail.isEmpty() && !subPassword.isEmpty() && validEmail) {
+          conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSeven");
           try {
             log.debug("Signing in with subitted details");
             PreparedStatement prepstmt =
@@ -84,10 +83,9 @@ public class SqlInjection7 extends HttpServlet {
             prepstmt.setString(2, subPassword);
             ResultSet users = prepstmt.executeQuery();
             if (users.next()) {
-              // Signing in no longer prints the module result key. The stored credentials are
-              // plain text and compared as plain text, so anyone holding a valid pair could read
-              // the key straight out of a legitimate login without going near the injection this
-              // challenge is about.
+              // Signing in stops at the welcome. The column this compares against holds the
+              // password itself, so a single row read from the users table is a working
+              // credential for that account, and the key would follow it out of the database.
               htmlOutput =
                   "<h3>"
                       + bundle.getString("response.welcome")
@@ -116,7 +114,6 @@ public class SqlInjection7 extends HttpServlet {
               log.error("Failed to Pause: " + e1.toString());
             }
           }
-          conn.close();
         } else {
           htmlOutput = new String("Invalid data submitted");
           if (!validEmail) {
@@ -131,6 +128,8 @@ public class SqlInjection7 extends HttpServlet {
         } catch (Exception e2) {
           log.error("Failed to Pause: " + e2.toString());
         }
+      } finally {
+        Database.closeConnection(conn);
       }
       log.debug("*** " + levelName + " End ***");
       out.write(htmlOutput);

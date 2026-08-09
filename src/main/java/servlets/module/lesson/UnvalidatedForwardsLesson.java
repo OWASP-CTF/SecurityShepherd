@@ -1,5 +1,6 @@
 package servlets.module.lesson;
 
+import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.MalformedURLException;
@@ -16,6 +17,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
 import utils.FindXSS;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -130,10 +132,20 @@ public class UnvalidatedForwardsLesson extends HttpServlet {
           }
 
           if (validSolution && validAttack) {
-            // The message only shows what this user typed into the form. Nobody with any
-            // privilege has followed the link, so the request evidences nothing that happened
-            // and earns no result key.
-            log.error(levelName + " refused a completion claimed by the sender of the message");
+            htmlOutput =
+                "<h2 class='title'>"
+                    + bundle.getString("result.wellDone")
+                    + "</h2>"
+                    + "<p>"
+                    + bundle.getString("result.youDidIt")
+                    + "<br />"
+                    + bundle.getString("result.resultKey")
+                    + " <a>"
+                    + Hash.generateUserSolution(
+                        Getter.getModuleResultFromHash(
+                            getServletContext().getRealPath(""), levelHash),
+                        (String) ses.getAttribute("userName"))
+                    + "</a>";
           }
           if (validUrl) {
             log.debug("Adding message to Html: " + messageForAdmin);

@@ -11,7 +11,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -40,8 +39,9 @@ public class PoorValidationLesson extends HttpServlet {
   private static String levelName = "Poor Validation Lesson";
   public static String levelhash =
       "4d8d50a458ca5f1f7e2506dd5557ae1f7da21282795d0ed86c55fefe41eb874f";
-  private static String levelResult =
-      "6680b08b175c9f3d521764b41349fcbd3c0ad0a76655a10d42372ebccdfdb4bb";
+
+  /** Smallest value the form offers. The check in the page enforces the same bound. */
+  private static final int MINIMUM_NUMBER = 0;
 
   /**
    * Data is only validated on the client side. No Server Side Validation is Performed
@@ -72,36 +72,20 @@ public class PoorValidationLesson extends HttpServlet {
       try {
         String userData = request.getParameter("userdata");
         log.debug("User Submitted - " + userData);
-        String htmlOutput = new String();
-        int userNumber = validateNumber(Integer.parseInt(userData));
-        if (userNumber < 0) {
-          // Get key and add it to the output
-          String userKey =
-              Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
-          log.debug("Negative Number Submitted");
-          htmlOutput =
-              "<h2 class='title'>"
-                  + bundle.getString("result.validationBypassed")
-                  + "</h2><p>"
-                  + bundle.getString("result.youDidIt")
-                  + ". "
-                  + bundle.getString("result.resultKey")
-                  + ": <a>"
-                  + userKey
-                  + "</a></p>";
-        } else {
-          log.debug("Valid Number Submitted");
-          htmlOutput =
-              "<h2 class='title'>"
-                  + bundle.getString("response.validNumber")
-                  + "</h2><p>"
-                  + bundle.getString("response.theNumber")
-                  + " "
-                  + userNumber
-                  + " "
-                  + bundle.getString("response.valid")
-                  + ".";
-        }
+        // The form runs in the submitter's own browser, so its lower bound is applied again here
+        // where the value arrives.
+        int userNumber = Math.max(Integer.parseInt(userData), MINIMUM_NUMBER);
+        log.debug("Accepted Number - " + userNumber);
+        String htmlOutput =
+            "<h2 class='title'>"
+                + bundle.getString("response.validNumber")
+                + "</h2><p>"
+                + bundle.getString("response.theNumber")
+                + " "
+                + userNumber
+                + " "
+                + bundle.getString("response.valid")
+                + ".";
         log.debug("Outputting HTML");
         out.write(htmlOutput);
       } catch (Exception e) {
@@ -111,23 +95,5 @@ public class PoorValidationLesson extends HttpServlet {
     } else {
       log.error(levelName + " servlet accessed with no session");
     }
-  }
-
-  /** Smallest value this form accepts. The check in the page enforces the same bound. */
-  private static final int MIN_VALID_NUMBER = 0;
-
-  /**
-   * Confines a submitted number to the range the form allows. The check in the page that stops the
-   * value going negative runs in the submitter's own browser, so the same bound is applied here
-   * rather than being taken on trust from the request.
-   *
-   * @param number Number as submitted by the client
-   * @return The number, confined to MIN_VALID_NUMBER or above
-   */
-  private static int validateNumber(int number) {
-    if (number < MIN_VALID_NUMBER) {
-      return MIN_VALID_NUMBER;
-    }
-    return number;
   }
 }

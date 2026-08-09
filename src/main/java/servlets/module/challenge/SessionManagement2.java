@@ -122,10 +122,7 @@ public class SessionManagement2 extends HttpServlet {
         if (resultSet.next()) {
           log.debug("Successful Login");
           ses.setAttribute(SUB_ADDRESS, resultSet.getString(2));
-          // The key is earned by proving the account's password, which is what the query above
-          // just did. The hole this challenge is about was the password reset accepting any
-          // address, so that is where the ownership check belongs - not on a flag the caller
-          // could hand back to us here.
+          // Get key and add it to the output
           String userKey =
               Hash.generateUserSolution(
                   Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
@@ -142,6 +139,8 @@ public class SessionManagement2 extends HttpServlet {
                   + "</a></p>";
         } else {
           log.debug("Incorrect credentials");
+          // The same message for a bad user name and a bad password, so accounts and their
+          // email addresses cannot be enumerated with the sign in form
           userAddress = bundle.getString("response.badUser") + "<br/>";
           htmlOutput = makeTable(userAddress, bundle);
         }

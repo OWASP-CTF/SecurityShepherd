@@ -129,15 +129,12 @@ public class SqlInjectionLesson extends HttpServlet {
   public static String[][] getSqlInjectionResult(String ApplicationRoot, String username) {
 
     String[][] result = new String[10][3];
+    Connection conn = null;
     try {
-      Connection conn = Database.getSqlInjLessonConnection(ApplicationRoot);
-      // The name was concatenated into the statement, so a quote in it ended the string literal
-      // and the rest of the value was read as query text. Binding it sends the value separately
-      // from the statement, where it can only ever be compared as a name.
-      PreparedStatement prepstmt =
-          conn.prepareStatement("SELECT * FROM tb_users WHERE username = ?");
-      prepstmt.setString(1, username);
-      ResultSet resultSet = prepstmt.executeQuery();
+      conn = Database.getSqlInjLessonConnection(ApplicationRoot);
+      PreparedStatement stmt = conn.prepareStatement("SELECT * FROM tb_users WHERE username = ?");
+      stmt.setString(1, username);
+      ResultSet resultSet = stmt.executeQuery();
       log.debug("Opening Result Set from query");
       for (int i = 0; resultSet.next(); i++) {
         log.debug("Row " + i + ": User ID = " + resultSet.getString(1));
@@ -147,11 +144,13 @@ public class SqlInjectionLesson extends HttpServlet {
       }
       log.debug("That's All");
     } catch (SQLException e) {
-      log.debug("SQL Error caught - " + e.toString());
+      log.error("SQL Error caught - " + e.toString());
       result[0][0] = "error";
-      result[0][1] = Encode.forHtml(e.toString());
+      result[0][1] = "";
     } catch (Exception e) {
       log.fatal("Error: " + e.toString());
+    } finally {
+      Database.closeConnection(conn);
     }
     return result;
   }

@@ -76,7 +76,7 @@ public class ChangePassword extends HttpServlet {
           boolean passwordChange = false;
           boolean validPassword = false;
           validData =
-              newPassword != null && newPassword.equals(passwordConfirm) && !newPassword.isEmpty();
+              newPassword.equals(passwordConfirm) && !newPassword.isEmpty() && newPassword != null;
           passwordChange = !currentPassword.equalsIgnoreCase(newPassword);
           validPassword = Validate.isValidPassword(newPassword);
           if (validData && passwordChange && validPassword) {

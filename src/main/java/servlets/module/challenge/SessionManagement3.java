@@ -46,7 +46,7 @@ public class SessionManagement3 extends HttpServlet {
   private static String levelHash =
       "t193c6634f049bcf65cdcac72269eeac25dbb2a6887bdb38873e57d0ef447bc3";
   private static String levelResult = "e62008dc47f5eb065229d48963";
-  public static final String SUB_USER = "sessionManagement3User";
+  public static final String SUB_USER = "sessionManagement3SubUser";
 
   public static String getLevelHash() {
     return levelHash;
@@ -113,6 +113,8 @@ public class SessionManagement3 extends HttpServlet {
         callstmt.execute();
         log.debug("Changes committed.");
 
+        // The password is part of the lookup, so no account is signed in and no user name and
+        // role are disclosed until the submitted credentials have been verified
         callstmt =
             conn.prepareStatement(
                 "SELECT userName, userAddress, userRole FROM users WHERE userName = ? AND"
@@ -125,9 +127,7 @@ public class SessionManagement3 extends HttpServlet {
           ses.setAttribute(SUB_USER, resultSet.getString(1));
           if (resultSet.getString(3).equalsIgnoreCase("admin")) {
             log.debug("Successful Admin Login");
-            // The privilege is read off the row this request just authenticated against. What
-            // was wrong before was taking it from the caller, not having roles at all, so the
-            // decision belongs here - on stored data, after the password has been proven.
+            // Get key and add it to the output
             String userKey =
                 Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
             htmlOutput =

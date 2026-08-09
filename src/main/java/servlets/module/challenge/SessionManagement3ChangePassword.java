@@ -47,11 +47,11 @@ public class SessionManagement3ChangePassword extends HttpServlet {
   // private static String levelResult = ""; //This Servlet does not return a result
 
   /**
-   * Function used by Session Management Challenge Three to change the password of the submitted
-   * user name specified in the "Current" cookie
+   * Function used by Session Management Challenge Three to change the password of the sub schema
+   * account that is signed in. The account is taken from the server side session, never from the
+   * client controlled "current" cookie.
    *
-   * @param current User cookie used to store the current user (encoded twice with base64)
-   * @param newPassword the password which to use to update an accounts password
+   * @param newPassword the password which to use to update the signed in accounts password
    */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -76,25 +76,23 @@ public class SessionManagement3ChangePassword extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
       log.debug(levelName + " - Change Password - Servlet");
+      Connection conn = null;
       try {
         log.debug("Getting Challenge Parameters");
         Object passNewObj = request.getParameter("newPassword");
+        String subName = (String) ses.getAttribute(SessionManagement3.SUB_USER);
         String subNewPass = new String();
         if (passNewObj != null) {
           subNewPass = (String) passNewObj;
         }
-        // The account whose password is changed is the one this session signed in as. It used
-        // to come from the "current" cookie, which the client can set to any user name.
-        Object sessionUser = ses.getAttribute("sessionManagement3User");
-        String subName = sessionUser == null ? new String() : sessionUser.toString();
         log.debug("subName = " + subName);
+        log.debug("subPass = " + subNewPass);
 
-        if (!subName.isEmpty() && subNewPass.length() >= 6) {
+        if (subName != null && subNewPass.length() >= 6) {
           log.debug("Getting ApplicationRoot");
           String ApplicationRoot = getServletContext().getRealPath("");
 
-          Connection conn =
-              Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalThree");
+          conn = Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalThree");
           log.debug("Changing password for user: " + subName);
           log.debug("Changing password to: " + subNewPass);
           PreparedStatement callstmt;
@@ -113,7 +111,7 @@ public class SessionManagement3ChangePassword extends HttpServlet {
 
           htmlOutput = "<p>" + bundle.getString("reset.password") + "</p>";
         } else {
-          log.debug("invalid password submitted: " + subNewPass);
+          log.debug("No signed in sub schema user, or invalid password submitted");
           htmlOutput = "<p>" + bundle.getString("reset.failed") + "</p>";
         }
         log.debug("Outputting HTML");
@@ -121,6 +119,8 @@ public class SessionManagement3ChangePassword extends HttpServlet {
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - Change Password - " + e.toString());
+      } finally {
+        Database.closeConnection(conn);
       }
     } else {
       log.error(levelName + " servlet accessed with no session");

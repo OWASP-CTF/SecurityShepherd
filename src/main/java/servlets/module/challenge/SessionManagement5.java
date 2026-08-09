@@ -107,6 +107,8 @@ public class SessionManagement5 extends HttpServlet {
         callstmt.execute();
         log.debug("Changes committed.");
 
+        // The credentials are checked in one query, so a wrong user name and a wrong password are
+        // indistinguishable and accounts cannot be enumerated with the sign in form
         callstmt =
             conn.prepareStatement(
                 "SELECT userName, userRole FROM users WHERE userName = ? AND userPassword ="
@@ -118,9 +120,7 @@ public class SessionManagement5 extends HttpServlet {
         if (resultSet.next()) {
           if (resultSet.getString(2).equalsIgnoreCase("admin")) {
             log.debug("Successful Admin Login");
-            // The privilege is read off the row this request just authenticated against. What
-            // was wrong before was taking it from the caller, not having roles at all, so the
-            // decision belongs here - on stored data, after the password has been proven.
+            // Get key and add it to the output
             String userKey =
                 Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
             htmlOutput =

@@ -51,11 +51,7 @@ public class ConnectionPool {
   private static final long DEFAULT_LEAK_DETECTION_THRESHOLD = 60000; // 60 seconds
 
   // Challenge pool configuration values (smaller footprint per schema)
-  // A pool of three is exhausted by the fourth concurrent request to any challenge whose handler
-  // does not return its connection, at which point every later request to that schema blocks for
-  // the connection timeout and then fails. Widening the pool keeps a leaking handler from taking
-  // the whole challenge offline; handlers still have to return what they borrow.
-  private static final int CHALLENGE_MAX_POOL_SIZE = 20;
+  private static final int CHALLENGE_MAX_POOL_SIZE = 3;
   private static final int CHALLENGE_MIN_IDLE = 0;
   private static final long CHALLENGE_IDLE_TIMEOUT = 120000; // 2 minutes
 

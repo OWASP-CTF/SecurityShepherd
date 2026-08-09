@@ -6,7 +6,6 @@ import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.util.Date;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -52,6 +51,11 @@ public class SessionManagement5SetToken extends HttpServlet {
   private static final Logger log = LogManager.getLogger(SessionManagement5SetToken.class);
   private static String levelName = "SessionManagement5SetToken";
   public static String levelHash = SessionManagement5.levelHash;
+  public static final String RESET_USER = "sessionManagement5ResetUser";
+  public static final String RESET_TOKEN = "sessionManagement5ResetToken";
+  public static final String RESET_ISSUED = "sessionManagement5ResetIssued";
+  // The challenge page tells the holder a token lives ten minutes
+  public static final long TOKEN_LIFE_MILLIS = 10 * 60 * 1000L;
 
   /**
    * Used to apparently send a message to a user with a token to reset their password.
@@ -82,6 +86,7 @@ public class SessionManagement5SetToken extends HttpServlet {
 
       String htmlOutput = new String();
       log.debug(levelName + " Servlet Accessed");
+      Connection conn = null;
       try {
         log.debug("Getting Parameters");
         Object nameObj = request.getParameter("subUserName");
@@ -95,8 +100,7 @@ public class SessionManagement5SetToken extends HttpServlet {
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
 
-        Connection conn =
-            Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalFive");
+        conn = Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalFive");
         log.debug("Checking name");
         PreparedStatement callstmt;
 
@@ -109,31 +113,30 @@ public class SessionManagement5SetToken extends HttpServlet {
         callstmt.setString(1, userName);
         log.debug("Executing findUser");
         ResultSet resultSet = callstmt.executeQuery();
-        // Is the username valid?
         if (resultSet.next()) {
           log.debug("User found");
-          // Issue an unguessable token for this account and keep it server side. It is sent
-          // to the account holder out of band, never returned in this response.
-          ses.setAttribute("sessionManagement5Token", Hash.randomString());
-          ses.setAttribute("sessionManagement5TokenUser", resultSet.getString(1));
-          ses.setAttribute("sessionManagement5TokenIssued", Long.valueOf(new Date().getTime()));
+          // The reset token is a secret sent to the account holder, so it is stored against the
+          // account it was issued for and never returned in this response
+          ses.setAttribute(RESET_USER, resultSet.getString(1));
+          ses.setAttribute(RESET_TOKEN, Hash.randomString());
+          ses.setAttribute(RESET_ISSUED, System.currentTimeMillis());
         } else {
           log.debug("User not Found");
         }
-        // The same reply either way. Saying whether the account exists turns this into a list of
-        // the accounts worth attacking, which is the first step of the takeover it guards.
+        // The same message either way, so the form cannot be used to enumerate accounts
         htmlOutput =
             bundle.getString("setToken.sentTo.1")
                 + " '"
                 + Encode.forHtml(userName)
                 + "' "
                 + bundle.getString("setToken.sentTo.2");
-        Database.closeConnection(conn);
         log.debug("Outputting HTML");
         out.write(htmlOutput);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
+      } finally {
+        Database.closeConnection(conn);
       }
     } else {
       log.error(levelName + " servlet accessed with no session");
