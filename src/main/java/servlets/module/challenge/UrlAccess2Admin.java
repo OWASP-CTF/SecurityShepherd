@@ -58,7 +58,9 @@ public class UrlAccess2Admin extends HttpServlet {
     ResourceBundle bundle =
         ResourceBundle.getBundle("i18n.servlets.challenges.urlAccess.urlAccess2", locale);
 
-    if (Validate.validateSession(ses)) {
+    // This is meant to be an admin-only function, but only checked that some user was logged in
+    // - any authenticated user could call it directly, bypassing the missing role check entirely.
+    if (Validate.validateAdminSession(ses)) {
       ShepherdLogManager.setRequestIp(
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
@@ -111,7 +113,11 @@ public class UrlAccess2Admin extends HttpServlet {
       log.debug("Outputting HTML");
       out.write(htmlOutput);
     } else {
-      log.error(levelName + " servlet accessed with no session");
+      // A denied request previously fell through with no explicit status, leaving the default
+      // 200 OK with an empty body - indistinguishable from a slow/odd success response rather
+      // than a clear rejection. Respond with 403 so the denial is unambiguous.
+      response.sendError(HttpServletResponse.SC_FORBIDDEN);
+      log.error(levelName + " servlet accessed without a valid admin session");
     }
   }
 }
