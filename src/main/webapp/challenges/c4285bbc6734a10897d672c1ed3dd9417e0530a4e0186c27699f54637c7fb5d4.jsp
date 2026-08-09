@@ -65,19 +65,21 @@ String i18nLevelName = bundle.getString("securityMisconfig.stealTokens.challenge
 		String userId = Encode.forHtml(ses.getAttribute("userStamp").toString());
 		String challengeUrl = request.getRequestURL().toString();
 		ShepherdLogManager.logEvent(request.getRemoteAddr(), request.getHeader("X-Forwarded-For"), levelName +".jsp: DEBUG: Challenge URL " + challengeUrl);
-		//Changing URL to HTTP
-		challengeUrl = challengeUrl.replaceAll("(?i)https", "http");
+		// The demo image used to point back at this same page over a forced http:// URL. Marking
+		// the cookie Secure stops the browser attaching it to that plain request, but the
+		// Set-Cookie response this page writes on that same request would still cross the network
+		// in the clear - handing the token to anyone sniffing traffic the same way the original
+		// bug did. Leave the URL on the scheme the request actually arrived on.
 		//Set User  Cookie
 		try
 		{
-			Cookie userCookie = new Cookie("securityMisconfigLesson", SecurityMisconfigStealTokens.getUserToken(userId, applicationRoot));
+			String userToken = SecurityMisconfigStealTokens.getUserToken(userId, applicationRoot);
 			// Sensitive session token: must not be readable by client-side script (mitigates
-			// theft via XSS) and must never be sent over an unencrypted connection (mitigates
-			// theft via network sniffing/MITM) - this is the "Cookie Flag" fix for this level.
-			userCookie.setHttpOnly(true);
-			userCookie.setSecure(true);
-			userCookie.setPath("/");
-	        response.addCookie(userCookie);
+			// theft via XSS), must never be sent over an unencrypted connection (mitigates theft
+			// via network sniffing/MITM), and must not ride along on a cross-site request. Set via
+			// a raw header, since this servlet API's Cookie class has no way to express SameSite.
+			response.addHeader("Set-Cookie", "securityMisconfigLesson=" + userToken
+				+ "; Path=/; HttpOnly; Secure; SameSite=Strict");
 		}
 		catch(Exception e)
 		{
