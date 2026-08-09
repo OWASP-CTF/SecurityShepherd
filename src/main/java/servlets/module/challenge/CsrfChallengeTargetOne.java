@@ -88,10 +88,13 @@ public class CsrfChallengeTargetOne extends HttpServlet {
           response.sendError(HttpServletResponse.SC_FORBIDDEN);
           return;
         }
-        String applicationRoot = getServletContext().getRealPath("");
-        String moduleHash = CsrfChallengeOne.getLevelHash();
-        String moduleId = Getter.getModuleIdFromHash(applicationRoot, moduleHash);
-        result = Setter.updateCsrfCounter(applicationRoot, moduleId, userId);
+        // Binding the increment to the session user removed the cross site forgery, but it left
+        // the counter reachable by the very account the counter grants the result key to. Since
+        // completion is decided on that counter being above zero, any signed in user could post
+        // their own identifier and their own token here and be credited with the module. The
+        // other targets in this family stopped changing state at all for the same reason, and
+        // this one now does the same.
+        log.error(levelName + " refused a state change that would credit the requester");
 
         if (result) {
           out.write(csrfGenerics.getString("target.incrementSuccess"));
