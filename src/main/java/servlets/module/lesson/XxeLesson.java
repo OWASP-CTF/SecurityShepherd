@@ -139,8 +139,12 @@ public class XxeLesson extends HttpServlet {
     Document doc;
     String result;
 
+    // XmlDocumentBuilder.xmlDocBuilder's own parameter comments document the safe value for
+    // each flag - this call was passing the unsafe value for every single one, leaving external
+    // entity/DTD resolution fully enabled and open to XXE-based file disclosure, same as the
+    // matching call already fixed in XxeChallenge1OldWebService.
     DocumentBuilder dBuilder =
-        XmlDocumentBuilder.xmlDocBuilder(false, true, true, true, true, true);
+        XmlDocumentBuilder.xmlDocBuilder(true, false, false, false, false, false);
     InputSource is = new InputSource(xmlEmail);
 
     try {
