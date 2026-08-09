@@ -62,7 +62,9 @@ public class UrlAccess1Admin extends HttpServlet {
     ResourceBundle bundle =
         ResourceBundle.getBundle("i18n.servlets.challenges.urlAccess.urlAccess1", locale);
 
-    if (Validate.validateSession(ses)) {
+    boolean hasModuleAdminGrant =
+        Boolean.TRUE.equals(ses.getAttribute("urlAccessAdminCapability"));
+    if (Validate.validateSession(ses) && hasModuleAdminGrant) {
       ShepherdLogManager.setRequestIp(
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
@@ -116,7 +118,8 @@ public class UrlAccess1Admin extends HttpServlet {
       log.debug("Outputting HTML");
       out.write(htmlOutput);
     } else {
-      log.error(levelName + " servlet accessed with no session");
+      response.sendError(HttpServletResponse.SC_FORBIDDEN);
+      log.error(levelName + " servlet accessed without a module administrator grant");
     }
   }
 }
