@@ -46,6 +46,16 @@ public class Setup extends HttpServlet {
 
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
+    // The installer rewrites database.properties and re-runs the schema scripts, so it has to
+    // stop being reachable the moment the application is up. SetupFilter lets this servlet
+    // through by design, which leaves it as the one unauthenticated way to point a running
+    // instance at a different database or wipe the one it has.
+    if (isInstalled()) {
+      log.error("Setup request refused: the application is already installed");
+      response.sendError(HttpServletResponse.SC_FORBIDDEN);
+      return;
+    }
+
     // Translation Stuff
     Locale locale = new Locale(Validate.validateLanguage(request.getSession()));
 
@@ -189,12 +199,16 @@ public class Setup extends HttpServlet {
         log.error("Auth file could not be found: " + e.toString());
       }
 
-      if (auth == "") {
+      if (auth.isEmpty()) {
         // No auth loaded, could be because user never reloaded setup page after an
-        // error. Generate it again
+        // error. Generate it again, then read it back. Comparing with == tested whether two
+        // references were the same object rather than whether the token was empty, and
+        // leaving auth empty afterwards meant an empty dbAuth parameter compared equal to it,
+        // so a caller who supplied nothing at all was treated as authorised.
         log.debug("Generating auth file");
 
         generateAuth();
+        auth = new String(Files.readAllBytes(Paths.get(Constants.SETUP_AUTH)));
       }
 
       if (!auth.equals(dbAuth)) {

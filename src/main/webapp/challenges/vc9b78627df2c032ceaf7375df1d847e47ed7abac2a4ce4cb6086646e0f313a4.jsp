@@ -3,6 +3,7 @@
 	import="java.sql.*,java.io.*,java.net.*,org.owasp.encoder.Encode, dbProcs.*, utils.*"
 	errorPage=""%>
 <%@ page import="java.util.Locale, java.util.ResourceBundle"%>
+<%@ page import="servlets.module.challenge.DirectObject2"%>
 <%
 /**
  * Insecure Direct Object References Challenge Two
@@ -82,15 +83,15 @@
 					<tr>
 						</td>
 						<select id='userId' style='width: 300px;' multiple>
-							<option value="c81e728d9d4c2f636f067f89cc14862c">Joe
+							<option value="<%= IndirectReferenceMap.handleFor(ses, DirectObject2.referenceNamespace, "c81e728d9d4c2f636f067f89cc14862c") %>">Joe
 								Sullivan</option>
-							<option value="eccbc87e4b5ce2fe28308fd9f2a7baf3">Will
+							<option value="<%= IndirectReferenceMap.handleFor(ses, DirectObject2.referenceNamespace, "eccbc87e4b5ce2fe28308fd9f2a7baf3") %>">Will
 								Bailey</option>
-							<option value="e4da3b7fbbce2345d7772b0674a318d5">Orla
+							<option value="<%= IndirectReferenceMap.handleFor(ses, DirectObject2.referenceNamespace, "e4da3b7fbbce2345d7772b0674a318d5") %>">Orla
 								Cleary</option>
-							<option value="8f14e45fceea167a5a36dedd4bea2543">Ronan
+							<option value="<%= IndirectReferenceMap.handleFor(ses, DirectObject2.referenceNamespace, "8f14e45fceea167a5a36dedd4bea2543") %>">Ronan
 								Fitzpatrick</option>
-							<option value="6512bd43d9caa6e02c990b0a82652dca">Pat
+							<option value="<%= IndirectReferenceMap.handleFor(ses, DirectObject2.referenceNamespace, "6512bd43d9caa6e02c990b0a82652dca") %>">Pat
 								McKenana</option>
 						</select>
 						</td>
