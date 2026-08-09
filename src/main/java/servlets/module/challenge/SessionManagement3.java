@@ -149,11 +149,10 @@ public class SessionManagement3 extends HttpServlet {
                       + "</a>"
                       + "</p>";
             } else {
-              userAddress =
-                  bundle.getString("response.badPass")
-                      + " <a>"
-                      + Encode.forHtml(resultSet.getString(1))
-                      + "</a><br/>";
+              // Answered the same way as a name that does not exist. Saying "wrong password for
+              // <name>" confirmed both that the account is real and that it is an administrator.
+              log.debug("Incorrect credentials");
+              userAddress = bundle.getString("response.badUser") + "<br/>";
               htmlOutput = makeTable(userAddress, bundle);
             }
           } else {
