@@ -6,6 +6,7 @@ import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -46,6 +47,34 @@ public class DirectObject1 extends HttpServlet {
   public static String levelHash =
       "o9a450a64cc2a196f55878e2bd9a27a72daea0f17017253f87e7ebd98c71c98c";
 
+  // The set of profile ids a signed-in user may legitimately be bound to. This intentionally
+  // excludes the reserved/hidden record ('11') so that record can never be resolved through this
+  // lookup no matter what a caller supplies - closing the IDOR without needing to know the real
+  // identity of every possible caller.
+  private static final List<String> ASSIGNABLE_USER_IDS = List.of("1", "3", "5", "7", "9");
+
+  /**
+   * Every signed-in user is bound, for the lifetime of their session, to exactly one of the
+   * assignable profile ids - derived from their own Shepherd username so the same account always
+   * maps to the same profile. This stands in for a real ownership record (e.g. "this profile row
+   * belongs to this account") that the original code never checked at all, letting any userId be
+   * requested by anyone.
+   */
+  private static String resolveOwnedUserId(HttpSession ses) {
+    Object owned = ses.getAttribute("directObject1OwnedUserId");
+    if (owned != null) {
+      return owned.toString();
+    }
+    Object userName = ses.getAttribute("userName");
+    int index =
+        Math.floorMod(
+            (userName == null ? ses.getId() : userName.toString()).hashCode(),
+            ASSIGNABLE_USER_IDS.size());
+    String assigned = ASSIGNABLE_USER_IDS.get(index);
+    ses.setAttribute("directObject1OwnedUserId", assigned);
+    return assigned;
+  }
+
   /**
    * The user must abuse this functionality to reveal a hidden user. The result key is hidden in
    * this users profile.
@@ -79,28 +108,15 @@ public class DirectObject1 extends HttpServlet {
         log.debug("Servlet root = " + ApplicationRoot);
         String htmlOutput = new String();
 
-        Connection conn =
-            Database.getChallengeConnection(ApplicationRoot, "directObjectRefChalOne");
-        PreparedStatement prepstmt =
-            conn.prepareStatement("SELECT userName, privateMessage FROM users WHERE userId = ?");
-        prepstmt.setString(1, userId);
-        ResultSet resultSet = prepstmt.executeQuery();
-        if (resultSet.next()) {
-          log.debug("Found user: " + resultSet.getString(1));
-          String userName = resultSet.getString(1);
-          String privateMessage = resultSet.getString(2);
-          htmlOutput =
-              "<h2 class='title'>"
-                  + userName
-                  + "'s "
-                  + bundle.getString("response.message")
-                  + "</h2>"
-                  + "<p>"
-                  + privateMessage
-                  + "</p>";
-        } else {
-          log.debug("No Profile Found");
-
+        String ownedUserId = resolveOwnedUserId(ses);
+        if (userId == null || !userId.equals(ownedUserId)) {
+          // Insecure Direct Object Reference fix: a caller may only ever resolve the profile id
+          // bound to their own session, never an arbitrary id supplied on the request. Respond
+          // exactly like a genuine miss so this check doesn't itself leak which ids exist.
+          log.debug(
+              "Refusing lookup of userId '"
+                  + userId
+                  + "' - does not match this session's own profile id");
           htmlOutput =
               "<h2 class='title'>"
                   + bundle.getString("response.notFound")
@@ -111,10 +127,44 @@ public class DirectObject1 extends HttpServlet {
                   + "' "
                   + bundle.getString("response.notFoundMessage.2")
                   + "</p>";
+        } else {
+          Connection conn =
+              Database.getChallengeConnection(ApplicationRoot, "directObjectRefChalOne");
+          PreparedStatement prepstmt =
+              conn.prepareStatement("SELECT userName, privateMessage FROM users WHERE userId = ?");
+          prepstmt.setString(1, userId);
+          ResultSet resultSet = prepstmt.executeQuery();
+          if (resultSet.next()) {
+            log.debug("Found user: " + resultSet.getString(1));
+            String userName = resultSet.getString(1);
+            String privateMessage = resultSet.getString(2);
+            htmlOutput =
+                "<h2 class='title'>"
+                    + userName
+                    + "'s "
+                    + bundle.getString("response.message")
+                    + "</h2>"
+                    + "<p>"
+                    + privateMessage
+                    + "</p>";
+          } else {
+            log.debug("No Profile Found");
+
+            htmlOutput =
+                "<h2 class='title'>"
+                    + bundle.getString("response.notFound")
+                    + "</h2><p>"
+                    + bundle.getString("response.notFoundMessage.1")
+                    + " '"
+                    + Encode.forHtml(userId)
+                    + "' "
+                    + bundle.getString("response.notFoundMessage.2")
+                    + "</p>";
+          }
+          Database.closeConnection(conn);
         }
         log.debug("Outputting HTML");
         out.write(htmlOutput);
-        Database.closeConnection(conn);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
