@@ -88,6 +88,17 @@ public class SessionManagement2ChangePassword extends HttpServlet {
         log.debug("Getting ApplicationRoot");
         String ApplicationRoot = getServletContext().getRealPath("");
 
+        // A reset may only be driven for the account the caller has already proven they hold. An
+        // address named in the request is never enough, otherwise anybody can overwrite the
+        // credential of any account whose address they can guess.
+        String signedInAddress = (String) ses.getAttribute("sessionManagement2Address");
+        if (signedInAddress == null || !signedInAddress.equals(subEmail)) {
+          log.debug("Reset requested for an account the caller has not signed in to");
+          // The same confirmation as a real reset, so this form is not an address oracle either
+          out.write("<p>" + bundle.getString("response.passwordReset") + "</p>");
+          return;
+        }
+
         String newPassword = Hash.randomString();
         Connection conn = null;
         try {

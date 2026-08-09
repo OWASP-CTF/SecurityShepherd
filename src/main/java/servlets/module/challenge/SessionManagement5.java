@@ -107,62 +107,38 @@ public class SessionManagement5 extends HttpServlet {
         callstmt.execute();
         log.debug("Changes committed.");
 
-        callstmt = conn.prepareStatement("SELECT userName, userRole FROM users WHERE userName = ?");
+        // The role is never resolved before the credential is checked, so the sign in form cannot
+        // be used to tell a real account from an absent one, or an administrator from a guest
+        callstmt =
+            conn.prepareStatement(
+                "SELECT userName, userRole FROM users WHERE userName = ? AND userPassword ="
+                    + " SHA(?)");
         callstmt.setString(1, subName);
-        log.debug("Executing findUser");
+        callstmt.setString(2, subPass);
+        log.debug("Executing Login Check");
         ResultSet resultSet = callstmt.executeQuery();
-        // Is the username valid?
-        if (resultSet.next()) {
-          log.debug("User found");
-          // Is the user an Admin?
-          if (resultSet.getString(2).equalsIgnoreCase("admin")) {
-            log.debug("Admin Detected");
-            callstmt =
-                conn.prepareStatement(
-                    "SELECT userName, userRole FROM users WHERE userName = ? AND userPassword ="
-                        + " SHA(?)");
-            callstmt.setString(1, subName);
-            callstmt.setString(2, subPass);
-            log.debug("Executing Login Check");
-            ResultSet resultSet2 = callstmt.executeQuery();
-            if (resultSet2.next()) {
-              log.debug("Successful Admin Login");
-              // Get key and add it to the output
-              String userKey =
-                  Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
+        if (resultSet.next() && resultSet.getString(2).equalsIgnoreCase("admin")) {
+          log.debug("Successful Admin Login");
+          // Get key and add it to the output
+          String userKey =
+              Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
 
-              htmlOutput =
-                  "<h2 class='title'>"
-                      + bundle.getString("response.welcome")
-                      + " "
-                      + Encode.forHtml(resultSet2.getString(1))
-                      + "</h2>"
-                      + "<p>"
-                      + bundle.getString("response.resultKey")
-                      + " <a>"
-                      + userKey
-                      + "</a>"
-                      + "</p>";
-            } else {
-              userAddress =
-                  bundle.getString("response.badPass")
-                      + " <a>"
-                      + Encode.forHtml(resultSet.getString(1))
-                      + "</a><br/>";
-              htmlOutput = makeTable(userAddress, bundle);
-            }
-          } else {
-            log.debug("Successful Pleb Login");
-            htmlOutput =
-                makeTable(bundle)
-                    + "<h2 class='title'>"
-                    + bundle.getString("response.welcomeGuest")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("response.guestMessage")
-                    + "</p><br/><br/>";
-          }
+          htmlOutput =
+              "<h2 class='title'>"
+                  + bundle.getString("response.welcome")
+                  + " "
+                  + Encode.forHtml(resultSet.getString(1))
+                  + "</h2>"
+                  + "<p>"
+                  + bundle.getString("response.resultKey")
+                  + " <a>"
+                  + userKey
+                  + "</a>"
+                  + "</p>";
         } else {
+          // One message for a bad user name, a bad password and a non admin account, so the sign
+          // in form cannot be used to enumerate accounts or to locate the administrators
+          log.debug("Incorrect credentials");
           userAddress = bundle.getString("response.badUser") + "<br/>";
           htmlOutput = makeTable(userAddress, bundle);
         }

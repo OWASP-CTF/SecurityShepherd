@@ -119,16 +119,17 @@ public class SessionManagement5SetToken extends HttpServlet {
           ses.setAttribute(RESET_USER, resultSet.getString(1));
           ses.setAttribute(RESET_TOKEN, Hash.randomString());
           ses.setAttribute(RESET_EXPIRES, System.currentTimeMillis() + (10 * 60 * 1000));
-          htmlOutput =
-              bundle.getString("setToken.sentTo.1")
-                  + " '"
-                  + Encode.forHtml(userName)
-                  + "' "
-                  + bundle.getString("setToken.sentTo.2");
         } else {
           log.debug("User not Found");
-          htmlOutput = bundle.getString("response.badUser") + "" + Encode.forHtml(userName);
         }
+        // The same confirmation whether or not the account exists, so the reset form cannot be
+        // used to enumerate accounts
+        htmlOutput =
+            bundle.getString("setToken.sentTo.1")
+                + " '"
+                + Encode.forHtml(userName)
+                + "' "
+                + bundle.getString("setToken.sentTo.2");
         log.debug("Outputting HTML");
         out.write(htmlOutput);
       } catch (Exception e) {
