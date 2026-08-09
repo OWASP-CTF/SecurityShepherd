@@ -3,7 +3,9 @@
 <%@ page import="java.util.Locale, java.util.ResourceBundle"%>
 <%
 /**
- * This level uses XOR's user input with a key. the vulnerability in the cipher is if the attacker submits spaces, the key will be revealed after the XOR.
+ * This level decrypts user-submitted AES-GCM ciphertext using a key derived from the level secret.
+ * GCM authenticates the ciphertext, so a submission not actually encrypted under the real key fails
+ * to decrypt at all instead of revealing anything about the key.
  * <br/><br/>
  * This file is part of the Security Shepherd Project.
  * 
@@ -99,7 +101,7 @@ if (request.getSession() != null)
 		<div id="resultsDiv">
 			<h2 class="title"><%= bundle.getString("insecureCryptoStorage.3.ciphertextExample") %></h2>
 			<p><%= bundle.getString("insecureCryptoStorage.3.tryDecryptThis") %>
-				IAAAAEkQBhEVBwpDHAFJGhYHSBYEGgocAw==
+				QXXvVkJ6wQUGzf+eW6ZJL5rWTn5/toO6EJaxzjmBYPRtF8KylsP1BkvtPqGhTAyCRuY7oR0=
 			</p>
 		</div>
 		</p>

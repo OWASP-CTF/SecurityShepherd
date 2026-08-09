@@ -16,8 +16,10 @@ import utils.ShepherdLogManager;
 import utils.Validate;
 
 /**
- * Bad Crypto Challenge Three Really bad crypto algorithm to break. Will reveal key if spaces are
- * submitted <br>
+ * Bad Crypto Challenge Three. Decrypts user-submitted AES-GCM ciphertext using a key derived from
+ * the level secret via SHA-256; authentication failure on tampered/foreign ciphertext prevents the
+ * known-plaintext key-recovery attack the previous repeating-key XOR implementation was vulnerable
+ * to. <br>
  * <br>
  * This file is part of the Security Shepherd Project.
  *
@@ -94,41 +96,40 @@ public class BrokenCrypto3 extends HttpServlet {
     }
   }
 
-  /**
-   * Decrypts the supplied string value using the submitted key
-   *
-   * @param hash The cipher text to be decrypted
-   * @param key The encryption key
-   * @return The plain text revealed from the decryption
-   * @throws Exception Throws illegal state Exception
-   */
-  public static String decrypt(String hash, String key) throws Exception {
-    try {
-      return new String(
-          xor(org.apache.commons.codec.binary.Base64.decodeBase64(hash.getBytes()), key), "UTF-8");
-    } catch (java.io.UnsupportedEncodingException ex) {
-      throw new IllegalStateException(ex);
-    }
-  }
+  private static final int GCM_IV_LENGTH_BYTES = 12;
+  private static final int GCM_TAG_LENGTH_BITS = 128;
 
   /**
-   * XOR Function
+   * Decrypts the supplied value using AES-GCM, with the key derived from the submitted secret via
+   * SHA-256. Unlike the repeating-key XOR this replaces, a chosen-ciphertext submission can never
+   * reveal information about the key: GCM authenticates the ciphertext, so any value not actually
+   * produced by encrypting under the real key fails authentication instead of "decrypting" to
+   * something the caller can use to recover key bytes (the XOR version leaked the entire key one
+   * byte at a time to anyone who submitted known plaintext, e.g. spaces).
    *
-   * @param input Byte array to be XOR'd
-   * @param key Encryption Key
-   * @return
+   * @param hash The base64-encoded (IV || ciphertext || GCM tag) to be decrypted
+   * @param key The secret the AES key is derived from
+   * @return The plain text revealed from the decryption
+   * @throws Exception if the input is malformed or fails GCM authentication
    */
-  private static byte[] xor(final byte[] input, String theKey) {
-    final byte[] output = new byte[input.length];
-    final byte[] secret = theKey.getBytes();
-    int spos = 0;
-    for (int pos = 0; pos < input.length; pos += 1) {
-      output[pos] = (byte) (input[pos] ^ secret[spos]);
-      spos += 1;
-      if (spos >= secret.length) {
-        spos = 0;
-      }
+  public static String decrypt(String hash, String key) throws Exception {
+    byte[] combined = org.apache.commons.codec.binary.Base64.decodeBase64(hash.getBytes("UTF-8"));
+    if (combined.length < GCM_IV_LENGTH_BYTES) {
+      throw new IllegalArgumentException("Ciphertext too short to contain an IV");
     }
-    return output;
+    byte[] iv = java.util.Arrays.copyOfRange(combined, 0, GCM_IV_LENGTH_BYTES);
+    byte[] ciphertext =
+        java.util.Arrays.copyOfRange(combined, GCM_IV_LENGTH_BYTES, combined.length);
+
+    java.security.MessageDigest sha256 = java.security.MessageDigest.getInstance("SHA-256");
+    javax.crypto.spec.SecretKeySpec keySpec =
+        new javax.crypto.spec.SecretKeySpec(sha256.digest(key.getBytes("UTF-8")), "AES");
+
+    javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding");
+    cipher.init(
+        javax.crypto.Cipher.DECRYPT_MODE,
+        keySpec,
+        new javax.crypto.spec.GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv));
+    return new String(cipher.doFinal(ciphertext), "UTF-8");
   }
 }
