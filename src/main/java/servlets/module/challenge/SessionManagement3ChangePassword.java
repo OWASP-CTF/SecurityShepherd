@@ -3,15 +3,18 @@ package servlets.module.challenge;
 import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import utils.ShepherdLogManager;
@@ -46,16 +49,12 @@ public class SessionManagement3ChangePassword extends HttpServlet {
 
   // private static String levelResult = ""; //This Servlet does not return a result
 
-  // The account the challenge page hands to every visitor. Every seeded password is stored in
-  // plain text against a SHA(?) comparison, so no account can sign in until this one is reset.
-  private static final String GUEST_ACCOUNT = "guest12";
-
   /**
-   * Function used by Session Management Challenge Three to change the password of a sub schema
-   * account. The account is the one signed in on the server side session, or the guest account the
-   * page issues when nobody is signed in - never the client controlled "current" cookie.
+   * Function used by Session Management Challenge Three to change the password of the submitted
+   * user name specified in the "Current" cookie
    *
-   * @param newPassword the password which to use to update the accounts password
+   * @param current User cookie used to store the current user (encoded twice with base64)
+   * @param newPassword the password which to use to update an accounts password
    */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -80,26 +79,46 @@ public class SessionManagement3ChangePassword extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
       log.debug(levelName + " - Change Password - Servlet");
-      Connection conn = null;
       try {
         log.debug("Getting Challenge Parameters");
-        Object passNewObj = request.getParameter("newPassword");
-        String subName = (String) ses.getAttribute(SessionManagement3.SUB_USER);
-        if (subName == null) {
-          subName = GUEST_ACCOUNT;
+        Cookie userCookies[] = request.getCookies();
+        int i = 0;
+        Cookie theCookie = null;
+        for (i = 0; i < userCookies.length; i++) {
+          if (userCookies[i].getName().compareTo("current") == 0) {
+            theCookie = userCookies[i];
+            break; // End Loop, because we found the token
+          }
         }
+        Object passNewObj = request.getParameter("newPassword");
+        String subName = new String();
         String subNewPass = new String();
+        if (theCookie != null) {
+          subName = theCookie.getValue();
+        }
         if (passNewObj != null) {
           subNewPass = (String) passNewObj;
         }
         log.debug("subName = " + subName);
+        // Base 64 Decode
+        try {
+          byte[] decodedName = Base64.decodeBase64(subName);
+          subName = new String(decodedName, "UTF-8");
+          decodedName = Base64.decodeBase64(subName);
+          subName = new String(decodedName, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+          log.debug("Could not decode username");
+          subName = new String();
+        }
+        log.debug("subName Decoded = " + subName);
         log.debug("subPass = " + subNewPass);
 
         if (subNewPass.length() >= 6) {
           log.debug("Getting ApplicationRoot");
           String ApplicationRoot = getServletContext().getRealPath("");
 
-          conn = Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalThree");
+          Connection conn =
+              Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalThree");
           log.debug("Changing password for user: " + subName);
           log.debug("Changing password to: " + subNewPass);
           PreparedStatement callstmt;
@@ -118,7 +137,7 @@ public class SessionManagement3ChangePassword extends HttpServlet {
 
           htmlOutput = "<p>" + bundle.getString("reset.password") + "</p>";
         } else {
-          log.debug("Invalid password submitted");
+          log.debug("invalid password submitted: " + subNewPass);
           htmlOutput = "<p>" + bundle.getString("reset.failed") + "</p>";
         }
         log.debug("Outputting HTML");
@@ -126,8 +145,6 @@ public class SessionManagement3ChangePassword extends HttpServlet {
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - Change Password - " + e.toString());
-      } finally {
-        Database.closeConnection(conn);
       }
     } else {
       log.error(levelName + " servlet accessed with no session");
