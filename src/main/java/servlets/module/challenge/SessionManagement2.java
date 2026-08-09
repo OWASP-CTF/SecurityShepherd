@@ -49,9 +49,9 @@ public class SessionManagement2 extends HttpServlet {
 
   /**
    * The user attempts to use this function to sign into a sub schema. If they successfully sign in
-   * then they are able to retrieve the result key for the challenge If they sign in with a correct
-   * user name but incorrect password then the email address of the user will be returned in a error
-   * message
+   * then they are able to retrieve the result key for the challenge. A correct user name with an
+   * incorrect password reports which address the account recovery would write to, with the address
+   * itself covered.
    *
    * @param subName Sub schema user name
    * @param subName Sub schema user password
@@ -80,6 +80,7 @@ public class SessionManagement2 extends HttpServlet {
 
       String htmlOutput = new String();
       log.debug(levelName + " Servlet accessed");
+      Connection conn = null;
       try {
         log.debug("Getting Challenge Parameters");
         Object nameObj = request.getParameter("subName");
@@ -100,8 +101,7 @@ public class SessionManagement2 extends HttpServlet {
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
 
-        Connection conn =
-            Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
+        conn = Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
         log.debug("Checking credentials");
         PreparedStatement callstmt;
 
@@ -112,8 +112,7 @@ public class SessionManagement2 extends HttpServlet {
 
         callstmt =
             conn.prepareStatement(
-                "SELECT userName, userAddress FROM users WHERE userName = ? AND userPassword ="
-                    + " SHA(?)");
+                "SELECT userName FROM users WHERE userName = ? AND userPassword = SHA(?)");
         callstmt.setString(1, subName);
         callstmt.setString(2, subPass);
         log.debug("Executing authUser");
@@ -130,13 +129,11 @@ public class SessionManagement2 extends HttpServlet {
                   + bundle.getString("response.welcome")
                   + " "
                   + Encode.forHtml(resultSet.getString(1))
-                  + "</h2>"
-                  + "<p>"
+                  + "</h2><p>"
                   + bundle.getString("response.resultKey")
                   + " <a>"
                   + userKey
-                  + "</a>"
-                  + "</p>";
+                  + "</a></p>";
         } else {
           log.debug("Incorrect credentials, checking if user name correct");
           callstmt = conn.prepareStatement("SELECT userAddress FROM users WHERE userName = ?");
@@ -148,23 +145,42 @@ public class SessionManagement2 extends HttpServlet {
             userAddress =
                 bundle.getString("response.badPass")
                     + " <a>"
-                    + Encode.forHtml(resultSet.getString(1))
+                    + Encode.forHtml(maskAddress(resultSet.getString(1)))
                     + "</a><br/>";
           } else {
             userAddress = bundle.getString("response.badUser") + "<br/>";
           }
           htmlOutput = makeTable(userAddress, bundle);
         }
-        Database.closeConnection(conn);
         log.debug("Outputting HTML");
         out.write(htmlOutput);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
+      } finally {
+        Database.closeConnection(conn);
       }
     } else {
       log.error(levelName + " servlet accessed with no session");
     }
+  }
+
+  /**
+   * Covers the local part of an address, keeping its first character and its domain. The holder of
+   * the account can still recognise it; nobody else can read it off and hand it to the reset form.
+   *
+   * @param address Address held against the account
+   * @return The address with its local part covered
+   */
+  private static String maskAddress(String address) {
+    if (address == null) {
+      return "";
+    }
+    int at = address.indexOf('@');
+    if (at < 1) {
+      return "***";
+    }
+    return address.charAt(0) + "***" + address.substring(at);
   }
 
   private static String makeTable(String userAddress, ResourceBundle bundle) {
