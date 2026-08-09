@@ -16,6 +16,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import utils.CountdownHandler;
 import utils.InvalidCountdownStateException;
+import utils.ModuleBlock;
 
 /**
  * Used to add information to the Database <br>
@@ -825,6 +826,11 @@ public class Setter {
       int after,
       int difficulty) {
     log.debug("*** Setter.updatePlayerResult ***");
+
+    if (ModuleBlock.blockerEnabled && moduleId != null && moduleId.equals(ModuleBlock.blockerId)) {
+      log.warn("Refusing completion for module currently blocked by an administrator");
+      return null;
+    }
 
     String result = null;
 

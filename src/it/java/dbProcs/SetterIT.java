@@ -3,6 +3,8 @@ package dbProcs;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -22,6 +24,7 @@ import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import testUtils.TestProperties;
+import utils.ModuleBlock;
 import utils.ScoreboardStatus;
 
 public class SetterIT {
@@ -38,6 +41,28 @@ public class SetterIT {
 
     TestProperties.ensureSchemaReady(log);
     TestProperties.reseedTestData();
+  }
+
+  @Test
+  public void testBlockedModuleCannotBeCompleted() throws SQLException {
+    String moduleId = "20e755179a5840be5503d42bb3711716235005ea";
+    String userName = "blockedCompletionUser";
+
+    assertTrue(GetterIT.verifyTestUser(applicationRoot, userName, userName));
+    String userId = Getter.getUserIdFromName(applicationRoot, userName);
+    assertTrue(Setter.openAllModules(applicationRoot, false));
+    assertFalse(Getter.getModuleAddress(applicationRoot, moduleId, userId).isEmpty());
+
+    ModuleBlock.blockerId = moduleId;
+    ModuleBlock.blockerEnabled = true;
+    try {
+      assertNull(
+          Setter.updatePlayerResult(
+              applicationRoot, moduleId, userId, "Feedback is Disabled", 1, 1, 1));
+      assertNotNull(Getter.checkPlayerResult(applicationRoot, moduleId, userId));
+    } finally {
+      ModuleBlock.reset();
+    }
   }
 
   /**
