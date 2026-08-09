@@ -1,7 +1,6 @@
 package servlets.module.challenge;
 
 import dbProcs.Database;
-import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -23,7 +22,6 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -155,24 +153,17 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
                 log.debug("Running secret Answer Check");
                 ResultSet rs = callstmt.executeQuery();
                 if (rs.next()) {
+                  // This endpoint intentionally does not return the result key (see class
+                  // javadoc). A knowledge-based secret question is not a strong enough factor to
+                  // stand in for the level's real admin authentication, so answering it correctly
+                  // confirms identity only - it must never be treated as equivalent to signing in.
                   log.debug("Correct Answer Submitted");
-                  // Get key and add it to the output
-                  String userKey =
-                      Hash.generateUserSolution(
-                          Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
-                          (String) ses.getAttribute("userName"));
                   htmlOutput =
                       "<h2 class='title'>"
                           + bundle.getString("response.welcome")
                           + " "
                           + Encode.forHtml(rs.getString(1))
-                          + "</h2>"
-                          + "<p>"
-                          + bundle.getString("response.resultKey")
-                          + " <a>"
-                          + userKey
-                          + "</a>"
-                          + "</p>";
+                          + "</h2><p>Answering a secret question does not authenticate you.</p>";
                 } else {
                   log.debug("Bad Answer Submitted");
                   recordFailedSecretAnswer(subEmail);
