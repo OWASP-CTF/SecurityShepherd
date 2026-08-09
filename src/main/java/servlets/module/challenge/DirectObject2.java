@@ -6,6 +6,9 @@ import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -52,6 +55,21 @@ public class DirectObject2 extends HttpServlet {
    */
   public static final String referenceNamespace = "directObjectRefChalTwo";
 
+  /**
+   * The profiles this challenge publishes. The identifiers are digests of small numbers, so they
+   * are reproducible by anyone who guesses the input -- which is the whole of the flaw. Whatever a
+   * request names has to be one of the profiles the challenge actually offers, and that is settled
+   * before the row is fetched rather than after.
+   */
+  private static final List<String> PUBLISHED_PROFILES =
+      Collections.unmodifiableList(
+          Arrays.asList(
+              "c81e728d9d4c2f636f067f89cc14862c",
+              "eccbc87e4b5ce2fe28308fd9f2a7baf3",
+              "e4da3b7fbbce2345d7772b0674a318d5",
+              "8f14e45fceea167a5a36dedd4bea2543",
+              "6512bd43d9caa6e02c990b0a82652dca"));
+
   public static String levelHash =
       "vc9b78627df2c032ceaf7375df1d847e47ed7abac2a4ce4cb6086646e0f313a4";
 
@@ -88,7 +106,20 @@ public class DirectObject2 extends HttpServlet {
         // reproduced by digesting the numbers they were made from.
         String submittedReference = request.getParameter("userId[]");
         log.debug("User Submitted - " + submittedReference);
-        String userId = IndirectReferenceMap.resolve(ses, referenceNamespace, submittedReference);
+        // The page publishes a per session handle for each profile it offers, so a handle is
+        // resolved back to the row it stands for. A caller that names a published profile
+        // directly is answered as well -- the handle keeps the identifiers off the page, it is
+        // not the thing that decides access.
+        String resolved = IndirectReferenceMap.resolve(ses, referenceNamespace, submittedReference);
+        String userId = (resolved != null) ? resolved : submittedReference;
+        // Whichever way it arrived, it has to name a profile this challenge publishes. Anything
+        // else is a reference the requester was never given, and it is refused here rather than
+        // being looked up and then filtered out of the answer.
+        if (userId == null || !PUBLISHED_PROFILES.contains(userId)) {
+          log.warn("Refusing a profile reference this challenge never published");
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
+        }
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
         String htmlOutput = new String();
