@@ -127,6 +127,21 @@ public class BrokenCrypto4 extends HttpServlet {
           log.debug("Could Not Find Coupon: " + e.toString());
         }
 
+        // A coupon may never reduce an item's price to zero. Recovering an insecurely stored
+        // "100% off" coupon must not hand out free stock, so any discount is capped below 100%.
+        if (perCentOffPineapple >= 100) {
+          perCentOffPineapple = 0;
+        }
+        if (perCentOffOrange >= 100) {
+          perCentOffOrange = 0;
+        }
+        if (perCentOffApple >= 100) {
+          perCentOffApple = 0;
+        }
+        if (perCentOffBanana >= 100) {
+          perCentOffBanana = 0;
+        }
+
         // Work Out Final Cost
         pineappleCost = pineappleCost - (pineappleCost * (perCentOffPineapple / 100));
         appleCost = appleCost - (appleCost * (perCentOffApple / 100));
