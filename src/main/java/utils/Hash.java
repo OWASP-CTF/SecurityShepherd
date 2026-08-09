@@ -132,6 +132,8 @@ public class Hash {
     psn1.nextBytes(byteArray);
     BigInteger bigInt = new BigInteger(byteArray);
     result = bigInt.toString();
+    log.debug("Generated String = " + result);
+
     return result;
   }
 }

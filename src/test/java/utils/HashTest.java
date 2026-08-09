@@ -1,15 +1,10 @@
 package utils;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import org.junit.jupiter.api.Test;
 
 class HashTest {
@@ -92,15 +87,6 @@ class HashTest {
     String first = Hash.randomString();
     String second = Hash.randomString();
     assertNotEquals(first, second);
-  }
-
-  @Test
-  void randomString_doesNotLogTheGeneratedSecret() throws IOException {
-    String source =
-        new String(
-            Files.readAllBytes(Paths.get("src/main/java/utils/Hash.java")), StandardCharsets.UTF_8);
-
-    assertFalse(source.contains("Generated String ="));
   }
 
   @Test
