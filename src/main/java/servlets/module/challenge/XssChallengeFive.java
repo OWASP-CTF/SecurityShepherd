@@ -1,5 +1,6 @@
 package servlets.module.challenge;
 
+import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;
@@ -12,7 +13,8 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.owasp.encoder.Encode;
+import utils.FindXSS;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 import utils.XssFilter;
@@ -77,10 +79,27 @@ public class XssChallengeFive extends HttpServlet {
           String userPost = new String();
           String searchTerm = request.getParameter("searchTerm");
           log.debug("User Submitted - " + searchTerm);
-          searchTerm = XssFilter.safeHttpUrl(searchTerm);
-          userPost = "<a href=\"" + Encode.forHtmlAttribute(searchTerm) + "\">Your HTTP Link!</a>";
+          searchTerm = XssFilter.badUrlValidate(searchTerm);
+          userPost = "<a href=\"" + searchTerm + "\">Your HTTP Link!</a>";
           log.debug("After WhiteListing - " + searchTerm);
 
+          boolean xssDetected = FindXSS.search(userPost);
+          if (xssDetected) {
+            htmlOutput =
+                "<h2 class='title'>"
+                    + bundle.getString("result.wellDone")
+                    + "</h2>"
+                    + "<p>"
+                    + bundle.getString("result.youDidIt")
+                    + "<br />"
+                    + bundle.getString("result.resultKey")
+                    + " <a>"
+                    + Hash.generateUserSolution(
+                        Getter.getModuleResultFromHash(
+                            getServletContext().getRealPath(""), levelHash),
+                        (String) ses.getAttribute("userName"))
+                    + "</a>";
+          }
           log.debug("Adding searchTerm to Html: " + searchTerm);
           htmlOutput +=
               "<h2 class='title'>"
