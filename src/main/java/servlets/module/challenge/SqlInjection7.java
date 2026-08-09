@@ -73,8 +73,15 @@ public class SqlInjection7 extends HttpServlet {
         log.debug("subEmail - " + subEmail.replaceAll("\n", " \\\\n ")); // Escape \n's
         String subPassword = Validate.validateParameter(request.getParameter("subPassword"), 40);
         log.debug("subPassword - " + subPassword);
+        // javax.mail's InternetAddress (used below) happily accepts an RFC822 quoted-string
+        // local part, which may contain almost any character - including an unescaped single
+        // quote - so relying on it alone as an input filter is not enough. A sign-in email has
+        // no legitimate reason to need quoting, so require a plain unquoted address shape first.
+        boolean looksLikePlainEmail =
+            subEmail.matches("[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}");
         boolean validEmail =
-            Validate.isValidEmailAddress(subEmail.replaceAll("\n", "")); // Ignore \n 's
+            looksLikePlainEmail
+                && Validate.isValidEmailAddress(subEmail.replaceAll("\n", "")); // Ignore \n 's
         if (!subPassword.isEmpty() && !subPassword.isEmpty() && validEmail) {
           Connection conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSeven");
           try {
