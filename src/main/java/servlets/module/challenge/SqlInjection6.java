@@ -77,17 +77,14 @@ public class SqlInjection6 extends HttpServlet {
       try {
         String userPin = (String) request.getParameter("pinNumber");
         log.debug("userPin - " + userPin);
-        userPin =
-            userPin.replaceAll("\\\\", "\\\\\\\\").replaceAll("'", ""); // Escape single quotes
-        log.debug("userPin scrubbed - " + userPin);
-        userPin =
-            java.net.URLDecoder.decode(
-                userPin.replaceAll("\\\\\\\\x", "%"), "UTF-8"); // Decode \x encoding
-        log.debug("searchTerm decoded to - " + userPin);
         Connection conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSix");
         log.debug("Looking for users");
+        // Bind the user-supplied pin as a query parameter rather than building the SQL
+        // string by hand, so no amount of quote-stripping/decoding order can matter -
+        // the value can never break out of its parameter slot.
         PreparedStatement prepstmt =
-            conn.prepareStatement("SELECT userName FROM users WHERE userPin = '" + userPin + "'");
+            conn.prepareStatement("SELECT userName FROM users WHERE userPin = ?");
+        prepstmt.setString(1, userPin);
         ResultSet users = prepstmt.executeQuery();
         try {
           if (users.next()) {
