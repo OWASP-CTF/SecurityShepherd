@@ -1,6 +1,7 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
 	language="java" import="utils.*" errorPage=""%>
 <%@ page import="java.util.Locale, java.util.ResourceBundle"%>
+<%@ page import="servlets.module.challenge.SessionManagement8"%>
 <%
 /**
  * Broken Authentication and Session Management Challenge eight
@@ -97,7 +98,7 @@ String i18nLevelName = bundle.getString("challenge.challengeName");
 				$("#submitButton").hide("fast");
 				$("#loadingSign").show("slow");
 				$("#resultsDiv").hide("slow", function(){
-					document.cookie="challengeRole=LmH6nmbC";
+					document.cookie="challengeRole=<%= SessionManagement8.issueRoleCookieValue(ses) %>";
 					var ajaxCall = $.ajax({
 						type: "POST",
 						url: "<%= levelHash %>",
