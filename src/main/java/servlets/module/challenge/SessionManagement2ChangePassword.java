@@ -46,10 +46,11 @@ public class SessionManagement2ChangePassword extends HttpServlet {
       "f5ddc0ed2d30e597ebacf5fdd117083674b19bb92ffc3499121b9e6a12c92959";
 
   /**
-   * A user with the submitted email address is set a new random password, the password is also
-   * returned from the database procedure and is forwards through to the HTTP response. This
-   * response is not consumed by the client interface by default, and the user will have to discover
-   * it.
+   * Resets the password of the sub-schema account identified by the submitted email address, but
+   * only when this HTTP session has already proven ownership of that exact account by logging into
+   * it via {@link SessionManagement2}. Any other request gets the same generic acknowledgement
+   * with no database change, so the endpoint cannot be used to take over - or even to discover the
+   * existence of - an account other than the one the caller is already signed into.
    *
    * @param subEmail Sub schema user email address
    */
@@ -86,41 +87,49 @@ public class SessionManagement2ChangePassword extends HttpServlet {
         }
         log.debug("subEmail = " + subEmail);
 
-        log.debug("Getting ApplicationRoot");
-        String ApplicationRoot = getServletContext().getRealPath("");
+        Object ownedAddress = ses.getAttribute(SessionManagement2.AUTHENTICATED_ADDRESS);
+        // Only ever act when this session has already proven, via a real sub-schema login, that
+        // it owns the exact account being reset. A caller who has not authenticated as that
+        // address gets the same generic response with no database change - closing the
+        // account-takeover path without needing to know the account's current password.
+        if (ownedAddress != null && ownedAddress.equals(subEmail)) {
+          log.debug("Getting ApplicationRoot");
+          String ApplicationRoot = getServletContext().getRealPath("");
 
-        String newPassword = Hash.randomString();
-        try {
-          Connection conn =
-              Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
-          log.debug("Checking credentials");
-          PreparedStatement callstmt =
-              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userAddress = ?");
-          callstmt.setString(1, newPassword);
-          callstmt.setString(2, subEmail);
-          log.debug("Executing resetPassword");
-          callstmt.execute();
-          log.debug("Statement executed");
+          String newPassword = Hash.randomString();
+          try {
+            Connection conn =
+                Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
+            log.debug("Checking credentials");
+            PreparedStatement callstmt =
+                conn.prepareStatement(
+                    "UPDATE users SET userPassword = SHA(?) WHERE userAddress = ?");
+            callstmt.setString(1, newPassword);
+            callstmt.setString(2, subEmail);
+            log.debug("Executing resetPassword");
+            callstmt.execute();
+            log.debug("Statement executed");
 
-          log.debug("Committing changes made to database");
-          callstmt = conn.prepareStatement("COMMIT");
-          callstmt.execute();
-          log.debug("Changes committed.");
+            log.debug("Committing changes made to database");
+            callstmt = conn.prepareStatement("COMMIT");
+            callstmt.execute();
+            log.debug("Changes committed.");
 
-          // The new password must never be handed back in the HTTP response to whoever
-          // submitted the reset request - this endpoint has no way to verify the requester
-          // actually owns "subEmail" (there is no sub-schema session), so echoing the new
-          // password here previously let anyone take over any account (including admin's)
-          // just by submitting that account's email address. A real reset flow only ever
-          // delivers the new credential out-of-band (e.g. by email) to the account owner.
-          Database.closeConnection(conn);
-        } catch (SQLException e) {
-          log.error(levelName + " SQL Error: " + e.toString());
+            // The new password is never handed back in the HTTP response, even to the verified
+            // owner - a real reset flow delivers the new credential out-of-band (e.g. by
+            // email), it does not display it on screen to whoever triggered the reset.
+            Database.closeConnection(conn);
+          } catch (SQLException e) {
+            log.error(levelName + " SQL Error: " + e.toString());
+          }
+        } else {
+          log.debug("Reset requested for an address this session has not authenticated as");
         }
         log.debug("Outputting HTML");
         // Respond with the same generic confirmation regardless of outcome, so this endpoint
-        // cannot be used to enumerate valid accounts or to disclose the reset password.
-        out.write(bundle.getString("response.changedTo"));
+        // cannot be used to enumerate valid accounts, take over an account, or disclose the
+        // reset password.
+        out.write(bundle.getString("response.resetPending"));
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
