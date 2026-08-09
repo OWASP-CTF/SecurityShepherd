@@ -4,9 +4,9 @@ import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -91,11 +91,19 @@ public class ModuleServletTemplate extends HttpServlet {
         // if(returnKey)
         // Get Running Context of Application to make Database Call with
         String applicationRoot = getServletContext().getRealPath("");
-        String output = doLevelSqlStuff(applicationRoot, aUserName, bundle);
+        String output = null;
+        if (aUserName == null || aUserName.trim().isEmpty()) {
+          // A search that was never made is not a solve. Without this the level answers an empty
+          // request, because "the lookup found nothing" and "the lookup never ran" arrive here
+          // looking exactly the same.
+          log.debug("No aUserName was submitted - skipping the lookup");
+        } else {
+          output = doLevelSqlStuff(applicationRoot, aUserName, bundle);
+        }
         log.debug("Logging in English. Going to Output " + output);
         String htmlOutput =
             "<h2 class='title'>" + bundle.getString("module.example.header") + "</h2>";
-        if (output == null) {
+        if (output == null || output.isEmpty()) {
           htmlOutput += "<p>" + bundle.getString("module.example.outputWasNull") + "/p>";
         } else if (output.startsWith("123")) {
           log.debug("Setting Error Message");
@@ -107,6 +115,15 @@ public class ModuleServletTemplate extends HttpServlet {
           // If you want to return a user specific key if the user has used SQLi to bypass
           // authentication or somthing, use the following bit of code for that
           returnKey = true;
+        }
+        // Second gate on the same fact, kept deliberately: the key is only ever minted for a
+        // lookup that named a user and came back with a row for that user. Anything the branches
+        // above may grow into still has to get past this before the key exists.
+        boolean lookupNamedAUser = aUserName != null && !aUserName.trim().isEmpty();
+        boolean lookupFoundARow = output != null && !output.isEmpty();
+        if (returnKey && !(lookupNamedAUser && lookupFoundARow)) {
+          log.error("Refusing to mint the key for a lookup that returned nothing");
+          returnKey = false;
         }
         if (returnKey) {
           // Something happened and now you want the user to be given a user specific key. then do
