@@ -42,15 +42,13 @@ class ValidateTest {
   void validateTokens_rejectsMatchingCookieAndRequestWithoutSessionBinding() {
     String token = "12345678901234567890";
     assertFalse(
-        Validate.validateTokens(
-            sessionWithCsrfToken("98765432109876543210"), new Cookie("token", token), token));
+        Validate.validateTokens(sessionWithCsrfToken("98765432109876543210"), new Cookie("token", token), token));
   }
 
   @Test
   void validateTokens_rejectsMissingSessionToken() {
     String token = "12345678901234567890";
-    assertFalse(
-        Validate.validateTokens(sessionWithCsrfToken(null), new Cookie("token", token), token));
+    assertFalse(Validate.validateTokens(sessionWithCsrfToken(null), new Cookie("token", token), token));
   }
 
   // validateParameter

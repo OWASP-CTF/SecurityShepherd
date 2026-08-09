@@ -458,8 +458,7 @@ public class Validate {
     boolean result = false;
     boolean cookieNull = (cookieToken == null);
     boolean requestNull = (requestToken == null);
-    Object sessionToken =
-        session == null ? null : session.getAttribute(CSRF_TOKEN_SESSION_ATTRIBUTE);
+    Object sessionToken = session == null ? null : session.getAttribute(CSRF_TOKEN_SESSION_ATTRIBUTE);
     if (!cookieNull && !requestNull && sessionToken instanceof String) {
 
       String theRequest = requestToken.toString();
@@ -469,13 +468,10 @@ public class Validate {
       boolean requestEmpty = theRequest.isEmpty();
 
       if (!cookieEmpty && !requestEmpty) {
-        result =
-            MessageDigest.isEqual(
-                theRequest.getBytes(StandardCharsets.UTF_8),
-                theCookie.getBytes(StandardCharsets.UTF_8))
-                && MessageDigest.isEqual(
-                    theCookie.getBytes(StandardCharsets.UTF_8),
-                    theSession.getBytes(StandardCharsets.UTF_8));
+        result = MessageDigest.isEqual(
+                theRequest.getBytes(StandardCharsets.UTF_8), theCookie.getBytes(StandardCharsets.UTF_8))
+            && MessageDigest.isEqual(
+                theCookie.getBytes(StandardCharsets.UTF_8), theSession.getBytes(StandardCharsets.UTF_8));
       } else if (cookieEmpty) {
         log.error("Cookie Token Empty");
       } else if (requestEmpty) {
