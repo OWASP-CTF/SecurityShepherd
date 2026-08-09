@@ -127,12 +127,17 @@ public class BrokenCrypto4 extends HttpServlet {
         }
         conn.close();
 
-        // Work Out Final Cost
-        pineappleCost = pineappleCost - (pineappleCost * (perCentOffPineapple / 100));
-        appleCost = appleCost - (appleCost * (perCentOffApple / 100));
-        bananaCost = bananaCost - (bananaCost * (perCentOffBanana / 100));
-        orangeCost = orangeCost - (orangeCost * (perCentOffOrange / 100));
-        int finalCost = pineappleCost + appleCost + bananaAmount + orangeCost;
+        // Work Out Final Cost. The percentage multiplication happens before the division by
+        // 100 (not after), otherwise perCentOffPineapple/100 truncates to 0 for any discount
+        // under 100% - silently applying no discount at all regardless of the coupon's actual
+        // value instead of the intended percentage. The multiplication is done in long
+        // arithmetic so it can't overflow int before the division brings the result back into
+        // a safe range.
+        pineappleCost = pineappleCost - (int) ((long) pineappleCost * perCentOffPineapple / 100);
+        appleCost = appleCost - (int) ((long) appleCost * perCentOffApple / 100);
+        bananaCost = bananaCost - (int) ((long) bananaCost * perCentOffBanana / 100);
+        orangeCost = orangeCost - (int) ((long) orangeCost * perCentOffOrange / 100);
+        int finalCost = pineappleCost + appleCost + bananaCost + orangeCost;
 
         // Output Order
         htmlOutput =
