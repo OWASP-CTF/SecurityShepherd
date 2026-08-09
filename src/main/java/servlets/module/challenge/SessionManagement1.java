@@ -13,7 +13,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -93,21 +92,17 @@ public class SessionManagement1 extends HttpServlet {
           String decodedCookie = new String(decodedCookieBytes, "UTF-8");
           log.debug("Decoded Cookie: " + decodedCookie);
 
-          if (decodedCookie.equals("userRole=administrator")) {
-            log.debug("Challenge Complete");
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("response.adminClub")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("response.welcomeAdmin")
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
+          // The "checksum" cookie is round-tripped through the browser and edited freely by
+          // the client - it never proves anything about the caller's real, server-assigned
+          // role, so its content must not be able to unlock the administrator response.
+          // Server-side authorization has to come from data the server itself put in the
+          // session, not from a value the client handed back to us. This servlet never grants
+          // anyone the administrator role in the session, so there is no trustworthy signal
+          // here to branch on at all - every request falls through to the ordinary
+          // non-admin handling below, and a tampered cookie is only ever logged, never acted
+          // on.
+          if (!decodedCookie.equals("userRole=user")) {
+            log.warn("Rejected non-standard role cookie value: " + decodedCookie);
           }
         }
         if (htmlOutput == null) {
