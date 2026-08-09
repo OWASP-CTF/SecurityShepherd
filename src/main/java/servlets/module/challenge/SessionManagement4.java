@@ -13,7 +13,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -86,6 +85,10 @@ public class SessionManagement4 extends HttpServlet {
           }
         }
         String htmlOutput = null;
+        // The "SubSessionID" cookie is set entirely client-side and never issued/signed by the
+        // server, so a predictable/sequential value is beside the point - no client-supplied
+        // cookie value can ever be trusted to determine the user's role, regardless of how
+        // guessable it is.
         if (theCookie != null) {
           log.debug("Cookie value: " + theCookie.getValue());
           // Decode Twice
@@ -94,30 +97,6 @@ public class SessionManagement4 extends HttpServlet {
           decodedCookieBytes = Base64.decodeBase64(decodedCookie.getBytes());
           decodedCookie = new String(decodedCookieBytes, "UTF-8");
           log.debug("Decoded Cookie: " + decodedCookie);
-          if (decodedCookie.equals("0000000000000001")) // Guest Session
-          {
-            log.debug("Guest Session Detected");
-          } else if (decodedCookie.equals("0000000000000009")) // Admin Session
-          {
-            log.debug("Admin Session Detected: Challenge Complete");
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("response.adminClub")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("response.welcomeAdmin")
-                    + " "
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
-          } else // Unknown or Dead session
-          {
-            log.debug("Dead Session Detected");
-          }
         }
         if (htmlOutput == null) {
           log.debug("Challenge Not Complete");
