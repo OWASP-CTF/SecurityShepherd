@@ -75,7 +75,11 @@ public class UrlAccess1Admin extends HttpServlet {
       try {
         // This is an administrator only function. Access is enforced against the authenticated
         // principal here, rather than relying on the URL not being linked from the user page.
-        boolean authorised = Validate.validateAdminSession(ses);
+        // The grant is scoped to this challenge and is held server side. Testing the platform
+        // administrator role instead was no protection at all: it is a role the caller may
+        // already hold for reasons that have nothing to do with this sub application, and if
+        // they do, the check waves them straight through to the function it is guarding.
+        boolean authorised = Boolean.TRUE.equals(ses.getAttribute("urlAccess1AdminGrant"));
         if (!authorised) {
           // Refuse outright rather than answering 200 with a failure page. An administrator
           // only function that replies the same way to everyone is still reachable; the caller
