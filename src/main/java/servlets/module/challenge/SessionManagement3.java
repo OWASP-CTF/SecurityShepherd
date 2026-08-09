@@ -157,8 +157,9 @@ public class SessionManagement3 extends HttpServlet {
               htmlOutput = makeTable(userAddress, bundle);
             }
           } else {
+            // Not a real authentication (no password check on this path); do not grant
+            // this identity to ChangePassword.
             log.debug("Successful Guest Login");
-            ses.setAttribute("sessionMgmt3User", subName);
             htmlOutput =
                 makeTable(bundle)
                     + "<h2 class='title'>"
