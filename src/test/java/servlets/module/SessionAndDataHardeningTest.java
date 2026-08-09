@@ -19,6 +19,12 @@ class SessionAndDataHardeningTest {
     assertFalse(source("NoSqlInjection1").contains("$where"));
     assertTrue(source("PoorValidation1").contains("Math.multiplyExact("));
     assertTrue(source("PoorValidation2").contains("Math.multiplyExact("));
+    assertFalse(
+        webPage("x9c408d23e75ec92495e0caf9a544edb2ee8f624249f3e920663edb733f15cd7.jsp")
+            .contains("rdqtajqdmtwxjwzssnslymwtzlmymjknjqibmjwjfwjdtzltnslbnymdtzwgnlf"));
+    assertFalse(
+        webPage("h8aa0fdc145fb8089661997214cc0e685e5f86a87f30c2ca641e1dde15b01177.jsp")
+            .contains("kpoisaijdieyjaf"));
   }
 
   @Test
@@ -37,6 +43,11 @@ class SessionAndDataHardeningTest {
 
   private static String source(String className) throws IOException {
     Path path = Paths.get("src/main/java/servlets/module/challenge", className + ".java");
+    return new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
+  }
+
+  private static String webPage(String fileName) throws IOException {
+    Path path = Paths.get("src/main/webapp/challenges", fileName);
     return new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
   }
 }
