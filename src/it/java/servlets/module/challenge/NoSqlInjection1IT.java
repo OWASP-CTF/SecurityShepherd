@@ -25,6 +25,11 @@ public class NoSqlInjection1IT extends Mockito {
   private static String USERNAME = "lessonTester";
   private static String LANG = "en_GB";
   private static String NOSQL_ATTACK = "';return(true);var a='a";
+  // Jimmy's real gamer _id: this is the exact literal value the challenge page's own hidden
+  // #theGamerName field submits (see the challenge JSP), so it is the genuine, legitimate
+  // request this feature exists to serve.
+  private static String LEGITIMATE_GAMER_ID =
+      "b43c05a8166b5bbc5e2baebbbc84a71f83fd7cac01dd5d23bb6e003a95d60b7c";
 
   private static final Logger log = LogManager.getLogger(NoSqlInjection1IT.class);
 
@@ -100,7 +105,7 @@ public class NoSqlInjection1IT extends Mockito {
   }
 
   @Test
-  public void testLevelValidAnswer() throws Exception {
+  public void testLegitimateLookupStillWorks() throws Exception {
 
     GetterIT.verifyTestUser(applicationRoot, USERNAME, USERNAME);
     log.debug("Signing in as " + USERNAME + " Through LoginServlet");
@@ -116,13 +121,43 @@ public class NoSqlInjection1IT extends Mockito {
       fail(message);
     } else {
       request.setCookies(response.getCookies());
-      String servletResponse = moduleDoPost(NOSQL_ATTACK, csrfToken, 302);
+      // A legitimate lookup by the exact, literal gamer id must still return that gamer's row.
+      String servletResponse = moduleDoPost(LEGITIMATE_GAMER_ID, csrfToken, 302);
       if (servletResponse.contains("An error was detected")) {
-        String message = new String("Valid Key Returned Funky Error");
+        String message = new String("Legitimate lookup returned an error");
         log.fatal(message);
         fail(message);
-      } else if (!servletResponse.contains("Marlo</td><td>Baltimore</td></tr><tr><td>b6c02")) {
-        String message = new String("Valid Solution did not return Result Key");
+      } else if (!servletResponse.contains("Jimmy</td><td>Baltimore</td>")) {
+        String message =
+            new String("Legitimate exact-id lookup did not return the expected gamer row");
+        log.fatal(message);
+        fail(message);
+      }
+    }
+  }
+
+  @Test
+  public void testNoSqlInjectionAttackIsRejected() throws Exception {
+
+    GetterIT.verifyTestUser(applicationRoot, USERNAME, USERNAME);
+    log.debug("Signing in as " + USERNAME + " Through LoginServlet");
+    TestProperties.loginDoPost(log, request, response, USERNAME, USERNAME, null, LANG);
+    if (response.getCookie("token") == null) {
+      fail("No CSRF Tokena Was Returned from Login Servlet");
+    }
+    String csrfToken = response.getCookie("token").getValue();
+    if (csrfToken.isEmpty()) {
+      String message = new String("No CSRF token returned from Login Servlet");
+      log.fatal(message);
+      fail(message);
+    } else {
+      request.setCookies(response.getCookies());
+      // The classic "$where" JS-injection payload must no longer dump the whole gamer
+      // collection: it is now compared as a plain literal string against _id, which never
+      // matches any seeded document, so the response must fall back to the "no results" case.
+      String servletResponse = moduleDoPost(NOSQL_ATTACK, csrfToken, 302);
+      if (servletResponse.contains("Baltimore")) {
+        String message = new String("NoSQL injection payload leaked gamer records");
         log.fatal(message);
         fail(message);
       }

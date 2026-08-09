@@ -113,7 +113,11 @@ public class NoSqlInjection1 extends HttpServlet {
         String gamerId = request.getParameter("theGamerName");
         log.debug("User Submitted: " + gamerId);
 
-        DBObject whereQuery = new BasicDBObject("$where", "this._id == '" + gamerId + "'");
+        // Look the record up by an exact, literal match on the _id field instead of splicing
+        // user input into a JavaScript "$where" expression. The Mongo driver serialises this
+        // value as a plain BSON string for comparison, so operators/quotes/JS submitted by the
+        // user can no longer change the shape or logic of the query.
+        DBObject whereQuery = new BasicDBObject("_id", gamerId);
         cursor = dbCollection.find(whereQuery);
 
         try {
