@@ -79,8 +79,9 @@ public class SqlInjection5VipCheck extends HttpServlet {
         PreparedStatement prepstmt =
             conn.prepareStatement(
                 "SELECT itemId, perCentOff, itemName FROM vipCoupons JOIN items USING (itemId)"
-                    + " WHERE couponCode = ?;");
-        prepstmt.setString(1, couponCode);
+                    + " WHERE couponCode = '"
+                    + couponCode
+                    + "';");
         ResultSet coupons = prepstmt.executeQuery();
         try {
           if (coupons.next()) {

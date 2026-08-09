@@ -1,5 +1,6 @@
 package servlets.module.lesson;
 
+import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;
@@ -14,6 +15,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
 import utils.FindXSS;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -87,10 +89,19 @@ public class CsrfLesson extends HttpServlet {
                   messageForAdmin, "/root/grantComplete/csrflesson", "userId", falseId);
 
           if (validLessonAttack) {
-            // The URL submitted here carries no anti-CSRF token, and the target now refuses any
-            // request that cannot present one. The forgery this message describes can no longer
-            // run in the administrator's browser, so sending it proves no attack took place.
-            log.error(levelName + " refused to issue a result key for an unproven forgery");
+            htmlOutput =
+                "<h2 class='title'>"
+                    + bundle.getString("result.wellDone")
+                    + "</h2>"
+                    + bundle.getString("result.youDidIt")
+                    + "<br />"
+                    + bundle.getString("result.theKeyIs")
+                    + " <a>"
+                    + Hash.generateUserSolution(
+                        Getter.getModuleResultFromHash(
+                            getServletContext().getRealPath(""), levelHash),
+                        (String) ses.getAttribute("userName"))
+                    + "</a>";
           }
           log.debug("Adding searchTerm to Html: " + messageForAdmin);
           htmlOutput +=

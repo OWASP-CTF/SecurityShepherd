@@ -1,11 +1,12 @@
 package servlets.module.challenge;
 
+import dbProcs.Getter;
+import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -47,11 +48,6 @@ public class CsrfChallengeTargetOne extends HttpServlet {
    */
   public void doGet(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
-    response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
-  }
-
-  public void doPost(HttpServletRequest request, HttpServletResponse response)
-      throws ServletException, IOException {
     // Setting IpAddress To Log and taking header for original IP if forwarded from proxy
     ShepherdLogManager.setRequestIp(request.getRemoteAddr(), request.getHeader("X-Forwarded-For"));
     log.debug("Cross-SiteForegery Challenge One Target Servlet");
@@ -75,24 +71,22 @@ public class CsrfChallengeTargetOne extends HttpServlet {
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
         String plusId = request.getParameter("userid");
         log.debug("User Submitted - " + plusId);
-        Cookie tokenCookie = Validate.getToken(request.getCookies());
-        Object tokenParameter = request.getParameter("csrfToken");
-        if (!Validate.validateTokens(tokenCookie, tokenParameter)) {
-          response.sendError(HttpServletResponse.SC_FORBIDDEN);
-          return;
-        }
         String userId = (String) ses.getAttribute("userStamp");
         if (!userId.equals(plusId)) {
-          response.sendError(HttpServletResponse.SC_FORBIDDEN);
-          return;
+          String ApplicationRoot = getServletContext().getRealPath("");
+          String userName = (String) ses.getAttribute("userName");
+          String attackerName = Getter.getUserName(ApplicationRoot, plusId);
+          if (attackerName != null) {
+            log.debug(userName + " is been CSRF'd by " + attackerName);
+
+            log.debug("Attempting to Increment ");
+            String moduleHash = CsrfChallengeOne.getLevelHash();
+            String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
+            result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
+          } else {
+            log.error("UserId '" + plusId + "' could not be found.");
+          }
         }
-        // Binding the increment to the session user removed the cross site forgery, but it left
-        // the counter reachable by the very account the counter grants the result key to. Since
-        // completion is decided on that counter being above zero, any signed in user could post
-        // their own identifier and their own token here and be credited with the module. The
-        // other targets in this family stopped changing state at all for the same reason, and
-        // this one now does the same.
-        log.error(levelName + " refused a state change that would credit the requester");
 
         if (result) {
           out.write(csrfGenerics.getString("target.incrementSuccess"));

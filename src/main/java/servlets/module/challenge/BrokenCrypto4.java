@@ -104,23 +104,22 @@ public class BrokenCrypto4 extends HttpServlet {
         ResultSet coupons = prepstmt.executeQuery();
         try {
           if (coupons.next()) {
-            int validatedDiscount = validateDiscount(coupons.getInt(2));
             if (coupons.getInt(1) == 1) // Pineapple
             {
-              log.debug("Found coupon for %" + validatedDiscount + " off Pineapple");
-              perCentOffPineapple = validatedDiscount;
+              log.debug("Found coupon for %" + coupons.getInt(2) + " off Pineapple");
+              perCentOffPineapple = coupons.getInt(2);
             } else if (coupons.getInt(1) == 2) // Orange
             {
-              log.debug("Found coupon for %" + validatedDiscount + " off Orange");
-              perCentOffOrange = validatedDiscount;
+              log.debug("Found coupon for %" + coupons.getInt(2) + " off Orange");
+              perCentOffOrange = coupons.getInt(2);
             } else if (coupons.getInt(1) == 3) // Apple
             {
-              log.debug("Found coupon for %" + validatedDiscount + " off Apple");
-              perCentOffApple = validatedDiscount;
+              log.debug("Found coupon for %" + coupons.getInt(2) + " off Apple");
+              perCentOffApple = coupons.getInt(2);
             } else if (coupons.getInt(1) == 4) // Banana
             {
-              log.debug("Found coupon for %" + validatedDiscount + " off Banana");
-              perCentOffBanana = validatedDiscount;
+              log.debug("Found coupon for %" + coupons.getInt(2) + " off Banana");
+              perCentOffBanana = coupons.getInt(2);
             }
           } else {
             log.debug("Invalid Coupon Code");
@@ -182,13 +181,6 @@ public class BrokenCrypto4 extends HttpServlet {
       throw new IllegalArgumentException("Item amount is outside the allowed range");
     }
     return amount;
-  }
-
-  private static int validateDiscount(int discount) {
-    if (discount < 0 || discount > 90) {
-      throw new IllegalArgumentException("Coupon discount is outside the allowed range");
-    }
-    return discount;
   }
 
   private static String sha256Hex(String value) throws Exception {

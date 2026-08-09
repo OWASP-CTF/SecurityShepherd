@@ -1,11 +1,12 @@
 package servlets.module.challenge;
 
+import dbProcs.Getter;
+import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -70,14 +71,21 @@ public class CsrfChallengeTargetTwo extends HttpServlet {
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
         String plusId = request.getParameter("userId");
         log.debug("User Submitted - " + plusId);
-        Cookie tokenCookie = Validate.getToken(request.getCookies());
-        Object tokenParmeter = request.getParameter("csrfToken");
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId) && Validate.validateTokens(tokenCookie, tokenParmeter)) {
-          // A request can name any user, and nothing in it establishes that the named user
-          // meant this to happen. Acting on that identifier is what made this endpoint
-          // forgeable, so state is no longer changed on behalf of anybody else.
-          log.error(levelName + " refused a state change requested on behalf of another user");
+        if (!userId.equals(plusId)) {
+          String ApplicationRoot = getServletContext().getRealPath("");
+          String userName = (String) ses.getAttribute("userName");
+          String attackerName = Getter.getUserName(ApplicationRoot, plusId);
+          if (attackerName != null) {
+            log.debug(userName + " is been CSRF'd by " + attackerName);
+
+            log.debug("Attempting to Increment ");
+            String moduleHash = CsrfChallengeTwo.getLevelHash();
+            String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
+            result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
+          } else {
+            log.error("UserId '" + plusId + "' could not be found.");
+          }
         }
 
         if (result) {

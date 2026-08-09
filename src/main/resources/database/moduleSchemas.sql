@@ -459,8 +459,7 @@ COMMIT;
 -- -----------------------------------------------------
 START TRANSACTION;
 USE `SQLiC5Shop`;
--- Coupon 861267 is revoked. Its code was recoverable from the coupon lookup, so a code that
--- discounted an item to nothing is no longer issued.
+INSERT INTO `SQLiC5Shop`.`vipCoupons` (`vipCouponId`, `perCentOff`, `couponCode`, `itemId`) VALUES (861267, 100, 'spcil\/|Pse3cr3etCouponStu.f4rU176', 2);
 
 COMMIT;
 
