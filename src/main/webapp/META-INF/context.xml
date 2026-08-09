@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Context>
+	<!--
+		The default cookie processor does not set SameSite, so a browser attaches this
+		application's cookies to requests that a third-party page initiated on the victim's
+		behalf - the precondition every cross-site request forgery relies on. Marking cookies
+		Strict means a request that did not originate on this site carries none of them.
+	-->
+	<CookieProcessor className="org.apache.tomcat.util.http.Rfc6265CookieProcessor"
+		sameSiteCookies="strict" />
+</Context>
