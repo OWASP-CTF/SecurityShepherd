@@ -67,11 +67,23 @@ String i18nLevelName = bundle.getString("securityMisconfig.stealTokens.challenge
 		ShepherdLogManager.logEvent(request.getRemoteAddr(), request.getHeader("X-Forwarded-For"), levelName +".jsp: DEBUG: Challenge URL " + challengeUrl);
 		//Changing URL to HTTP
 		challengeUrl = challengeUrl.replaceAll("(?i)https", "http");
-		//Set User  Cookie
+		//Set User Cookie. The identity cookie is flagged HttpOnly (script cannot read it),
+		//Secure (never transmitted in clear text) and SameSite=Strict (never attached to a
+		//cross site request). The Servlet Cookie API cannot express SameSite, so the
+		//Set-Cookie header is written directly.
 		try
 		{
-			Cookie userCookie = new Cookie("securityMisconfigLesson", SecurityMisconfigStealTokens.getUserToken(userId, applicationRoot));
-	        response.addCookie(userCookie);
+			String userToken = SecurityMisconfigStealTokens.getUserToken(userId, applicationRoot);
+			if (userToken != null && userToken.matches("[A-Za-z0-9]{1,64}"))
+			{
+				response.addHeader("Set-Cookie", "securityMisconfigLesson=" + userToken
+					+ "; Path=" + request.getContextPath() + "/challenges"
+					+ "; HttpOnly; Secure; SameSite=Strict");
+			}
+			else
+			{
+				ShepherdLogManager.logEvent(request.getRemoteAddr(), request.getHeader("X-Forwarded-For"), levelName +".jsp: Error: Unexpected token format");
+			}
 		}
 		catch(Exception e)
 		{

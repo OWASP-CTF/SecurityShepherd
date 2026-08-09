@@ -67,7 +67,15 @@ public class DirectObjectBankCurrentBalance extends HttpServlet {
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
       try {
-        String accountNumber = request.getParameter("accountNumber");
+        // Access control: only the account bound to this session at bank sign in may be read.
+        // The client supplied account number is not trusted.
+        Object bankSessionAccount = ses.getAttribute("directObjectBankAccount");
+        if (bankSessionAccount == null) {
+          log.error(levelName + " balance called before bank sign in");
+          out.write(errors.getString("error.noSession"));
+          return;
+        }
+        String accountNumber = bankSessionAccount.toString();
         log.debug("Account Number - " + accountNumber);
         String applicationRoot = getServletContext().getRealPath("");
         String htmlOutput = new String();

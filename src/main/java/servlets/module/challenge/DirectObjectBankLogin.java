@@ -318,12 +318,9 @@ public class DirectObjectBankLogin extends HttpServlet {
    */
   public static long getAccountBalance(String accountNumber, String applicationRoot)
       throws SQLException {
-    Connection conn = Database.getChallengeConnection(applicationRoot, "directObjectBank");
-    CallableStatement callstmt;
     long toReturn = 0;
-    try {
-
-      callstmt = conn.prepareCall("CALL currentFunds(?)");
+    try (Connection conn = Database.getChallengeConnection(applicationRoot, "directObjectBank")) {
+      CallableStatement callstmt = conn.prepareCall("CALL currentFunds(?)");
       callstmt.setString(1, accountNumber);
       ResultSet rs = callstmt.executeQuery();
       if (rs.next()) {
@@ -331,10 +328,7 @@ public class DirectObjectBankLogin extends HttpServlet {
       } else {
         throw new SQLException("Could not Get Funds. No Rows Found From Query");
       }
-    } catch (SQLException e) {
-      throw e;
     }
-    conn.close();
     return toReturn;
   }
 }

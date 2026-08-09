@@ -14,6 +14,7 @@ import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
 import utils.Hash;
 import utils.ShepherdLogManager;
+import utils.UrlAccessIdentity;
 import utils.Validate;
 
 /**
@@ -73,9 +74,29 @@ public class UrlAccess1Admin extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
 
+      // Authorisation is enforced on the server for this administrative function. Knowing the
+      // URL is not a credential: the role is held in server side session state that no request
+      // parameter, cookie or header can influence.
+      if (!UrlAccessIdentity.isAdministrator(ses)) {
+        log.error(
+            levelName
+                + " administrative function requested without the administrator role by: "
+                + ses.getAttribute("userName").toString());
+        // Deny with a rendered message rather than a bare 403: the challenge page only injects
+        // the response body on a 200, so a 403 would leave the user with a silent dead button.
+        out.write(
+            "<h2 class='title'>"
+                + bundle.getString("response.statusFail")
+                + "</h2>"
+                + "<p>"
+                + errors.getString("error.shouldNotBeHere")
+                + "</p>");
+        return;
+      }
+
       try {
         String userData = request.getParameter("userData");
-        boolean tamperedRequest = !userData.equalsIgnoreCase("4816283");
+        boolean tamperedRequest = !"4816283".equalsIgnoreCase(userData);
         if (!tamperedRequest) {
           log.debug("No request tampering detected");
         } else {
