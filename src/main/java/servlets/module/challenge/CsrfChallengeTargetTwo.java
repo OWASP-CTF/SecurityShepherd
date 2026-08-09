@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -69,24 +70,28 @@ public class CsrfChallengeTargetTwo extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+        String nonceKey = "csrfTargetTwoNonce";
+        String expectedNonce = (String) ses.getAttribute(nonceKey);
+        if (expectedNonce == null || expectedNonce.isEmpty()) {
+          expectedNonce = Hash.randomString();
+          ses.setAttribute(nonceKey, expectedNonce);
+          out.write(
+              csrfGenerics.getString("target.noTokenNewToken") + " " + expectedNonce + "<br><br>");
+        }
         String plusId = request.getParameter("userId");
         log.debug("User Submitted - " + plusId);
+        String submittedNonce = request.getParameter("csrfToken");
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId)) {
-          String ApplicationRoot = getServletContext().getRealPath("");
-          String userName = (String) ses.getAttribute("userName");
-          String attackerName = Getter.getUserName(ApplicationRoot, plusId);
-          if (attackerName != null) {
-            log.debug(userName + " is been CSRF'd by " + attackerName);
-
-            log.debug("Attempting to Increment ");
-            String moduleHash = CsrfChallengeTwo.getLevelHash();
-            String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
-            result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
-          } else {
-            log.error("UserId '" + plusId + "' could not be found.");
-          }
+        if (!userId.equals(plusId)
+            || submittedNonce == null
+            || !expectedNonce.equals(submittedNonce)) {
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
         }
+        String applicationRoot = getServletContext().getRealPath("");
+        String moduleId =
+            Getter.getModuleIdFromHash(applicationRoot, CsrfChallengeTwo.getLevelHash());
+        result = Setter.updateCsrfCounter(applicationRoot, moduleId, userId);
 
         if (result) {
           out.write(csrfGenerics.getString("target.incrementSuccess"));

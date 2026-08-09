@@ -12,7 +12,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -63,7 +62,8 @@ public class UrlAccess1Admin extends HttpServlet {
     ResourceBundle bundle =
         ResourceBundle.getBundle("i18n.servlets.challenges.urlAccess.urlAccess1", locale);
 
-    if (Validate.validateSession(ses)) {
+    boolean hasModuleAdminGrant = Boolean.TRUE.equals(ses.getAttribute("urlAccessAdminCapability"));
+    if (Validate.validateSession(ses) && hasModuleAdminGrant) {
       ShepherdLogManager.setRequestIp(
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
@@ -74,6 +74,12 @@ public class UrlAccess1Admin extends HttpServlet {
       String htmlOutput = new String();
 
       try {
+        // This is an administrator only function. Access is enforced against the authenticated
+        // principal here, rather than relying on the URL not being linked from the user page.
+        boolean authorised = Validate.validateAdminSession(ses);
+        if (!authorised) {
+          log.error(levelName + " admin function requested without the admin role");
+        }
         String userData = request.getParameter("userData");
         boolean tamperedRequest = !userData.equalsIgnoreCase("4816283");
         if (!tamperedRequest) {
@@ -82,20 +88,15 @@ public class UrlAccess1Admin extends HttpServlet {
           log.debug("User Submitted - " + userData);
         }
 
-        if (!tamperedRequest) {
-          String userKey =
-              Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
+        if (authorised && !tamperedRequest) {
+          // Reports status only. This function used to return the module result key to any
+          // caller that found the URL, so the secret is no longer part of the response.
           htmlOutput =
               "<h2 class='title'>"
                   + bundle.getString("response.status")
                   + "</h2>"
                   + "<p>"
-                  + bundle.getString("result.keyMessage.1")
-                  + "<br />"
-                  + "<a>"
-                  + userKey
-                  + "</a><br /> "
-                  + bundle.getString("result.keyMessage.2")
+                  + bundle.getString("response.status.message")
                   + "</p>";
         } else {
           htmlOutput =
@@ -116,7 +117,8 @@ public class UrlAccess1Admin extends HttpServlet {
       log.debug("Outputting HTML");
       out.write(htmlOutput);
     } else {
-      log.error(levelName + " servlet accessed with no session");
+      response.sendError(HttpServletResponse.SC_FORBIDDEN);
+      log.error(levelName + " servlet accessed without a module administrator grant");
     }
   }
 }

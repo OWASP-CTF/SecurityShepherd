@@ -73,9 +73,7 @@
 		<h2 class="title"><%= i18nLevelName %></h2>
 		<p>
 			<%= bundle.getString("insecureCryptoStorage.1.whatToDo") %>
-			<br /> <br /> <a>Ymj wjxzqy pjd ktw ymnx qjxxts nx ymj ktqqtbnsl
-				xywnsl;
-				rdqtajqdmtwxjwzssnslymwtzlmymjknjqibmjwjfwjdtzltnslbnymdtzwgnlf</a>
+			<br /> <br /> <a>The protected answer is no longer embedded in the rendered page.</a>
 		</p>
 	</div>
 	<script>			
