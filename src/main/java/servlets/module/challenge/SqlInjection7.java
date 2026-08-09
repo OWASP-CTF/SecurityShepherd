@@ -1,6 +1,7 @@
 package servlets.module.challenge;
 
 import dbProcs.Database;
+import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -16,6 +17,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -71,29 +73,38 @@ public class SqlInjection7 extends HttpServlet {
         log.debug("subEmail - " + subEmail.replaceAll("\n", " \\\\n ")); // Escape \n's
         String subPassword = Validate.validateParameter(request.getParameter("subPassword"), 40);
         log.debug("subPassword - " + subPassword);
+        // The address is checked as it will be used, and against a conservative set of
+        // characters. The library check on its own accepts a quoted local part, which is a
+        // legitimate address form that can carry quotes, spaces and semicolons; there is no
+        // reason for this sign-in to take one.
         boolean validEmail =
-            Validate.isValidEmailAddress(subEmail.replaceAll("\n", "")); // Ignore \n 's
+            subEmail.matches("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}")
+                && Validate.isValidEmailAddress(subEmail);
         if (!subPassword.isEmpty() && !subPassword.isEmpty() && validEmail) {
           Connection conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSeven");
           try {
             log.debug("Signing in with subitted details");
             PreparedStatement prepstmt =
                 conn.prepareStatement(
-                    "SELECT userName FROM users WHERE userEmail = ? AND userPassword = ?;");
+                    "SELECT userName FROM users WHERE userEmail = ? AND userPassword ="
+                        + " SHA2(?, 256);");
             prepstmt.setString(1, subEmail);
             prepstmt.setString(2, subPassword);
             ResultSet users = prepstmt.executeQuery();
             if (users.next()) {
-              // Signing in no longer prints the module result key. The stored credentials are
-              // plain text and compared as plain text, so anyone holding a valid pair could read
-              // the key straight out of a legitimate login without going near the injection this
-              // challenge is about.
               htmlOutput =
                   "<h3>"
                       + bundle.getString("response.welcome")
                       + " "
                       + Encode.forHtml(users.getString(1))
-                      + "</h3>";
+                      + "</h3>"
+                      + "<p>"
+                      + bundle.getString("response.resultKey")
+                      + ""
+                      + Hash.generateUserSolution(
+                          Getter.getModuleResultFromHash(applicationRoot, levelHash),
+                          (String) ses.getAttribute("userName"))
+                      + "</p>";
             } else {
               htmlOutput =
                   "<h3>"
