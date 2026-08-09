@@ -241,7 +241,9 @@ public class Validate {
             // log.debug("Session holder is " + userName);
             String role = (String) ses.getAttribute("userRole");
             result = (role.compareTo("admin") == 0);
-            if (!result) {
+            if (result && invalidateKickedSession(ses, userName)) {
+              result = false;
+            } else if (!result) {
               log.fatal(
                   "User " + userName + " Attempting Admin functions! (CSRF Tokens Not Checked)");
             }
@@ -281,7 +283,9 @@ public class Validate {
             // log.debug("Session holder is " + userName);
             String role = (String) ses.getAttribute("userRole");
             result = (role.compareTo("admin") == 0);
-            if (!result) {
+            if (result && invalidateKickedSession(ses, userName)) {
+              result = false;
+            } else if (!result) {
               // Check CSRF Tokens of User to ensure they are not being CSRF'd into causing
               // Unauthorised Access Alert
               boolean validCsrfTokens = validateTokens(cookieToken, requestToken);
@@ -305,6 +309,17 @@ public class Validate {
       }
     }
     return result;
+  }
+
+  private static boolean invalidateKickedSession(HttpSession ses, String userName) {
+    if (!UserKicker.shouldKickUser(userName)) {
+      return false;
+    }
+
+    log.debug(userName + " has been revoked. Invalidating administrator session");
+    ses.invalidate();
+    UserKicker.removeFromKicklist(userName);
+    return true;
   }
 
   /**

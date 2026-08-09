@@ -7,8 +7,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockHttpSession;
 
 class ValidateTest {
+
+  @Test
+  void validateAdminSession_invalidatesRevokedAdministratorSession() {
+    MockHttpSession session = new MockHttpSession();
+    session.setAttribute("userName", "revoked-admin");
+    session.setAttribute("userRole", "admin");
+    UserKicker.addUserToKickList("revoked-admin");
+
+    assertFalse(Validate.validateAdminSession(session));
+    assertTrue(session.isInvalid());
+    assertFalse(UserKicker.shouldKickUser("revoked-admin"));
+  }
 
   private static String chars(char c, int count) {
     char[] arr = new char[count];

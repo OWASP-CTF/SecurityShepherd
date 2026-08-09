@@ -14,6 +14,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
 import utils.ShepherdLogManager;
+import utils.UserKicker;
 import utils.Validate;
 
 /**
@@ -85,6 +86,7 @@ public class DowngradeAdmin extends HttpServlet {
             String userName = new String();
             userName = Setter.updateUserRole(ApplicationRoot, admin, "player");
             if (userName != null) {
+              UserKicker.addUserToKickList(userName);
               reponseMessage +=
                   "<a>" + Encode.forHtml(userName) + "</a> downgraded successfully to player.<br>";
             } else {
