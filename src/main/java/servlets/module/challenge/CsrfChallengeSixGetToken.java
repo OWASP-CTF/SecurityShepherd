@@ -69,7 +69,12 @@ public class CsrfChallengeSixGetToken extends HttpServlet {
       if (Validate.validateSession(ses)) {
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
         String htmlOutput = new String("Your csrf Token for this Challenge is: ");
-        String userId = request.getParameter("userId").toString();
+        // The userId must be the caller's own - taking it from a request parameter let any
+        // authenticated user fetch any other user's real CSRF token directly, and the LIKE
+        // match (with wildcard metacharacters left unescaped) made it worse by allowing broad
+        // token disclosure. This defeats the point of the token being unguessable, since the
+        // whole defense relies on an attacker being unable to learn the victim's value.
+        String userId = (String) ses.getAttribute("userStamp");
 
         Connection conn =
             Database.getChallengeConnection(
@@ -78,7 +83,7 @@ public class CsrfChallengeSixGetToken extends HttpServlet {
           log.debug("Preparing setCsrfChallengeSixToken call");
           PreparedStatement callstmnt =
               conn.prepareStatement(
-                  "SELECT csrfTokenscol FROM csrfchallengesix.csrfTokens WHERE userId LIKE ?");
+                  "SELECT csrfTokenscol FROM csrfchallengesix.csrfTokens WHERE userId = ?");
           callstmnt.setString(1, userId);
           log.debug("Executing setCsrfChallengeSixTokenQuery");
           ResultSet rs = callstmnt.executeQuery();
