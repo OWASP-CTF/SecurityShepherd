@@ -4,6 +4,8 @@ import dbProcs.Getter;
 import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -98,7 +100,9 @@ public class CsrfChallengeTargetSeven extends HttpServlet {
         log.debug("storedCsrf Token is - '" + storedToken + "'");
 
         if (!userId.equals(plusId)) {
-          if (csrfToken.equalsIgnoreCase(storedToken)) {
+          if (MessageDigest.isEqual(
+              storedToken.getBytes(StandardCharsets.UTF_8),
+              csrfToken.getBytes(StandardCharsets.UTF_8))) {
             log.debug("Valid Nonce Value Submitted");
             String userName = (String) ses.getAttribute("userName");
             String attackerName = Getter.getUserName(ApplicationRoot, plusId);
@@ -108,6 +112,9 @@ public class CsrfChallengeTargetSeven extends HttpServlet {
               log.debug("Attempting to Increment ");
               String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
               result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
+              String replacementToken = Hash.randomString();
+              ses.setAttribute(csrfTokenName, replacementToken);
+              Setter.setCsrfChallengeSevenCsrfToken(userId, replacementToken, ApplicationRoot);
             } else {
               log.error("UserId '" + plusId + "' could not be found.");
             }
