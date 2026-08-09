@@ -13,11 +13,13 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.security.MessageDigest;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -197,12 +199,12 @@ public class Setup extends HttpServlet {
         generateAuth();
       }
 
-      if (!auth.equals(dbAuth)) {
+      if (!isSetupAuthorized(auth, dbAuth)) {
         log.debug("Invalid auth supplied");
 
         // The supplied auth data was incorrect
         htmlOutput += bundle.getString("generic.text.setup.authentication.failed");
-        log.error("Authorization mismatch: " + auth + " does not equal " + dbAuth);
+        log.error("Setup authorization mismatch");
 
       } else {
         // Test the user's entered database properties. Use DriverManager directly instead of
@@ -380,6 +382,15 @@ public class Setup extends HttpServlet {
       return "If you override db host and db port, both must be entered!";
     }
     return null;
+  }
+
+  /** Compares setup authorization values without disclosing either value. */
+  static boolean isSetupAuthorized(String expectedAuth, String suppliedAuth) {
+    if (expectedAuth == null || suppliedAuth == null) {
+      return false;
+    }
+    return MessageDigest.isEqual(
+        expectedAuth.getBytes(StandardCharsets.UTF_8), suppliedAuth.getBytes(StandardCharsets.UTF_8));
   }
 
   public static boolean isInstalled() {
