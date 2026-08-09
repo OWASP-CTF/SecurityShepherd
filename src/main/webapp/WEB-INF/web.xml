@@ -2,15 +2,6 @@
 <web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://java.sun.com/xml/ns/javaee" xmlns:web="http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" id="WebApp_ID" version="2.5">
 
 	<display-name>Security Shepherd</display-name>
-	<session-config>
-		<cookie-config>
-			<http-only>true</http-only>
-			<secure>true</secure>
-		</cookie-config>
-		<!-- Cookie only, so a session id supplied as ;jsessionid= in a URL is ignored -->
-		<tracking-mode>COOKIE</tracking-mode>
-	</session-config>
-
 	<welcome-file-list>
 		<welcome-file>index.html</welcome-file>
 		<welcome-file>index.htm</welcome-file>
@@ -19,6 +10,21 @@
 		<welcome-file>default.htm</welcome-file>
 		<welcome-file>default.jsp</welcome-file>
 	</welcome-file-list>
+
+	<!--
+		The session cookie is the identity of the request. It was being issued with no flags at
+		all, so script running on any page could read it out of document.cookie and a request
+		that left over plain HTTP carried it in the clear. Either one hands the session to
+		somebody who was never asked for a password.
+	-->
+	<session-config>
+		<cookie-config>
+			<http-only>true</http-only>
+			<secure>true</secure>
+		</cookie-config>
+		<!-- Cookie only, so a session id pasted into a URL as ;jsessionid= is not accepted -->
+		<tracking-mode>COOKIE</tracking-mode>
+	</session-config>
 
 	<jsp-config>
 		<jsp-property-group>

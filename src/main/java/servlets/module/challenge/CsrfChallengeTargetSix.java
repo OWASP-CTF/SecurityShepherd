@@ -4,6 +4,8 @@ import dbProcs.Getter;
 import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -80,11 +82,7 @@ public class CsrfChallengeTargetSix extends HttpServlet {
         if (ses.getAttribute(csrfTokenName) == null
             || ses.getAttribute(csrfTokenName).toString().isEmpty()) {
           log.debug("No CSRF Token associated with user");
-          // Unguessability is the only property that makes a synchroniser token evidence of
-          // where a request came from, so the nonce is drawn from the session token's source.
           storedToken = Hash.randomString();
-          out.write(
-              csrfGenerics.getString("target.noTokenNewToken") + " " + storedToken + "<br><br>");
           ses.setAttribute(csrfTokenName, storedToken);
         } else {
           storedToken = "" + ses.getAttribute(csrfTokenName);
@@ -99,7 +97,9 @@ public class CsrfChallengeTargetSix extends HttpServlet {
         log.debug("csrfToken Submitted - " + csrfToken);
 
         if (!userId.equals(plusId)) {
-          if (csrfToken.equalsIgnoreCase(storedToken)) {
+          if (MessageDigest.isEqual(
+              storedToken.getBytes(StandardCharsets.UTF_8),
+              csrfToken.getBytes(StandardCharsets.UTF_8))) {
             log.debug("Valid Nonce Value Submitted");
             String ApplicationRoot = getServletContext().getRealPath("");
             String userName = (String) ses.getAttribute("userName");
@@ -110,6 +110,7 @@ public class CsrfChallengeTargetSix extends HttpServlet {
               log.debug("Attempting to Increment ");
               String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
               result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
+              ses.setAttribute(csrfTokenName, Hash.randomString());
             } else {
               log.error("UserId '" + plusId + "' could not be found.");
             }

@@ -673,7 +673,7 @@ public class Getter {
       }
     } catch (SQLException e) {
       log.error("Could not execute query: " + e.toString());
-      htmlOutput = "<p>" + bundle.getString("error.occurred") + "</p>";
+      htmlOutput = "<p>" + bundle.getString("error.occurred ") + "</p>";
     } catch (Exception e) {
       log.fatal("Could not return CSRF Forum: " + e.toString());
     }
@@ -1416,6 +1416,10 @@ public class Getter {
    */
   public static boolean getModuleKeyType(String ApplicationRoot, String moduleId) {
     log.debug("*** Getter.getModuleKeyType ***");
+    // Answering "hard coded" makes the submission check compare what was handed in against the
+    // module's shared base key, which is the same string for every player and is written in
+    // plain text in the schema scripts. A lookup that did not produce an answer must therefore
+    // demand the per user key instead of falling back to the weaker comparison.
     boolean theKeyType = false;
     try (Connection conn = Database.getCoreConnection(ApplicationRoot);
         PreparedStatement prepstmt =
@@ -1433,9 +1437,7 @@ public class Getter {
         }
       }
     } catch (Exception e) {
-      // Reporting a hard coded key makes the submission check compare against the module's shared
-      // base key, so an unanswered lookup demands the per user key instead
-      log.error("Could not read key type for module " + moduleId + ": " + e.toString());
+      log.error("Could not read the key type for module " + moduleId + ": " + e.toString());
       theKeyType = false;
     }
     log.debug("*** END getModuleKeyType ***");

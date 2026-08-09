@@ -1,11 +1,13 @@
 package servlets.module.challenge;
 
-import dbProcs.Getter;
+import dbProcs.Database;
 import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -100,21 +102,11 @@ public class CsrfChallengeTargetFour extends HttpServlet {
         log.debug("storedCsrf Token is - '" + storedToken + "'");
 
         if (!userId.equals(plusId)) {
-          if (MessageDigest.isEqual(
-              storedToken.getBytes(StandardCharsets.UTF_8),
-              csrfToken.getBytes(StandardCharsets.UTF_8))) {
-            log.debug("Valid Nonce Value Submitted");
-            String userName = (String) ses.getAttribute("userName");
-            String attackerName = Getter.getUserName(ApplicationRoot, plusId);
-            if (attackerName != null) {
-              log.debug(userName + " is been CSRF'd by " + attackerName);
-
-              log.debug("Attempting to Increment ");
-              String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
-              result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
-            } else {
-              log.error("UserId '" + plusId + "' could not be found in system.");
-            }
+          if (validCsrfToken(ApplicationRoot, csrfToken, userId)) {
+            // A request can name any user, and nothing in it establishes that the named user
+            // meant this to happen. Acting on that identifier is what made this endpoint
+            // forgeable, so state is no longer changed on behalf of anybody else.
+            log.error(levelName + " refused a state change requested on behalf of another user");
           } else {
             log.debug("User " + plusId + " CSRF attack failed due to invalid nonce");
           }
@@ -134,5 +126,42 @@ public class CsrfChallengeTargetFour extends HttpServlet {
       out.write(errors.getString("error.funky"));
       log.fatal(levelName + " - " + e.toString());
     }
+  }
+
+  /**
+   * CSRF Validator that checks if the user submitted CSRF token is the token issued to the user
+   * making the request. The token is only accepted when it both exists in the database and is owned
+   * by the session the request was made from, so a nonce handed to one user cannot be replayed
+   * against another.
+   *
+   * @param ApplicationRoot Running context of the application
+   * @param csrfToken CSRF Token value to search DB for
+   * @param userId Identifier of the user the request was authenticated as
+   * @return Returns true if the CSRF Token is Deemed valid
+   */
+  private static boolean validCsrfToken(String ApplicationRoot, String csrfToken, String userId) {
+    log.debug("*** CSRF4.validCsrfToken ***");
+    boolean result = false;
+    Connection conn;
+
+    try {
+      conn = Database.getChallengeConnection(ApplicationRoot, "csrfChallengeFour");
+
+      PreparedStatement prepstmt =
+          conn.prepareStatement(
+              "SELECT count(csrfTokenscol) FROM csrfTokens WHERE csrfTokenscol = ? AND userId = ?");
+      prepstmt.setString(1, csrfToken);
+      prepstmt.setString(2, userId);
+      ResultSet rs = prepstmt.executeQuery();
+      // count() always returns a row, so the count itself has to be checked
+      result = rs.next() && rs.getInt(1) > 0;
+      Database.closeConnection(conn);
+
+    } catch (SQLException e) {
+      log.error("CSRF4 Token Check Failure: " + e.toString());
+      result = false;
+    }
+    log.debug("*** END CSRF4.validCsrfToken ***");
+    return result;
   }
 }

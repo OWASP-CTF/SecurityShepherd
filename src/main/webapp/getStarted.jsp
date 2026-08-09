@@ -87,18 +87,15 @@ if(changePassword)
 			<table align="center">
 				<tr>
 					<td>Current Password:</td>
-					<td><input type="password" name="currentPassword"
-						autocomplete="current-password" /></td>
+					<td><input type="password" name="currentPassword" /></td>
 				</tr>
 				<tr>
 					<td>New Password:</td>
-					<td><input type="password" name="newPassword"
-						autocomplete="new-password" minlength="8" maxlength="512" /></td>
+					<td><input type="password" name="newPassword" /></td>
 				</tr>
 				<tr>
 					<td>Password Confirmation:</td>
-					<td><input type="password" name="passwordConfirmation"
-						autocomplete="new-password" minlength="8" maxlength="512" /></td>
+					<td><input type="password" name="passwordConfirmation" /></td>
 				</tr>
 				<tr>
 					<td colspan="2" style="align-content: center"><input

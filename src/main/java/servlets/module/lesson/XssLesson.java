@@ -1,6 +1,5 @@
 package servlets.module.lesson;
 
-import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;
@@ -14,8 +13,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
-import utils.FindXSS;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -78,22 +75,6 @@ public class XssLesson extends HttpServlet {
           String searchTerm = request.getParameter("searchTerm");
           log.debug("User Submitted - " + searchTerm);
           String htmlOutput = new String();
-          if (FindXSS.search(searchTerm)) {
-            log.debug("XSS Lesson Completed!");
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("result.wellDone")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("result.youDidIt")
-                    + "<br />"
-                    + ""
-                    + bundle.getString("result.resultKey")
-                    + Hash.generateUserSolution(
-                        Getter.getModuleResultFromHash(
-                            getServletContext().getRealPath(""), levelHash),
-                        (String) ses.getAttribute("userName"));
-          }
           log.debug("Adding searchTerm to Html: " + searchTerm);
           htmlOutput +=
               "<h2 class='title'>"
@@ -102,6 +83,9 @@ public class XssLesson extends HttpServlet {
                   + "<p>"
                   + bundle.getString("response.noResults")
                   + " '"
+                  // The search term was written into the page as markup, so anything the
+                  // submitter put in it became part of the document. Encoding it for the HTML
+                  // body means it can only ever be read back as the text that was typed.
                   + Encode.forHtml(searchTerm)
                   + "'</p>";
           log.debug("Outputting HTML");

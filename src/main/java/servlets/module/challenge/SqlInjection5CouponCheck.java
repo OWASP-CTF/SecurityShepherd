@@ -65,7 +65,6 @@ public class SqlInjection5CouponCheck extends HttpServlet {
       String htmlOutput = new String();
       String applicationRoot = getServletContext().getRealPath("");
 
-      Connection conn = null;
       try {
         String couponCode = request.getParameter("couponCode");
         log.debug("couponCode - " + couponCode);
@@ -74,8 +73,9 @@ public class SqlInjection5CouponCheck extends HttpServlet {
         }
 
         htmlOutput = new String("");
-        conn = Database.getChallengeConnection(applicationRoot, "SqlInjectionChallenge5ShopCoupon");
-        log.debug("Looking for Coupons");
+        Connection conn =
+            Database.getChallengeConnection(applicationRoot, "SqlInjectionChallenge5ShopCoupon");
+        log.debug("Looking for Coupons Insecurely");
         PreparedStatement prepstmt =
             conn.prepareStatement(
                 "SELECT itemId, perCentOff, itemName FROM coupons JOIN items USING (itemId) WHERE"
@@ -106,11 +106,13 @@ public class SqlInjection5CouponCheck extends HttpServlet {
           log.debug("Could Not Find Coupon: " + e.toString());
           htmlOutput += "<p> " + bundle.getString("response.checkFailed") + "</p>";
         }
+        conn.close();
       } catch (Exception e) {
-        log.error("Did complete Check: " + e.toString());
-        htmlOutput = "" + bundle.getString("errors.Occurred");
-      } finally {
-        Database.closeConnection(conn);
+        // The bundle has no "errors.Occurred", so building the old message threw out of this
+        // handler. Report the same thing an unrecognised code reports, and keep the exception in
+        // the log instead of echoing it to the caller.
+        log.error("Could not complete coupon check: " + e.toString());
+        htmlOutput = "" + bundle.getString("response.noCoupon") + "";
       }
       try {
         Thread.sleep(1000);

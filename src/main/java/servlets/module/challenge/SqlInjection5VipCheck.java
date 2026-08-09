@@ -65,7 +65,6 @@ public class SqlInjection5VipCheck extends HttpServlet {
       String htmlOutput = new String();
       String applicationRoot = getServletContext().getRealPath("");
 
-      Connection conn = null;
       try {
         String couponCode = request.getParameter("couponCode");
         log.debug("couponCode - " + couponCode);
@@ -74,9 +73,9 @@ public class SqlInjection5VipCheck extends HttpServlet {
         }
 
         htmlOutput = new String("");
-        conn =
+        Connection conn =
             Database.getChallengeConnection(applicationRoot, "SqlInjectionChallenge5ShopVipCoupon");
-        log.debug("Looking for VipCoupons");
+        log.debug("Looking for VipCoupons Insecurely");
         PreparedStatement prepstmt =
             conn.prepareStatement(
                 "SELECT itemId, perCentOff, itemName FROM vipCoupons JOIN items USING (itemId)"
@@ -107,11 +106,10 @@ public class SqlInjection5VipCheck extends HttpServlet {
           log.debug("Could Not Find VIP Coupon: " + e.toString());
           htmlOutput += "<p> " + bundle.getString("response.checkFailed") + "</p>";
         }
+        conn.close();
       } catch (Exception e) {
         log.debug("Did complete VIP Check: " + e.toString());
         htmlOutput += "<p> " + bundle.getString("response.checkFailed") + "</p>";
-      } finally {
-        Database.closeConnection(conn);
       }
       try {
         Thread.sleep(1000);

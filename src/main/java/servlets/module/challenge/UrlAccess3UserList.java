@@ -67,18 +67,15 @@ public class UrlAccess3UserList extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
 
-      Connection conn = null;
       try {
-        // Identity comes from the session. The currentPerson cookie is client controlled and must
-        // not select the rows this function returns.
-        String currentUser = new String("aGuest");
+        // This sub-application only exposes the guest view. A client-supplied cookie cannot
+        // identify a different user or authorize disclosure of the administrative user list.
+        String currentUser = "aGuest";
         String ApplicationRoot = getServletContext().getRealPath("");
-        conn = Database.getChallengeConnection(ApplicationRoot, "UrlAccessThree");
+        Connection conn = Database.getChallengeConnection(ApplicationRoot, "UrlAccessThree");
         PreparedStatement callstmt;
-        callstmt =
-            conn.prepareStatement("SELECT userName FROM users WHERE userRole = ? OR userName = ?;");
-        callstmt.setString(1, "admin");
-        callstmt.setString(2, currentUser);
+        callstmt = conn.prepareStatement("SELECT userName FROM users WHERE userName = ?;");
+        callstmt.setString(1, currentUser);
         log.debug("Getting User List");
         htmlOutput = new String();
         ResultSet rs = callstmt.executeQuery();
@@ -91,8 +88,6 @@ public class UrlAccess3UserList extends HttpServlet {
       } catch (Exception e) {
         htmlOutput = new String(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
-      } finally {
-        Database.closeConnection(conn);
       }
       log.debug("Outputting HTML");
       out.write(htmlOutput);

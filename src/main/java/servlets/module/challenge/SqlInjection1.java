@@ -17,6 +17,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
+import utils.ChallengeAnswer;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -78,7 +79,6 @@ public class SqlInjection1 extends HttpServlet {
 
       String htmlOutput = new String();
 
-      Connection conn = null;
       try {
         String aUserId = request.getParameter("aUserId");
         log.debug("User Submitted - " + aUserId);
@@ -86,12 +86,12 @@ public class SqlInjection1 extends HttpServlet {
         log.debug("Servlet root = " + ApplicationRoot);
 
         log.debug("Getting Connection to Database");
-        conn = Database.getChallengeConnection(ApplicationRoot, "SqlChallengeOne");
-        PreparedStatement stmt =
+        Connection conn = Database.getChallengeConnection(ApplicationRoot, "SqlChallengeOne");
+        PreparedStatement prepstmt =
             conn.prepareStatement("SELECT * FROM customers WHERE customerId = ?");
-        stmt.setString(1, aUserId);
+        prepstmt.setString(1, aUserId);
         log.debug("Gathering result set");
-        ResultSet resultSet = stmt.executeQuery();
+        ResultSet resultSet = prepstmt.executeQuery();
 
         int i = 0;
         htmlOutput = "<h2 class='title'>" + bundle.getString("response.searchResults") + "</h2>";
@@ -105,7 +105,16 @@ public class SqlInjection1 extends HttpServlet {
                 + "</th></tr>";
 
         log.debug("Opening Result Set from query");
+        String levelAnswer = ChallengeAnswer.forLevel(ApplicationRoot, levelHash);
         while (resultSet.next()) {
+          if (ChallengeAnswer.rowRevealsAnswer(
+              levelAnswer,
+              resultSet.getString(2),
+              resultSet.getString(3),
+              resultSet.getString(4))) {
+            log.debug("Withholding the row that carries this module's answer");
+            continue;
+          }
           log.debug("Adding Customer " + resultSet.getString(2));
           htmlOutput +=
               "<tr><td>"
@@ -121,20 +130,19 @@ public class SqlInjection1 extends HttpServlet {
         if (i == 0) {
           htmlOutput = "<p>" + bundle.getString("response.noResults") + "</p>";
         }
+        // The pool this came from holds twenty connections for this schema and does not reclaim
+        // what a handler forgets to return, so never closing takes the challenge offline for
+        // good once it has been called twenty times.
+        Database.closeConnection(conn);
       } catch (SQLException e) {
-        log.debug("SQL Error caught - " + e.toString());
-        htmlOutput +=
-            "<p>"
-                + errors.getString("error.detected")
-                + "</p>"
-                + "<p>"
-                + Encode.forHtml(e.toString())
-                + "</p>";
+        // The database's own complaint is not for the caller. It names tables, columns and the
+        // statement that failed, which is how a query gets rebuilt until it does something it
+        // should not, and it turns a failure into an answer about the data behind it.
+        log.error("SQL Error caught - " + e.toString());
+        htmlOutput += "<p>" + errors.getString("error.detected") + "</p>";
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
-      } finally {
-        Database.closeConnection(conn);
       }
       log.debug("Outputting HTML");
       out.write(htmlOutput);

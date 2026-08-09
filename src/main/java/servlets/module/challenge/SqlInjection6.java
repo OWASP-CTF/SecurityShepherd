@@ -8,7 +8,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
-import java.util.regex.Pattern;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -17,6 +16,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
+import utils.ChallengeAnswer;
 import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
@@ -49,12 +49,11 @@ public class SqlInjection6 extends HttpServlet {
       "d0e12e91dafdba4825b261ad5221aae15d28c36c7981222eb59f7fc8d8f212a2";
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(SqlInjection6.class);
-  // Every pin in this schema is four digits, so the lookup accepts nothing else
-  private static final Pattern PIN_NUMBER = Pattern.compile("[0-9]{4}");
 
   /**
-   * Looks up a user by their pin number. The pin must be four digits and is bound as a parameter,
-   * so no submitted value reaches the MySQL interpreter as SQL.
+   * This controller makes an insecure call to a MySQL interpreter. User Input is first filtered for
+   * UTF-8 attacks and afterwards is decoded from \xHEX format to UTF-8 before sent to the
+   * interpreter
    */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -76,22 +75,18 @@ public class SqlInjection6 extends HttpServlet {
       String htmlOutput = new String();
       String applicationRoot = getServletContext().getRealPath("");
 
-      Connection conn = null;
       try {
-        String userPin = request.getParameter("pinNumber");
+        String userPin = (String) request.getParameter("pinNumber");
         log.debug("userPin - " + userPin);
-        if (userPin == null || !PIN_NUMBER.matcher(userPin).matches()) {
-          log.debug("Rejected a pin that is not four digits");
-          throw new IllegalArgumentException("pinNumber must be four digits");
-        }
-        conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSix");
+        Connection conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSix");
         log.debug("Looking for users");
         PreparedStatement prepstmt =
             conn.prepareStatement("SELECT userName FROM users WHERE userPin = ?");
         prepstmt.setString(1, userPin);
         ResultSet users = prepstmt.executeQuery();
+        String levelAnswer = ChallengeAnswer.forLevel(applicationRoot, levelHash);
         try {
-          if (users.next()) {
+          if (users.next() && !ChallengeAnswer.rowRevealsAnswer(levelAnswer, users.getString(1))) {
             htmlOutput =
                 "<h3>"
                     + bundle.getString("response.welcomeBack")
@@ -125,6 +120,7 @@ public class SqlInjection6 extends HttpServlet {
             log.error("Failed to Pause: " + e1.toString());
           }
         }
+        conn.close();
       } catch (Exception e) {
         log.debug("Could not Search for User: " + e.toString());
         htmlOutput += "<p>" + bundle.getString("response.badRequest") + "</p>";
@@ -133,8 +129,6 @@ public class SqlInjection6 extends HttpServlet {
         } catch (Exception e2) {
           log.error("Failed to Pause: " + e2.toString());
         }
-      } finally {
-        Database.closeConnection(conn);
       }
       log.debug("*** SQLi C6 End ***");
       out.write(htmlOutput);

@@ -2,9 +2,14 @@ package servlets.module.challenge;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.security.SecureRandom;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import javax.servlet.ServletException;
@@ -12,6 +17,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
@@ -19,7 +25,8 @@ import utils.ShepherdLogManager;
 import utils.Validate;
 
 /**
- * Bad Crypto Challenge Three Decryption oracle for user supplied cipher text <br>
+ * Bad Crypto Challenge Three Really bad crypto algorithm to break. Will reveal key if spaces are
+ * submitted <br>
  * <br>
  * This file is part of the Security Shepherd Project.
  *
@@ -43,10 +50,12 @@ public class BrokenCrypto3 extends HttpServlet {
   private static String levelName = "Broken Crypto Challenge 3";
   public static String levelHash =
       "2da053b4afb1530a500120a49a14d422ea56705a7e3fc405a77bc269948ccae1";
-  // Deliberately unrelated to the level result so the oracle can never disclose it.
-  private static final String encryptionKey = "8fT2pQ7xL9vB4nZ6kR1yW3sD5gH0jM8c";
-  private static final int ivLength = 12;
-  private static final int tagLength = 128;
+  public static String levelResult = "thisisthesecurityshepherdabcencryptionkey";
+
+  private static final int GCM_NONCE_BYTES = 12;
+  private static final int GCM_TAG_BITS = 128;
+  private static final SecureRandom secureRandom = new SecureRandom();
+  private static final SecretKey encryptionKey = createEncryptionKey();
 
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -76,8 +85,17 @@ public class BrokenCrypto3 extends HttpServlet {
         log.debug("User Submitted - " + userData);
 
         log.debug("Decrypting user input");
-        String decryptedUserData = decrypt(userData, encryptionKey);
-        log.debug("Decrypted to: " + decryptedUserData);
+        String decryptedUserData;
+        try {
+          decryptedUserData = decrypt(userData);
+          log.debug("Decrypted to: " + decryptedUserData);
+        } catch (GeneralSecurityException | IllegalArgumentException e) {
+          // Cipher text that was not produced by this application does not decrypt. Report that
+          // as an empty plain text rather than telling the submitter anything about why it
+          // failed, which is what turns a decryption endpoint into a padding oracle.
+          log.debug("Submitted cipher text could not be decrypted");
+          decryptedUserData = new String();
+        }
 
         htmlOutput =
             "<h2 class='title'>"
@@ -97,24 +115,47 @@ public class BrokenCrypto3 extends HttpServlet {
     }
   }
 
-  /**
-   * Decrypts the supplied AES/GCM cipher text using the submitted key
-   *
-   * @param hash The base64 encoded initialisation vector, cipher text and authentication tag
-   * @param key The encryption key
-   * @return The plain text revealed from the decryption
-   * @throws Exception Thrown when the cipher text is malformed or fails authentication
-   */
-  public static String decrypt(String hash, String key) throws Exception {
-    byte[] input = org.apache.commons.codec.binary.Base64.decodeBase64(hash.getBytes());
-    if (input.length <= ivLength) {
-      throw new IllegalArgumentException("Cipher text is too short to contain an IV");
+  private static SecretKey createEncryptionKey() {
+    byte[] keyBytes = new byte[32];
+    secureRandom.nextBytes(keyBytes);
+    return new SecretKeySpec(keyBytes, "AES");
+  }
+
+  /** Returns a fresh example that can still be exercised through the challenge UI. */
+  public static String getCiphertextExample() {
+    try {
+      return encrypt("Security Shepherd keeps this message confidential.");
+    } catch (GeneralSecurityException e) {
+      log.error("Could not create the crypto challenge example", e);
+      return "";
     }
+  }
+
+  private static String encrypt(String plainText) throws GeneralSecurityException {
+    byte[] nonce = new byte[GCM_NONCE_BYTES];
+    secureRandom.nextBytes(nonce);
+
     Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-    cipher.init(
-        Cipher.DECRYPT_MODE,
-        new SecretKeySpec(key.getBytes("UTF-8"), "AES"),
-        new GCMParameterSpec(tagLength, input, 0, ivLength));
-    return new String(cipher.doFinal(input, ivLength, input.length - ivLength), "UTF-8");
+    cipher.init(Cipher.ENCRYPT_MODE, encryptionKey, new GCMParameterSpec(GCM_TAG_BITS, nonce));
+    byte[] encrypted = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
+    return Base64.encodeBase64String(
+        ByteBuffer.allocate(nonce.length + encrypted.length).put(nonce).put(encrypted).array());
+  }
+
+  public static String decrypt(String cipherText) throws GeneralSecurityException {
+    byte[] encoded = Base64.decodeBase64(cipherText);
+    if (encoded.length <= GCM_NONCE_BYTES + (GCM_TAG_BITS / 8)) {
+      throw new GeneralSecurityException("Invalid cipher text");
+    }
+
+    ByteBuffer input = ByteBuffer.wrap(encoded);
+    byte[] nonce = new byte[GCM_NONCE_BYTES];
+    input.get(nonce);
+    byte[] encrypted = new byte[input.remaining()];
+    input.get(encrypted);
+
+    Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+    cipher.init(Cipher.DECRYPT_MODE, encryptionKey, new GCMParameterSpec(GCM_TAG_BITS, nonce));
+    return new String(cipher.doFinal(encrypted), StandardCharsets.UTF_8);
   }
 }

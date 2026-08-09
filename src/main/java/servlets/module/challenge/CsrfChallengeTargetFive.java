@@ -4,6 +4,8 @@ import dbProcs.Getter;
 import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -79,12 +81,8 @@ public class CsrfChallengeTargetFive extends HttpServlet {
         if (ses.getAttribute("csrfChallengeFiveNonce") == null
             || ses.getAttribute("csrfChallengeFiveNonce").toString().isEmpty()) {
           log.debug("No CSRF Token associated with user");
-          // Unguessability is the only property that makes a synchroniser token evidence of
-          // where a request came from, so the nonce is drawn from the session token's source.
-          String newToken = Hash.randomString();
-          out.write(csrfGenerics.getString("target.noTokenNewToken") + " " + newToken + "<br><br>");
-          storedToken = newToken;
-          ses.setAttribute("csrfChallengeFiveNonce", newToken);
+          storedToken = Hash.randomString();
+          ses.setAttribute("csrfChallengeFiveNonce", storedToken);
         } else {
           storedToken = "" + ses.getAttribute("csrfChallengeFiveNonce");
         }
@@ -97,7 +95,9 @@ public class CsrfChallengeTargetFive extends HttpServlet {
         log.debug("csrfToken Submitted - " + csrfToken);
 
         if (!userId.equals(plusId)) {
-          if (csrfToken.equalsIgnoreCase(storedToken)) {
+          if (MessageDigest.isEqual(
+              storedToken.getBytes(StandardCharsets.UTF_8),
+              csrfToken.getBytes(StandardCharsets.UTF_8))) {
             log.debug("Valid Nonce Value Submitted");
             String ApplicationRoot = getServletContext().getRealPath("");
             String userName = (String) ses.getAttribute("userName");
@@ -108,6 +108,7 @@ public class CsrfChallengeTargetFive extends HttpServlet {
               log.debug("Attempting to Increment ");
               String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, levelHash);
               result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
+              ses.setAttribute("csrfChallengeFiveNonce", Hash.randomString());
             } else {
               log.error("UserId '" + plusId + "' could not be found.");
             }

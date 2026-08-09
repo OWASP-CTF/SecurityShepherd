@@ -40,6 +40,8 @@ public class SecurityMisconfigLesson extends HttpServlet {
   private static String levelName = "Security Misconfig Lesson";
   public static String levelhash =
       "fe04648f43cdf2d523ecf1675f1ade2cde04a7a2e9a7f1a80dbb6dc9f717c833";
+  private static String levelResult =
+      "55b34717d014a5a355f6eced4386878fab0b2793e1d1dbfd23e6262cd510ea96";
 
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -65,9 +67,13 @@ public class SecurityMisconfigLesson extends HttpServlet {
       try {
         String userName = request.getParameter("userName");
         log.debug("User Name - " + userName);
-        // A credential published with the application authenticates nobody, so no submission
-        // reaches an administrator branch here.
-        log.debug(levelName + " does not accept the credential it used to ship with");
+        String userPass = request.getParameter("userPass");
+        log.debug("User Pass - " + userName);
+        // A name and password typed into this form identify nobody, because anybody can send any
+        // pair. Signing in is the application's own login, and the role it establishes lives in
+        // the session, so a shipped default credential no longer grants an administrator view.
+        // The same reply comes back whatever password is sent, so the form cannot test one.
+        log.error(levelName + " refused credentials submitted to a lesson form");
         String htmlOutput = new String();
         if (userName.contentEquals("admin")) {
           htmlOutput = bundle.getString("response.incorrectPassword");

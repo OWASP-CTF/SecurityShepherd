@@ -75,7 +75,6 @@ public class DirectObjectBankLogin extends HttpServlet {
       log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
-      Connection conn = null;
       try {
         String accountHolder = request.getParameter("accountHolder");
         log.debug("Account Holder - " + accountHolder);
@@ -84,7 +83,7 @@ public class DirectObjectBankLogin extends HttpServlet {
         String applicationRoot = getServletContext().getRealPath("");
         String htmlOutput = new String();
 
-        conn = Database.getChallengeConnection(applicationRoot, "directObjectBank");
+        Connection conn = Database.getChallengeConnection(applicationRoot, "directObjectBank");
         CallableStatement callstmt = conn.prepareCall("CALL bankAuth(?, ?)");
         callstmt.setString(1, accountHolder);
         callstmt.setString(2, accountPass);
@@ -106,6 +105,7 @@ public class DirectObjectBankLogin extends HttpServlet {
         }
         log.debug("Outputting HTML");
         out.write(htmlOutput);
+        Database.closeConnection(conn);
       } catch (SQLException e) {
         out.write(
             errors.getString("error.funky")
@@ -115,8 +115,6 @@ public class DirectObjectBankLogin extends HttpServlet {
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
-      } finally {
-        Database.closeConnection(conn);
       }
     } else {
       log.error(levelName + " servlet accessed with no session");
@@ -335,9 +333,8 @@ public class DirectObjectBankLogin extends HttpServlet {
       }
     } catch (SQLException e) {
       throw e;
-    } finally {
-      Database.closeConnection(conn);
     }
+    conn.close();
     return toReturn;
   }
 }

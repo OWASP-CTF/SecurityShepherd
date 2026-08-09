@@ -4,9 +4,9 @@ import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -145,16 +145,17 @@ public class ModuleServletTemplate extends HttpServlet {
       String applicationRoot, String username, ResourceBundle bundle) {
 
     String result = new String();
-    Connection conn = null;
     try {
       // You will need to make a schema in the database/moduleSchemas.sql file, and define a user
       // which can access it.
       // The details of this user need to be entered in a properties file in WEB-INF/challenges
       // The Name of that user need to be entered in the following funciton;
-      conn = Database.getChallengeConnection(applicationRoot, "nameOfPropertiesFile.properties");
-      PreparedStatement stmt = conn.prepareStatement("SELECT * FROM tb_users WHERE username = ?");
-      stmt.setString(1, username);
-      ResultSet resultSet = stmt.executeQuery();
+      Connection conn =
+          Database.getChallengeConnection(applicationRoot, "nameOfPropertiesFile.properties");
+      Statement stmt;
+      stmt = conn.createStatement();
+      ResultSet resultSet =
+          stmt.executeQuery("SELECT * FROM tb_users WHERE username = '" + username + "'");
       log.debug("Opening Result Set from query");
       for (int i = 0; resultSet.next(); i++) {
         log.debug("Row " + i + ": User ID = " + resultSet.getString(1));
@@ -172,8 +173,6 @@ public class ModuleServletTemplate extends HttpServlet {
           bundle.getString("example.error")
               + ": "
               + Encode.forHtml(e.toString())); // Html Encode Error to prevent XSS
-    } finally {
-      Database.closeConnection(conn);
     }
     return result;
   }

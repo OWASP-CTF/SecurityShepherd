@@ -91,11 +91,14 @@ public class MobileLogin extends HttpServlet {
         log.debug("Setting CSRF cookie");
         csrfToken = Hash.randomString();
         Cookie token = new Cookie("token", csrfToken);
+        // The token is only ever read back on the server, so script has no business
+        // reading it out of the browser. Without this flag any script that ran on a page
+        // could lift the anti-CSRF token straight out of document.cookie.
+        token.setHttpOnly(true);
         if (request.getRequestURL().toString().startsWith("https")) // If Requested over HTTPs
         {
           token.setSecure(true);
         }
-        token.setHttpOnly(true);
         response.addCookie(token);
         authenticated = true;
 

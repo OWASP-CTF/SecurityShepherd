@@ -76,18 +76,17 @@ public class PoorValidation1 extends HttpServlet {
         int bananaAmount = validateAmount(Integer.parseInt(request.getParameter("bananaAmount")));
         log.debug("bananaAmount - " + bananaAmount);
 
-        // Working out costs
-        int pineappleCost = Math.multiplyExact(pineappleAmount, 30);
-        int orangeCost = Math.multiplyExact(orangeAmount, 3000);
-        int appleCost = Math.multiplyExact(appleAmount, 45);
-        int bananaCost = Math.multiplyExact(bananaAmount, 15);
+        // Working out costs. Long arithmetic so a large order cannot wrap around to a negative
+        // total.
+        long pineappleCost = (long) pineappleAmount * 30;
+        long orangeCost = (long) orangeAmount * 3000;
+        long appleCost = (long) appleAmount * 45;
+        long bananaCost = (long) bananaAmount * 15;
 
         htmlOutput = new String();
 
         // Work Out Final Cost
-        int finalCost =
-            Math.addExact(
-                Math.addExact(Math.addExact(pineappleCost, appleCost), bananaCost), orangeCost);
+        long finalCost = pineappleCost + appleCost + bananaCost + orangeCost;
 
         // Output Order
         htmlOutput =
@@ -126,9 +125,23 @@ public class PoorValidation1 extends HttpServlet {
     }
   }
 
-  private static int validateAmount(int amount) throws IllegalArgumentException {
+  /** Largest quantity of any single item one order may contain. */
+  private static final int MAX_ITEM_AMOUNT = 1000;
+
+  /**
+   * Confines a submitted quantity to a sane range. A negative quantity subtracts from the order
+   * total and a very large one overflows the cost arithmetic, so both are refused here rather than
+   * being trusted from the request.
+   *
+   * @param amount Quantity as submitted by the client
+   * @return The quantity confined to 0..MAX_ITEM_AMOUNT
+   */
+  private static int validateAmount(int amount) {
     if (amount < 0) {
-      throw new IllegalArgumentException("Order amounts cannot be negative");
+      return 0;
+    }
+    if (amount > MAX_ITEM_AMOUNT) {
+      return MAX_ITEM_AMOUNT;
     }
     return amount;
   }

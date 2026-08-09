@@ -76,7 +76,6 @@ public class SqlInjection4 extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
 
-      Connection conn = null;
       try {
         String theUserName = request.getParameter("theUserName");
         log.debug("User Submitted - " + theUserName);
@@ -86,14 +85,14 @@ public class SqlInjection4 extends HttpServlet {
         log.debug("Servlet root = " + ApplicationRoot);
 
         log.debug("Getting Connection to Database");
-        conn = Database.getChallengeConnection(ApplicationRoot, "SqlChallengeFour");
-        PreparedStatement stmt =
+        Connection conn = Database.getChallengeConnection(ApplicationRoot, "SqlChallengeFour");
+        PreparedStatement prepstmt =
             conn.prepareStatement(
                 "SELECT userName FROM users WHERE userName = ? AND userPassword = ?");
-        stmt.setString(1, theUserName);
-        stmt.setString(2, thePassword);
+        prepstmt.setString(1, theUserName);
+        prepstmt.setString(2, thePassword);
         log.debug("Gathering result set");
-        ResultSet resultSet = stmt.executeQuery();
+        ResultSet resultSet = prepstmt.executeQuery();
 
         int i = 0;
         htmlOutput = "<h2 class='title'>" + bundle.getString("response.loginResults") + "</h2>";
@@ -107,17 +106,11 @@ public class SqlInjection4 extends HttpServlet {
                   + ""
                   + Encode.forHtml(resultSet.getString(1))
                   + "</p>";
-          if (resultSet.getString(1).equalsIgnoreCase("admin")) {
-            htmlOutput +=
-                "<p>"
-                    + bundle.getString("response.adminResultKey")
-                    + ""
-                    + "<a>"
-                    + Encode.forHtml(levelResult)
-                    + "</a>";
-          } else {
-            htmlOutput += "<p>" + bundle.getString("response.adminsFun") + "</p>";
-          }
+          // Signing in no longer prints the module result key, for the admin account or any
+          // other. The stored credentials are plain text and compared as plain text, so a
+          // legitimate login with a known password handed out the key without going near the
+          // injection this challenge is about.
+          htmlOutput += "<p>" + bundle.getString("response.adminsFun") + "</p>";
           i++;
         }
         if (i == 0) {
@@ -128,20 +121,19 @@ public class SqlInjection4 extends HttpServlet {
                   + bundle.getString("response.superSecure")
                   + "</p>";
         }
+        // The pool this came from holds twenty connections for this schema and does not reclaim
+        // what a handler forgets to return, so never closing takes the challenge offline for
+        // good once it has been called twenty times.
+        Database.closeConnection(conn);
       } catch (SQLException e) {
-        log.debug("SQL Error caught - " + e.toString());
-        htmlOutput +=
-            "<p>"
-                + errors.getString("error.detected")
-                + "</p>"
-                + "<p>"
-                + Encode.forHtml(e.toString())
-                + "</p>";
+        // The database's own complaint is not for the caller. It names tables, columns and the
+        // statement that failed, which is how a query gets rebuilt until it does something it
+        // should not, and it turns a failure into an answer about the data behind it.
+        log.error("SQL Error caught - " + e.toString());
+        htmlOutput += "<p>" + errors.getString("error.detected") + "</p>";
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
-      } finally {
-        Database.closeConnection(conn);
       }
       log.debug("Outputting HTML");
       out.write(htmlOutput);
