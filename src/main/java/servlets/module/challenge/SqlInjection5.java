@@ -95,10 +95,14 @@ public class SqlInjection5 extends HttpServlet {
         Connection conn =
             Database.getChallengeConnection(applicationRoot, "SqlInjectionChallenge5Shop");
         log.debug("Looking for Coupons");
+        // Redemption of a code the customer already holds is the shop's normal business. The
+        // defect this level teaches is not redemption, it is that the coupon lookup endpoints
+        // concatenated the submitted code into their SQL, letting anyone read the vipCoupons
+        // table out of the database and learn the code in the first place (ASVS 5.3.4).
         PreparedStatement prepstmt =
             conn.prepareStatement(
                 "SELECT itemId, perCentOff FROM coupons WHERE couponCode = ?"
-                    + "UNION SELECT itemId, perCentOff FROM vipCoupons WHERE couponCode = ?");
+                    + " UNION SELECT itemId, perCentOff FROM vipCoupons WHERE couponCode = ?");
         prepstmt.setString(1, couponCode);
         prepstmt.setString(2, couponCode);
         ResultSet coupons = prepstmt.executeQuery();

@@ -8,6 +8,7 @@ import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.Scanner;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -73,13 +74,33 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
 
+        // ASVS 3.5.2: require a content type that a cross-site form cannot produce, so the
+        // request cannot be forged without a CORS preflight the browser will refuse.
+        String contentType = request.getContentType();
+        if (contentType == null
+            || !contentType.trim().toLowerCase(Locale.ROOT).startsWith("application/json")) {
+          log.debug("Rejected request with non-JSON content type: " + contentType);
+          out.write(csrfGenerics.getString("target.incrementFailed"));
+          return;
+        }
+
         log.debug("Getting JSON String");
         String jsonData = extractPostRequestBody(request);
-        log.debug("POST body: " + jsonData);
         JSONObject json = new JSONObject(jsonData);
         log.debug("Getting userId");
         String plusId = (String) json.get("userId");
         log.debug("User Submitted - " + plusId);
+
+        // ASVS 3.5.1: the body must also carry the anti-forgery token bound to this session.
+        Cookie tokenCookie = Validate.getToken(request.getCookies());
+        Object tokenParameter = json.has("csrfToken") ? json.get("csrfToken") : null;
+        if (!Validate.validateTokens(tokenCookie, tokenParameter)
+            || !Validate.isSameOriginRequest(request)) {
+          log.debug("Rejected request with a bad CSRF token or a foreign origin");
+          out.write(csrfGenerics.getString("target.incrementFailed"));
+          return;
+        }
+
         String userId = (String) ses.getAttribute("userStamp");
         if (!userId.equals(plusId)) {
           String ApplicationRoot = getServletContext().getRealPath("");

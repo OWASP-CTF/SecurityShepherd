@@ -7,6 +7,7 @@ import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -69,6 +70,16 @@ public class CsrfChallengeTargetTwo extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+        // ASVS 3.5.1: a state-changing request must carry an anti-forgery token bound to the
+        // caller's own session, so a cross-site request cannot forge it.
+        Cookie tokenCookie = Validate.getToken(request.getCookies());
+        Object tokenParameter = request.getParameter("csrfToken");
+        if (!Validate.validateTokens(tokenCookie, tokenParameter)
+            || !Validate.isSameOriginRequest(request)) {
+          log.debug("Rejected request with a bad CSRF token or a foreign origin");
+          out.write(csrfGenerics.getString("target.incrementFailed"));
+          return;
+        }
         String plusId = request.getParameter("userId");
         log.debug("User Submitted - " + plusId);
         String userId = (String) ses.getAttribute("userStamp");

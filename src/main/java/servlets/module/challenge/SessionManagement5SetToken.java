@@ -16,6 +16,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -81,6 +82,15 @@ public class SessionManagement5SetToken extends HttpServlet {
       String htmlOutput = new String();
       log.debug(levelName + " Servlet Accessed");
       try {
+        // A state change a third-party page could trigger with the victim's cookies. The
+        // browser states the Origin itself, so a foreign page cannot pass this (ASVS 3.5.2).
+        // A client that states no origin at all is not a browser and carries no ambient
+        // cookies, so it is left to the session-bound checks below.
+        if (Validate.statesForeignOrigin(request)) {
+          log.debug("Rejected cross-origin state change");
+          out.write(errors.getString("error.shouldNotBeHere"));
+          return;
+        }
         log.debug("Getting Parameters");
         Object nameObj = request.getParameter("subUserName");
         String userName = new String();
@@ -110,16 +120,23 @@ public class SessionManagement5SetToken extends HttpServlet {
         // Is the username valid?
         if (resultSet.next()) {
           log.debug("User found");
-          htmlOutput =
-              bundle.getString("setToken.sentTo.1")
-                  + " '"
-                  + Encode.forHtml(userName)
-                  + "' "
-                  + bundle.getString("setToken.sentTo.2");
+          // The token is unpredictable, bound to this user and this session, and stamped with
+          // its issue time. It is delivered out of band, so it is never written to the response.
+          ses.setAttribute(SessionManagement5.RESET_TOKEN, Hash.randomString());
+          ses.setAttribute(SessionManagement5.RESET_TOKEN_USER, resultSet.getString(1));
+          ses.setAttribute(
+              SessionManagement5.RESET_TOKEN_ISSUED, Long.valueOf(System.currentTimeMillis()));
+          log.debug("Issued password reset token for user: " + resultSet.getString(1));
         } else {
           log.debug("User not Found");
-          htmlOutput = bundle.getString("response.badUser") + "" + Encode.forHtml(userName);
         }
+        // Same response either way, so the endpoint cannot be used to enumerate user names.
+        htmlOutput =
+            bundle.getString("setToken.sentTo.1")
+                + " '"
+                + Encode.forHtml(userName)
+                + "' "
+                + bundle.getString("setToken.sentTo.2");
         Database.closeConnection(conn);
         log.debug("Outputting HTML");
         out.write(htmlOutput);

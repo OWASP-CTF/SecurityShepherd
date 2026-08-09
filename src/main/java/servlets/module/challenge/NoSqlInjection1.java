@@ -113,7 +113,10 @@ public class NoSqlInjection1 extends HttpServlet {
         String gamerId = request.getParameter("theGamerName");
         log.debug("User Submitted: " + gamerId);
 
-        DBObject whereQuery = new BasicDBObject("$where", "this._id == '" + gamerId + "'");
+        // The $where operator hands its string to Mongo's JavaScript engine, so anything
+        // concatenated in is executed. A plain equality match needs no evaluation and treats
+        // the input strictly as a value (ASVS 1.2.2).
+        DBObject whereQuery = new BasicDBObject("_id", gamerId);
         cursor = dbCollection.find(whereQuery);
 
         try {

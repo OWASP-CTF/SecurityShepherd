@@ -6,7 +6,10 @@ import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -43,6 +46,25 @@ public class DirectObject2 extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(DirectObject2.class);
   private static String levelName = "Insecure Direct Object Reference Challenge Two";
+
+  /**
+   * Indirect references for the records this challenge exposes. The browser names a record by its
+   * position in the list and the database key it stands for never leaves the server, so naming a
+   * key cannot reach a row (ASVS 8.2.2). An allow-list of the keys themselves would still let the
+   * client address rows directly; this removes the direct reference altogether.
+   */
+  private static final Map<String, String> RECORD_REFERENCES;
+
+  static {
+    Map<String, String> references = new LinkedHashMap<String, String>();
+    references.put("1", "c81e728d9d4c2f636f067f89cc14862c");
+    references.put("2", "eccbc87e4b5ce2fe28308fd9f2a7baf3");
+    references.put("3", "e4da3b7fbbce2345d7772b0674a318d5");
+    references.put("4", "8f14e45fceea167a5a36dedd4bea2543");
+    references.put("5", "6512bd43d9caa6e02c990b0a82652dca");
+    RECORD_REFERENCES = Collections.unmodifiableMap(references);
+  }
+
   public static String levelHash =
       "vc9b78627df2c032ceaf7375df1d847e47ed7abac2a4ce4cb6086646e0f313a4";
 
@@ -73,11 +95,28 @@ public class DirectObject2 extends HttpServlet {
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
       try {
-        String userId = request.getParameter("userId[]");
-        log.debug("User Submitted - " + userId);
+        String submittedReference = request.getParameter("userId[]");
+        log.debug("User Submitted - " + submittedReference);
+        String userId =
+            submittedReference == null ? null : RECORD_REFERENCES.get(submittedReference);
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
         String htmlOutput = new String();
+
+        if (userId == null) {
+          log.debug("Rejected request for a record this user may not read");
+          out.write(
+              "<h2 class='title'>"
+                  + bundle.getString("response.notFound")
+                  + "</h2><p>"
+                  + bundle.getString("response.notFoundMessage.1")
+                  + " '"
+                  + Encode.forHtml(submittedReference)
+                  + "' "
+                  + bundle.getString("response.notFoundMessage.2")
+                  + "</p>");
+          return;
+        }
 
         Connection conn =
             Database.getChallengeConnection(ApplicationRoot, "directObjectRefChalTwo");
@@ -87,8 +126,8 @@ public class DirectObject2 extends HttpServlet {
         ResultSet resultSet = prepstmt.executeQuery();
         if (resultSet.next()) {
           log.debug("Found user: " + resultSet.getString(1));
-          String userName = resultSet.getString(1);
-          String privateMessage = resultSet.getString(2);
+          String userName = Encode.forHtml(resultSet.getString(1));
+          String privateMessage = Encode.forHtml(resultSet.getString(2));
           htmlOutput =
               "<h2 class='title'>"
                   + userName

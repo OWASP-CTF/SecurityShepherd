@@ -1,14 +1,11 @@
 package servlets.module.challenge;
 
-import dbProcs.Database;
 import dbProcs.Getter;
 import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -87,11 +84,11 @@ public class CsrfChallengeTargetFour extends HttpServlet {
         if (ses.getAttribute(csrfTokenName) == null
             || ses.getAttribute(csrfTokenName).toString().isEmpty()) {
           log.debug("No CSRF Token found in session");
-          storedToken =
-              Setter.setCsrfChallengeFourCsrfToken(userId, Hash.randomString(), ApplicationRoot);
-          out.write(
-              csrfGenerics.getString("target.noTokenNewToken") + " " + storedToken + "<br><br>");
+          // The nonce is kept in the session and never written to the response. Echoing it,
+          // and storing it in a table shared by every user, is what made it reusable.
+          storedToken = Hash.randomString();
           ses.setAttribute(csrfTokenName, storedToken);
+          out.write(csrfGenerics.getString("target.noTokenNewToken") + "<br><br>");
         } else {
           storedToken = "" + ses.getAttribute(csrfTokenName);
         }
@@ -103,8 +100,14 @@ public class CsrfChallengeTargetFour extends HttpServlet {
         log.debug("storedCsrf Token is - '" + storedToken + "'");
 
         if (!userId.equals(plusId)) {
-          if (validCsrfToken(ApplicationRoot, csrfToken)) // Poor CSRF Validation Method
-          {
+          // ASVS 3.5.1: the nonce must be the one issued to this session. The previous check
+          // asked the database whether the value existed at all, which accepted any other
+          // user's nonce -- and, because "SELECT count(...)" always returns a row, accepted
+          // anything whatsoever.
+          if (MessageDigest.isEqual(
+                  storedToken.getBytes(StandardCharsets.UTF_8),
+                  csrfToken.getBytes(StandardCharsets.UTF_8))
+              && Validate.isSameOriginRequest(request)) {
             log.debug("'Valid' Nonce Value Submitted");
             String userName = (String) ses.getAttribute("userName");
             String attackerName = Getter.getUserName(ApplicationRoot, plusId);
@@ -136,39 +139,5 @@ public class CsrfChallengeTargetFour extends HttpServlet {
       out.write(errors.getString("error.funky"));
       log.fatal(levelName + " - " + e.toString());
     }
-  }
-
-  /**
-   * CSRF Validator that checks if user submitted CSRF token is in the DB. This function does not
-   * filter the CSRF table for CSRF tokens belonging to the user submitting the request. It will
-   * return true as long as the token exists in the database, regardless of who owns the token
-   *
-   * @param ApplicationRoot Running context of the application
-   * @param csrfToken CSRF Token value to search DB for
-   * @return Returns true if the CSRF Token is Deemed valid
-   */
-  private static boolean validCsrfToken(String ApplicationRoot, String csrfToken) {
-    log.debug("*** CSRF4.validCsrfToken ***");
-    boolean result = false;
-    Connection conn;
-
-    try {
-      conn = Database.getChallengeConnection(ApplicationRoot, "csrfChallengeFour");
-
-      PreparedStatement prepstmt =
-          conn.prepareStatement(
-              "SELECT count(csrfTokenscol) FROM csrfTokens WHERE csrfTokenscol = ?");
-      prepstmt.setString(1, csrfToken);
-      ResultSet rs = prepstmt.executeQuery();
-      result = rs.next(); // If there is a row then the CSRF token was in the DB. Therefore CSRF
-      // Validated
-      Database.closeConnection(conn);
-
-    } catch (SQLException e) {
-      log.error("CSRF4 Token Check Failure: " + e.toString());
-      result = false;
-    }
-    log.debug("*** END CSRF4.validCsrfToken ***");
-    return result;
   }
 }

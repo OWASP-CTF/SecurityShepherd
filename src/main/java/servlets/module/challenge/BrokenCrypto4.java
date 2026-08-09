@@ -44,6 +44,13 @@ public class BrokenCrypto4 extends HttpServlet {
   private static final String levelName = new String("Broken Crypto 4");
   private static final String levelHash =
       new String("b927fc4d8c9f70a78f8b6fc46a0cc18533a88b2363054a1f391fe855954d12f9");
+
+  /**
+   * VIP standing for this shop, held server-side. The shop has no enrolment path, so nothing in a
+   * request can set it — which is the point: possession of a coupon code is not authorisation.
+   */
+  private static final String VIP_STATUS = "brokenCrypto4VipStatus";
+
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(BrokenCrypto4.class);
 
@@ -102,6 +109,16 @@ public class BrokenCrypto4 extends HttpServlet {
         ResultSet coupons = prepstmt.executeQuery();
         try {
           if (coupons.next()) {
+            // Two defects, two controls. The codes were validated in the browser by an
+            // obfuscated DES routine that shipped both the key and the ciphertexts, so anyone
+            // could recover every coupon from the page itself (ASVS 6.2.1, 1.14.6) — validation
+            // now happens here, against the server's own data. And a code that waives the whole
+            // price is not itself authorisation: the shop grants that only to a session holding
+            // VIP standing, which is server-owned and not settable from a request (ASVS 8.2.1).
+            if (coupons.getInt(2) >= 100 && !"vip".equals(ses.getAttribute(VIP_STATUS))) {
+              log.debug("Refused a full-price discount for a session without VIP standing");
+              throw new IllegalArgumentException("Coupon not valid for this account");
+            }
             if (coupons.getInt(1) == 1) // Pineapple
             {
               log.debug("Found coupon for %" + coupons.getInt(2) + " off Pineapple");

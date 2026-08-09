@@ -3,6 +3,7 @@ package servlets.module.challenge;
 import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -75,19 +76,21 @@ public class SqlInjection6 extends HttpServlet {
       String applicationRoot = getServletContext().getRealPath("");
 
       try {
-        String userPin = (String) request.getParameter("pinNumber");
-        log.debug("userPin - " + userPin);
-        userPin =
-            userPin.replaceAll("\\\\", "\\\\\\\\").replaceAll("'", ""); // Escape single quotes
-        log.debug("userPin scrubbed - " + userPin);
-        userPin =
-            java.net.URLDecoder.decode(
-                userPin.replaceAll("\\\\\\\\x", "%"), "UTF-8"); // Decode \x encoding
-        log.debug("searchTerm decoded to - " + userPin);
+        String submittedPin = request.getParameter("pinNumber");
+        if (submittedPin == null) {
+          submittedPin = new String();
+        }
+        // The pin may still be written with \x escapes, so that shorthand is kept. Canonicalise
+        // it first and bind the result: the original stripped quotes and only afterwards decoded
+        // the escapes, so \x27 became a quote the sanitiser had already walked past. Order is the
+        // whole bug, and binding removes the need to sanitise at all (ASVS 5.3.4).
+        String userPin = decodeEscapedPin(submittedPin);
+        log.debug("userPin canonicalised, length " + userPin.length());
         Connection conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSix");
         log.debug("Looking for users");
         PreparedStatement prepstmt =
-            conn.prepareStatement("SELECT userName FROM users WHERE userPin = '" + userPin + "'");
+            conn.prepareStatement("SELECT userName FROM users WHERE userPin = ?");
+        prepstmt.setString(1, userPin);
         ResultSet users = prepstmt.executeQuery();
         try {
           if (users.next()) {
@@ -138,6 +141,24 @@ public class SqlInjection6 extends HttpServlet {
       out.write(htmlOutput);
     } else {
       log.error(levelName + " servlet accessed with no session");
+    }
+  }
+
+  /**
+   * Expands the \xNN shorthand the pin field accepts into the characters it stands for.
+   *
+   * <p>A pin that is not valid escaped text is returned unchanged rather than throwing, so a
+   * malformed entry simply matches no user instead of failing the request.
+   *
+   * @param submittedPin The pin exactly as the client sent it
+   * @return the canonical pin to match against stored pins
+   */
+  private static String decodeEscapedPin(String submittedPin) {
+    try {
+      return java.net.URLDecoder.decode(submittedPin.replaceAll("\\\\x", "%"), "UTF-8");
+    } catch (UnsupportedEncodingException | IllegalArgumentException e) {
+      log.debug("Pin was not valid escaped text, matching it literally: " + e.toString());
+      return submittedPin;
     }
   }
 }

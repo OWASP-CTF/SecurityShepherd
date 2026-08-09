@@ -7,6 +7,7 @@ import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -46,7 +47,9 @@ public class CsrfChallengeTargetOne extends HttpServlet {
    *
    * @param userId User identifier to be incremented
    */
-  public void doGet(HttpServletRequest request, HttpServletResponse response)
+  // ASVS 3.5.3: a state change must not be reachable by a "safe" method like GET, which any
+  // img/iframe load can trigger. The counter is incremented on POST only.
+  public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
     // Setting IpAddress To Log and taking header for original IP if forwarded from proxy
     ShepherdLogManager.setRequestIp(request.getRemoteAddr(), request.getHeader("X-Forwarded-For"));
@@ -69,6 +72,16 @@ public class CsrfChallengeTargetOne extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
+        // ASVS 3.5.1: a state-changing request must carry an anti-forgery token bound to the
+        // caller's own session, so a cross-site request cannot forge it.
+        Cookie tokenCookie = Validate.getToken(request.getCookies());
+        Object tokenParameter = request.getParameter("csrfToken");
+        if (!Validate.validateTokens(tokenCookie, tokenParameter)
+            || !Validate.isSameOriginRequest(request)) {
+          log.debug("Rejected request with a bad CSRF token or a foreign origin");
+          out.write(csrfGenerics.getString("target.incrementFailed"));
+          return;
+        }
         String plusId = request.getParameter("userid");
         log.debug("User Submitted - " + plusId);
         String userId = (String) ses.getAttribute("userStamp");

@@ -4,9 +4,9 @@ import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -78,9 +78,14 @@ public class SqlInjectionStoredProcedure extends HttpServlet {
         log.debug("Getting Connection to Database");
         Connection conn =
             Database.getChallengeConnection(ApplicationRoot, "SqlChallengeStoredProc");
-        // CallableStatement callstmt = conn.prepareCall("CALL findUser('" + userIdentity + "');");
-        Statement stmt = conn.createStatement();
-        ResultSet resultSet = stmt.executeQuery("CALL findUser('" + userIdentity + "');");
+        // Bound rather than concatenated, so the procedure receives the address as one value
+        // however it is punctuated (ASVS 5.3.4). A PreparedStatement is used in preference to
+        // prepareCall because CallableStatement makes the driver read the procedure's
+        // definition first, and this challenge's account is granted EXECUTE on findUser and
+        // nothing else.
+        PreparedStatement callstmt = conn.prepareStatement("CALL findUser(?)");
+        callstmt.setString(1, userIdentity);
+        ResultSet resultSet = callstmt.executeQuery();
 
         int i = 0;
         htmlOutput = "<h2 class='title'>" + bundle.getString("response.searchResults") + "</h2>";
@@ -113,13 +118,8 @@ public class SqlInjectionStoredProcedure extends HttpServlet {
         }
       } catch (SQLException e) {
         log.debug("SQL Error caught - " + e.toString());
-        htmlOutput +=
-            "<p>"
-                + errors.getString("error.detected")
-                + "</p>"
-                + "<p>"
-                + Encode.forHtml(e.toString())
-                + "</p>";
+        // Detail stays server-side; echoing JDBC text back enables error-based injection.
+        htmlOutput += "<p>" + errors.getString("error.detected") + "</p>";
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());

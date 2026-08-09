@@ -4,9 +4,9 @@ import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -77,16 +77,17 @@ public class SqlInjectionEscaping extends HttpServlet {
       try {
         String aUserId = request.getParameter("aUserId");
         log.debug("User Submitted - " + aUserId);
-        aUserId = aUserId.replaceAll("'", "\\\\'"); // Replace ' with \'
-        log.debug("Escaped to - " + aUserId);
         String ApplicationRoot = getServletContext().getRealPath("");
 
         log.debug("Getting Connection to Database");
         Connection conn = Database.getChallengeConnection(ApplicationRoot, "SqlChallengeEscape");
-        Statement stmt = conn.createStatement();
+        // Backslash-escaping the quote was the bug: it is defeated by a trailing backslash.
+        // Bind the value instead of trying to neutralise it.
+        PreparedStatement stmt =
+            conn.prepareStatement("SELECT * FROM customers WHERE customerId = ?");
+        stmt.setString(1, aUserId);
         log.debug("Gathering result set");
-        ResultSet resultSet =
-            stmt.executeQuery("SELECT * FROM customers WHERE customerId = '" + aUserId + "'");
+        ResultSet resultSet = stmt.executeQuery();
 
         int i = 0;
         htmlOutput = "<h2 class='title'>" + bundle.getString("response.searchResults") + "</h2>";
@@ -118,13 +119,8 @@ public class SqlInjectionEscaping extends HttpServlet {
         }
       } catch (SQLException e) {
         log.debug("SQL Error caught - " + e.toString());
-        htmlOutput +=
-            "<p>"
-                + errors.getString("error.detected")
-                + "</p>"
-                + "<p>"
-                + Encode.forHtml(e.toString())
-                + "</p>";
+        // Detail stays server-side; echoing JDBC text back enables error-based injection.
+        htmlOutput += "<p>" + errors.getString("error.detected") + "</p>";
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());

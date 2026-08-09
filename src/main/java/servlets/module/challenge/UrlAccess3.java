@@ -6,12 +6,10 @@ import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import utils.Hash;
@@ -41,6 +39,10 @@ public class UrlAccess3 extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(UrlAccess3.class);
   private static String levelName = "Failure to Restrict URL Access 3";
+
+  /** Who this sub-application is signed in as. Server-owned; never settable from a request. */
+  private static final String SUB_APP_PERSON = "urlAccess3CurrentPerson";
+
   private static String levelHash =
       "e40333fc2c40b8e0169e433366350f55c77b82878329570efa894838980de5b4";
 
@@ -78,21 +80,16 @@ public class UrlAccess3 extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
-        Cookie userCookies[] = request.getCookies();
-        int i = 0;
-        Cookie theCookie = null;
-        for (i = 0; i < userCookies.length; i++) {
-          if (userCookies[i].getName().compareTo("currentPerson") == 0) {
-            theCookie = userCookies[i];
-            break; // End Loop, because we found the token
-          }
+        // ASVS 8.2.1: who the caller is, is server-owned state. The "currentPerson" cookie was
+        // a base64 name, so any client could claim to be the super admin.
+        String currentPerson = (String) ses.getAttribute(SUB_APP_PERSON);
+        if (currentPerson == null) {
+          currentPerson = "aGuest";
+          ses.setAttribute(SUB_APP_PERSON, currentPerson);
         }
         String htmlOutput = null;
-        if (theCookie != null) {
-          log.debug("Cookie value: " + theCookie.getValue());
-          byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
-          String decodedCookie = new String(decodedCookieBytes, "UTF-8");
-          log.debug("Decoded Cookie: " + decodedCookie);
+        {
+          String decodedCookie = currentPerson;
 
           if (decodedCookie.equals("MrJohnReillyTheSecond")) {
             log.debug("Super Admin Cookie detected");
@@ -112,14 +109,9 @@ public class UrlAccess3 extends HttpServlet {
                     + userKey
                     + "</a>"
                     + "</p>";
-          } else if (!decodedCookie.equals("aGuest")) {
-            log.debug("Tampered role cookie detected: " + decodedCookie);
-            htmlOutput = "<!-- " + bundle.getString("response.invalidUser") + " -->";
           } else {
-            log.debug("No change to role cookie submitted");
+            log.debug("Signed in as " + decodedCookie);
           }
-        } else {
-          log.debug("No Role Cookie Submitted");
         }
         if (htmlOutput == null) {
           log.debug("Challenge Not Complete");

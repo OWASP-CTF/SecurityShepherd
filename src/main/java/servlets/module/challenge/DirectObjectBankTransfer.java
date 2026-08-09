@@ -73,7 +73,23 @@ public class DirectObjectBankTransfer extends HttpServlet {
       String errorMessage = new String();
       String applicationRoot = getServletContext().getRealPath("");
       try {
-        String senderAccountNumber = request.getParameter("senderAccountNumber");
+        // A state change a third-party page could trigger with the victim's cookies. The
+        // browser states the Origin itself, so a foreign page cannot pass this (ASVS 3.5.2).
+        // A client that states no origin at all is not a browser and carries no ambient
+        // cookies, so it is left to the session-bound checks below.
+        if (Validate.statesForeignOrigin(request)) {
+          log.debug("Rejected cross-origin state change");
+          out.write(errors.getString("error.shouldNotBeHere"));
+          return;
+        }
+        // ASVS 8.2.2: money only ever leaves the account this session signed in to. The sender
+        // account used to come from the request, so any caller could debit any account.
+        String senderAccountNumber = (String) ses.getAttribute("directObjectBankAccount");
+        if (senderAccountNumber == null) {
+          log.debug("No bank account signed in on this session");
+          out.write(errors.getString("error.noSession"));
+          return;
+        }
         log.debug("Sender Account Number - " + senderAccountNumber);
         String receiverAccountNumber = request.getParameter("receiverAccountNumber");
         log.debug("Receiver Account Number - " + receiverAccountNumber);
