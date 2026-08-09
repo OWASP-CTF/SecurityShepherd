@@ -50,9 +50,8 @@ public class SqlInjection6 extends HttpServlet {
   private static final Logger log = LogManager.getLogger(SqlInjection6.class);
 
   /**
-   * This controller makes an insecure call to a MySQL interpreter. User Input is first filtered for
-   * UTF-8 attacks and afterwards is decoded from \xHEX format to UTF-8 before sent to the
-   * interpreter
+   * This controller looks up a user by their pin number. The pin is validated as a numeric value
+   * and is bound to a parameterised query so that user input can never be interpreted as SQL.
    */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -75,19 +74,18 @@ public class SqlInjection6 extends HttpServlet {
       String applicationRoot = getServletContext().getRealPath("");
 
       try {
-        String userPin = (String) request.getParameter("pinNumber");
+        String userPin = Validate.validateParameter(request.getParameter("pinNumber"), 16);
         log.debug("userPin - " + userPin);
-        userPin =
-            userPin.replaceAll("\\\\", "\\\\\\\\").replaceAll("'", ""); // Escape single quotes
-        log.debug("userPin scrubbed - " + userPin);
-        userPin =
-            java.net.URLDecoder.decode(
-                userPin.replaceAll("\\\\\\\\x", "%"), "UTF-8"); // Decode \x encoding
-        log.debug("searchTerm decoded to - " + userPin);
+        if (!userPin.matches("[0-9]{1,16}")) {
+          // Pin numbers are numeric, so anything else can never match a stored pin
+          log.debug("Submitted pin was not a valid pin number");
+          userPin = new String();
+        }
         Connection conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSix");
         log.debug("Looking for users");
         PreparedStatement prepstmt =
-            conn.prepareStatement("SELECT userName FROM users WHERE userPin = '" + userPin + "'");
+            conn.prepareStatement("SELECT userName FROM users WHERE userPin = ?");
+        prepstmt.setString(1, userPin);
         ResultSet users = prepstmt.executeQuery();
         try {
           if (users.next()) {
