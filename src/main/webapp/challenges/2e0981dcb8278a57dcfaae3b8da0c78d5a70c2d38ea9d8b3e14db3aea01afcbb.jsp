@@ -62,6 +62,10 @@ String i18nLevelName = bundle.getString("title.csrfJson");
 			userClass = Encode.forHtml(ses.getAttribute("userClass").toString());
 		}
 		String userId = Encode.forHtml(ses.getAttribute("userStamp").toString());
+		//Per session CSRF synchronizer token required by this challenge's target
+		String rawUserId = ses.getAttribute("userStamp").toString();
+		String csrfJsonNonce = CsrfSynchronizerTokens.getOrCreateToken(ses,
+			servlets.module.challenge.CsrfChallengeTargetJSON.CSRF_TOKEN_NAME, rawUserId);
 %>
 
 <html xmlns="http://www.w3.org/1999/xhtml">

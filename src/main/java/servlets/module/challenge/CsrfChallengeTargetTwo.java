@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import utils.CsrfSynchronizerTokens;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -40,9 +41,13 @@ public class CsrfChallengeTargetTwo extends HttpServlet {
   private static final Logger log = LogManager.getLogger(CsrfChallengeTargetTwo.class);
   private static String levelName = "CSRF 2 Target";
 
+  /** Name of the per session synchronizer token that guards this state changing endpoint. */
+  public static final String CSRF_TOKEN_NAME = "csrfChallengeTwoTarget";
+
   /**
-   * CSRF vulnerable function that can be used by users to force other users to mark their CSRF
-   * challenge Two as complete.
+   * Increments the CSRF counter of the submitted user identifier. The state change is only carried
+   * out when the request presents the per session synchronizer token that was minted server side
+   * for the requesting user, so a request forged by another origin cannot trigger it.
    *
    * @param userId User identifier to be incremented
    */
@@ -69,10 +74,19 @@ public class CsrfChallengeTargetTwo extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
-        String plusId = request.getParameter("userId");
+        String plusId = Validate.validateParameter(request.getParameter("userId"), 64).trim();
         log.debug("User Submitted - " + plusId);
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId)) {
+        // Synchronizer token pattern. The request is only acted upon when it carries the
+        // unguessable token that was minted server side and bound to the owner of this session
+        String submittedToken = CsrfSynchronizerTokens.getSubmittedToken(request);
+        if (!CsrfSynchronizerTokens.isSameOrigin(request)) {
+          log.error(levelName + " request rejected. Cross origin request detected");
+        } else if (!CsrfSynchronizerTokens.isValidToken(ses, CSRF_TOKEN_NAME, submittedToken)) {
+          log.error(levelName + " request rejected. Missing or invalid CSRF synchronizer token");
+        } else if (plusId.isEmpty() || userId == null || userId.equals(plusId)) {
+          log.debug("Request does not name another user to increment");
+        } else {
           String ApplicationRoot = getServletContext().getRealPath("");
           String userName = (String) ses.getAttribute("userName");
           String attackerName = Getter.getUserName(ApplicationRoot, plusId);

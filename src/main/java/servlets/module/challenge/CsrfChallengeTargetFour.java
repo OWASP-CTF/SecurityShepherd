@@ -18,6 +18,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import utils.CsrfSynchronizerTokens;
 import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
@@ -50,9 +51,13 @@ public class CsrfChallengeTargetFour extends HttpServlet {
   private static final Logger log = LogManager.getLogger(CsrfChallengeTargetFour.class);
   private static String levelName = "CSRF Target 4";
 
+  /** Name of the per session synchronizer token that guards this state changing endpoint. */
+  public static final String CSRF_TOKEN_NAME = "csrfChallengeFourNonce";
+
   /**
-   * CSRF vulnerable function that can be used by users to force other users to mark their CSRF
-   * challenge Two as complete.
+   * Increments the CSRF counter of the submitted user identifier. The submitted csrfToken must be
+   * the nonce that was issued to the user making this request, so a nonce belonging to any other
+   * user, or a request forged by another origin, is rejected.
    *
    * @param userId User identifier to be incremented
    */
@@ -73,55 +78,51 @@ public class CsrfChallengeTargetFour extends HttpServlet {
     String storedToken = new String();
     try {
       String ApplicationRoot = getServletContext().getRealPath("");
-      String csrfTokenName = "csrfChallengeFourNonce";
       boolean result = false;
       HttpSession ses = request.getSession(true);
       String userId = (String) ses.getAttribute("userStamp");
-      if (Validate.validateSession(ses)) {
+      if (Validate.validateSession(ses) && userId != null && !userId.isEmpty()) {
         ShepherdLogManager.setRequestIp(
             request.getRemoteAddr(),
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
-        // Get CSRF Token From session
-        if (ses.getAttribute(csrfTokenName) == null
-            || ses.getAttribute(csrfTokenName).toString().isEmpty()) {
+        // Get the synchronizer token of this session. It is bound to the user that owns the
+        // session and it is never written into this response, so an off site attacker who can
+        // only make this browser send requests is unable to learn it
+        storedToken = CsrfSynchronizerTokens.peekToken(ses, CSRF_TOKEN_NAME, userId);
+        if (storedToken == null || storedToken.isEmpty()) {
           log.debug("No CSRF Token found in session");
           storedToken =
               Setter.setCsrfChallengeFourCsrfToken(userId, Hash.randomString(), ApplicationRoot);
-          out.write(
-              csrfGenerics.getString("target.noTokenNewToken") + " " + storedToken + "<br><br>");
-          ses.setAttribute(csrfTokenName, storedToken);
-        } else {
-          storedToken = "" + ses.getAttribute(csrfTokenName);
+          CsrfSynchronizerTokens.setToken(ses, CSRF_TOKEN_NAME, userId, storedToken);
         }
         log.debug("Victom is - " + userId);
-        String plusId = request.getParameter("userId").trim();
+        String plusId = Validate.validateParameter(request.getParameter("userId"), 64).trim();
         log.debug("User Submitted - " + plusId);
-        String csrfToken = request.getParameter("csrfToken").trim();
-        log.debug("csrfToken Submitted - '" + csrfToken + "'");
-        log.debug("storedCsrf Token is - '" + storedToken + "'");
+        String csrfToken =
+            Validate.validateParameter(request.getParameter("csrfToken"), 191).trim();
 
-        if (!userId.equals(plusId)) {
-          if (validCsrfToken(ApplicationRoot, csrfToken)) // Poor CSRF Validation Method
-          {
-            log.debug("'Valid' Nonce Value Submitted");
-            String userName = (String) ses.getAttribute("userName");
-            String attackerName = Getter.getUserName(ApplicationRoot, plusId);
-            if (attackerName != null) {
-              log.debug(userName + " is been CSRF'd by " + attackerName);
-
-              log.debug("Attempting to Increment ");
-              String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
-              result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
-            } else {
-              log.error("UserId '" + plusId + "' could not be found in system.");
-            }
-          } else {
-            log.debug("User " + plusId + " CSRF attack failed due to invalid nonce");
-          }
-        } else {
+        if (!CsrfSynchronizerTokens.isSameOrigin(request)) {
+          log.error(levelName + " request rejected. Cross origin request detected");
+        } else if (!CsrfSynchronizerTokens.matches(storedToken, csrfToken)
+            || !validCsrfToken(ApplicationRoot, userId, csrfToken)) {
+          log.debug("User " + plusId + " CSRF attack failed due to invalid nonce");
+        } else if (plusId.isEmpty() || userId.equals(plusId)) {
           log.debug("User " + userId + " is attacking themselves");
+        } else {
+          log.debug("Valid Nonce Value Submitted");
+          String userName = (String) ses.getAttribute("userName");
+          String attackerName = Getter.getUserName(ApplicationRoot, plusId);
+          if (attackerName != null) {
+            log.debug(userName + " is been CSRF'd by " + attackerName);
+
+            log.debug("Attempting to Increment ");
+            String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
+            result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
+          } else {
+            log.error("UserId '" + plusId + "' could not be found in system.");
+          }
         }
 
         if (result) {
@@ -139,31 +140,35 @@ public class CsrfChallengeTargetFour extends HttpServlet {
   }
 
   /**
-   * CSRF Validator that checks if user submitted CSRF token is in the DB. This function does not
-   * filter the CSRF table for CSRF tokens belonging to the user submitting the request. It will
-   * return true as long as the token exists in the database, regardless of who owns the token
+   * CSRF Validator that confirms that the submitted CSRF token is the token that was issued to the
+   * user making this request. The lookup is filtered by that user, so a token belonging to any
+   * other user is rejected.
    *
    * @param ApplicationRoot Running context of the application
-   * @param csrfToken CSRF Token value to search DB for
-   * @return Returns true if the CSRF Token is Deemed valid
+   * @param userId The identifier of the user making the request
+   * @param csrfToken CSRF Token value submitted with the request
+   * @return Returns true if the CSRF Token belongs to the requesting user
    */
-  private static boolean validCsrfToken(String ApplicationRoot, String csrfToken) {
+  private static boolean validCsrfToken(String ApplicationRoot, String userId, String csrfToken) {
     log.debug("*** CSRF4.validCsrfToken ***");
     boolean result = false;
-    Connection conn;
 
-    try {
-      conn = Database.getChallengeConnection(ApplicationRoot, "csrfChallengeFour");
+    if (userId == null || userId.isEmpty() || csrfToken == null || csrfToken.isEmpty()) {
+      log.error("CSRF4 Token Check called without a user or a token");
+      return false;
+    }
 
-      PreparedStatement prepstmt =
-          conn.prepareStatement(
-              "SELECT count(csrfTokenscol) FROM csrfTokens WHERE csrfTokenscol = ?");
-      prepstmt.setString(1, csrfToken);
-      ResultSet rs = prepstmt.executeQuery();
-      result = rs.next(); // If there is a row then the CSRF token was in the DB. Therefore CSRF
-      // Validated
-      Database.closeConnection(conn);
-
+    try (Connection conn = Database.getChallengeConnection(ApplicationRoot, "csrfChallengeFour");
+        PreparedStatement prepstmt =
+            conn.prepareStatement("SELECT csrfTokenscol FROM csrfTokens WHERE userId = ?")) {
+      prepstmt.setString(1, userId);
+      try (ResultSet rs = prepstmt.executeQuery()) {
+        if (rs.next()) {
+          result = CsrfSynchronizerTokens.matches(rs.getString(1), csrfToken);
+        } else {
+          log.debug("No CSRF token has been issued to this user");
+        }
+      }
     } catch (SQLException e) {
       log.error("CSRF4 Token Check Failure: " + e.toString());
       result = false;

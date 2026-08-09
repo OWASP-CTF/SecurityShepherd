@@ -62,6 +62,9 @@
 			userClass = Encode.forHtml(ses.getAttribute("userClass").toString());
 		}
 		String userId = Encode.forHtml(ses.getAttribute("userStamp").toString());
+		//Mint or fetch this session's CSRF synchronizer token for this challenge's target
+		String csrfSyncToken = Encode.forHtmlAttribute(CsrfSynchronizerTokens.getToken(ses,
+			servlets.module.challenge.CsrfChallengeTargetOne.CSRF_TOKEN_NAME));
 %>
 
 <html xmlns="http://www.w3.org/1999/xhtml">

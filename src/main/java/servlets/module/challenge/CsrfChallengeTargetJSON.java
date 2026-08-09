@@ -15,6 +15,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONObject;
+import utils.CsrfSynchronizerTokens;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -42,9 +43,14 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
   private static final Logger log = LogManager.getLogger(CsrfChallengeTargetJSON.class);
   private static String levelName = "CSRF JSON Target";
 
+  /** Name of the per session synchronizer token that guards this state changing endpoint. */
+  public static final String CSRF_TOKEN_NAME = "csrfChallengeJsonNonce";
+
   /**
-   * CSRF vulnerable function that can be used by users to force other users to mark their CSRF
-   * challenge as complete. Function expecting JSON formed data
+   * Increments the CSRF counter of the submitted user identifier. Function expecting JSON formed
+   * data. The state change is only carried out when the request body presents the per session
+   * synchronizer token that was minted server side for the requesting user, so a request forged by
+   * another origin cannot trigger it.
    *
    * @param userId User identifier to be incremented
    */
@@ -66,7 +72,8 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
     try {
       boolean result = false;
       HttpSession ses = request.getSession(true);
-      if (Validate.validateSession(ses)) {
+      String userId = (String) ses.getAttribute("userStamp");
+      if (Validate.validateSession(ses) && userId != null && !userId.isEmpty()) {
         ShepherdLogManager.setRequestIp(
             request.getRemoteAddr(),
             request.getHeader("X-Forwarded-For"),
@@ -78,10 +85,20 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
         log.debug("POST body: " + jsonData);
         JSONObject json = new JSONObject(jsonData);
         log.debug("Getting userId");
-        String plusId = (String) json.get("userId");
+        String plusId = json.optString("userId", "").trim();
         log.debug("User Submitted - " + plusId);
-        String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId)) {
+        // Synchronizer token for this session. It is minted server side, bound to the owner of
+        // the session and never disclosed off site, so a forged request cannot carry it
+        String submittedToken = json.optString("csrfToken", "").trim();
+
+        if (!CsrfSynchronizerTokens.isSameOrigin(request)) {
+          log.error(levelName + " request rejected. Cross origin request detected");
+        } else if (!CsrfSynchronizerTokens.isValidToken(
+            ses, CSRF_TOKEN_NAME, userId, submittedToken)) {
+          log.error(levelName + " request rejected. Missing or invalid CSRF synchronizer token");
+        } else if (plusId.isEmpty() || userId.equals(plusId)) {
+          log.debug("User " + userId + " is attacking themselves");
+        } else {
           String ApplicationRoot = getServletContext().getRealPath("");
           String userName = (String) ses.getAttribute("userName");
           String attackerName = Getter.getUserName(ApplicationRoot, plusId);
