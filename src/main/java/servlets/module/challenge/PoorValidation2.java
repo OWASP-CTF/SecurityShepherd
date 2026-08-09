@@ -126,8 +126,14 @@ public class PoorValidation2 extends HttpServlet {
     }
   }
 
+  /**
+   * Rejects negative amounts and caps the upper bound. The upper bound is this level's own fix:
+   * without it, a large enough amount (e.g. orangeAmount * 3000) overflows int and wraps to a
+   * negative finalCost. 100000 keeps every item's cost (amount * unit price, max unit price $3000)
+   * and their sum well within int range.
+   */
   private static int validateAmount(int amount) {
-    if (amount < 0) {
+    if (amount < 0 || amount > 100000) {
       amount = 0;
     }
     return amount;
