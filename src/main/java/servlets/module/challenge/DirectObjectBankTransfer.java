@@ -72,7 +72,6 @@ public class DirectObjectBankTransfer extends HttpServlet {
       boolean performTransfer = false;
       String errorMessage = new String();
       String applicationRoot = getServletContext().getRealPath("");
-      Connection conn = null;
       try {
         String senderAccountNumber = request.getParameter("senderAccountNumber");
         log.debug("Sender Account Number - " + senderAccountNumber);
@@ -82,19 +81,9 @@ public class DirectObjectBankTransfer extends HttpServlet {
         log.debug("Transfer Amount - " + transferAmountString);
         float tranferAmount = Float.parseFloat(transferAmountString);
 
-        // The only account funds may leave is the one this session is authenticated against. The
-        // sender account number in the request is a direct object reference and cannot be trusted.
-        Object sessionBankAccount = ses.getAttribute("directObjectBankAccount");
-        boolean ownsSenderAccount =
-            sessionBankAccount != null && sessionBankAccount.toString().equals(senderAccountNumber);
-
         // Data Validation
-        // Does the sender account belong to the signed in bank user?
-        if (!ownsSenderAccount) {
-          log.error("Refused transfer from an account this session does not own");
-          errorMessage = bundle.getString("transfer.error.couldNotTransfer");
-        } else if (tranferAmount > 0) {
-          // Positive Transfer Amount
+        // Positive Transfer Amount?
+        if (tranferAmount > 0) {
           // Sender Account Has necessary funds?
           long senderFunds =
               DirectObjectBankLogin.getAccountBalance(senderAccountNumber, applicationRoot);
@@ -120,7 +109,7 @@ public class DirectObjectBankTransfer extends HttpServlet {
         String htmlOutput = new String();
         if (performTransfer) {
           log.debug("Valid Data Submitted, transfering Funds...");
-          conn = Database.getChallengeConnection(applicationRoot, "directObjectBank");
+          Connection conn = Database.getChallengeConnection(applicationRoot, "directObjectBank");
           CallableStatement callstmt = conn.prepareCall("CALL transferFunds(?, ?, ?)");
           callstmt.setString(1, senderAccountNumber);
           callstmt.setString(2, receiverAccountNumber);
@@ -128,6 +117,7 @@ public class DirectObjectBankTransfer extends HttpServlet {
           callstmt.execute();
           log.debug("Successfully ran Transfer Funds procedure.");
           htmlOutput = bundle.getString("transfer.success");
+          Database.closeConnection(conn);
         } else {
           log.debug("Invalid Data Detected: " + errorMessage);
           htmlOutput = bundle.getString("transfer.error.occurred") + " " + errorMessage;
@@ -143,10 +133,6 @@ public class DirectObjectBankTransfer extends HttpServlet {
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
-      } finally {
-        // A transfer that throws part way through must still hand its connection back, otherwise
-        // the challenge pool drains and the bank stops answering anyone.
-        Database.closeConnection(conn);
       }
     } else {
       log.error(levelName + " servlet accessed with no session");

@@ -75,7 +75,6 @@ public class DirectObjectBankLogin extends HttpServlet {
       log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
-      Connection conn = null;
       try {
         String accountHolder = request.getParameter("accountHolder");
         log.debug("Account Holder - " + accountHolder);
@@ -84,11 +83,7 @@ public class DirectObjectBankLogin extends HttpServlet {
         String applicationRoot = getServletContext().getRealPath("");
         String htmlOutput = new String();
 
-        // Signing in to a different bank account must not leave the previous one authorised. The
-        // reference is dropped first so a failed attempt cannot fall back on the earlier session.
-        ses.removeAttribute("directObjectBankAccount");
-
-        conn = Database.getChallengeConnection(applicationRoot, "directObjectBank");
+        Connection conn = Database.getChallengeConnection(applicationRoot, "directObjectBank");
         CallableStatement callstmt = conn.prepareCall("CALL bankAuth(?, ?)");
         callstmt.setString(1, accountHolder);
         callstmt.setString(2, accountPass);
@@ -110,6 +105,7 @@ public class DirectObjectBankLogin extends HttpServlet {
         }
         log.debug("Outputting HTML");
         out.write(htmlOutput);
+        Database.closeConnection(conn);
       } catch (SQLException e) {
         out.write(
             errors.getString("error.funky")
@@ -119,29 +115,10 @@ public class DirectObjectBankLogin extends HttpServlet {
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
-      } finally {
-        Database.closeConnection(conn);
       }
     } else {
       log.error(levelName + " servlet accessed with no session");
     }
-  }
-
-  /**
-   * The result key is only earned by holding the credentials of the account the balance belongs to.
-   * This confirms the account being rendered is the one the session actually authenticated against,
-   * so no caller of bankForm can hand in someone else's account number and be paid for it.
-   *
-   * @param accountNumber The account the view is being built for
-   * @param ses The session of the player asking for the view
-   * @return true when the session is signed in to that exact bank account
-   */
-  private static boolean isSessionsOwnAccount(String accountNumber, HttpSession ses) {
-    if (accountNumber == null || ses == null) {
-      return false;
-    }
-    Object authenticatedAccount = ses.getAttribute("directObjectBankAccount");
-    return authenticatedAccount != null && accountNumber.equals(authenticatedAccount.toString());
   }
 
   /**
@@ -174,7 +151,7 @@ public class DirectObjectBankLogin extends HttpServlet {
             + " <div id='currentAccountBalanceDiv'><b>"
             + currentBalance
             + "</b></div></p>";
-    if (currentBalance > 5000000 && isSessionsOwnAccount(accountNumber, ses)) {
+    if (currentBalance > 5000000) {
       // Level Complete As the user has more than 5000000 in account. Return Key
       bankForm +=
           "<h2 class='title'>"
@@ -184,10 +161,8 @@ public class DirectObjectBankLogin extends HttpServlet {
               + "<br><br>"
               + ""
               + bundle.getString("result.theKeyIs")
-              + " <a>"
-              + Encode.forHtml(
-                  Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName")))
-              + "</a>";
+              + ""
+              + Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
     }
     bankForm +=
         ""
@@ -267,7 +242,7 @@ public class DirectObjectBankLogin extends HttpServlet {
             + " <div id='currentAccountBalanceDiv'><b>"
             + currentBalance
             + "</b></div></p>";
-    if (currentBalance > 5000000 && isSessionsOwnAccount(accountNumber, ses)) {
+    if (currentBalance > 5000000) {
       // Level Complete As the user has more than 5000000 in account. Return Key
       bankForm +=
           "<h2 class='title'>"
@@ -334,7 +309,7 @@ public class DirectObjectBankLogin extends HttpServlet {
   }
 
   /**
-   * Method to get the account balance from the DirectObjectBank for a specific account.
+   * Method to get the account balance from the DirectObjectBank for a specific account
    *
    * @param accountNumber The Account Number to Check the Balance Of
    * @param applicationRoot Running Context of the application
@@ -343,13 +318,12 @@ public class DirectObjectBankLogin extends HttpServlet {
    */
   public static long getAccountBalance(String accountNumber, String applicationRoot)
       throws SQLException {
-    // The unknown-account case throws, and callers rely on that to test whether an account exists.
-    // The connection therefore has to be handed back in a finally block: closing it on the happy
-    // path alone drains the challenge pool one failed lookup at a time.
     Connection conn = Database.getChallengeConnection(applicationRoot, "directObjectBank");
+    CallableStatement callstmt;
     long toReturn = 0;
     try {
-      CallableStatement callstmt = conn.prepareCall("CALL currentFunds(?)");
+
+      callstmt = conn.prepareCall("CALL currentFunds(?)");
       callstmt.setString(1, accountNumber);
       ResultSet rs = callstmt.executeQuery();
       if (rs.next()) {
@@ -357,9 +331,10 @@ public class DirectObjectBankLogin extends HttpServlet {
       } else {
         throw new SQLException("Could not Get Funds. No Rows Found From Query");
       }
-    } finally {
-      Database.closeConnection(conn);
+    } catch (SQLException e) {
+      throw e;
     }
+    conn.close();
     return toReturn;
   }
 }

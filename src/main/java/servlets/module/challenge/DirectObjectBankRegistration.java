@@ -66,7 +66,6 @@ public class DirectObjectBankRegistration extends HttpServlet {
       log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
-      Connection conn = null;
       try {
         String accountHolder = request.getParameter("accountHolder");
         log.debug("Account Holder - " + accountHolder);
@@ -75,23 +74,7 @@ public class DirectObjectBankRegistration extends HttpServlet {
         String applicationRoot = getServletContext().getRealPath("");
         String htmlOutput = new String();
 
-        // Registering an account never signs the caller into one. Any bank reference the session
-        // was already holding is dropped so a fresh registration cannot inherit the authority of a
-        // previous sign in.
-        ses.removeAttribute("directObjectBankAccount");
-
-        if (accountHolder == null
-            || accountHolder.trim().isEmpty()
-            || accountPass == null
-            || accountPass.isEmpty()) {
-          // Blank holders and blank passwords would create accounts nobody can be held to, and a
-          // blank password is a credential anyone can present.
-          log.error("Refused a registration with a blank account holder or password");
-          out.write(errors.getString("error.funky") + " " + bundle.getString("register.error"));
-          return;
-        }
-
-        conn = Database.getChallengeConnection(applicationRoot, "directObjectBank");
+        Connection conn = Database.getChallengeConnection(applicationRoot, "directObjectBank");
         CallableStatement callstmt = conn.prepareCall("CALL createAccount(?, ?)");
         callstmt.setString(1, accountHolder);
         callstmt.setString(2, accountPass);
@@ -100,16 +83,13 @@ public class DirectObjectBankRegistration extends HttpServlet {
         log.debug("Outputting HTML");
         htmlOutput = bundle.getString("register.accountCreated");
         out.write(htmlOutput);
+        Database.closeConnection(conn);
       } catch (SQLException e) {
         out.write(errors.getString("error.funky") + " " + bundle.getString("register.error"));
         log.fatal(levelName + " SQL Error - " + e.toString());
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
-      } finally {
-        // The create can fail on a name that is already taken. Returning the connection only on
-        // the successful path leaked one handle per rejected registration.
-        Database.closeConnection(conn);
       }
     } else {
       log.error(levelName + " servlet accessed with no session");
