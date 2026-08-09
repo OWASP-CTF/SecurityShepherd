@@ -47,6 +47,9 @@ public class SessionManagement5 extends HttpServlet {
       "7aed58f3a00087d56c844ed9474c671f8999680556c127a19ee79fa5d7a132e1";
   private static String levelResult = "a15b8ea0b8a3374a1dedc326dfbe3dbae26";
 
+  // The account a reset applies to, recorded when its password was proven.
+  public static final String SUB_USER = "sessionManagement5SubUser";
+
   /**
    * Users must use this functionality to sign in as an administrator to retrieve the result key.
    *
@@ -119,6 +122,7 @@ public class SessionManagement5 extends HttpServlet {
         ResultSet resultSet = callstmt.executeQuery();
         if (resultSet.next()) {
           log.debug("User found");
+          ses.setAttribute(SUB_USER, resultSet.getString(1));
           // Is the user an Admin?
           if (resultSet.getString(2).equalsIgnoreCase("admin")) {
             log.debug("Successful Admin Login");
