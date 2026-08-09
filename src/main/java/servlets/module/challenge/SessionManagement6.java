@@ -49,6 +49,9 @@ public class SessionManagement6 extends HttpServlet {
   public static String levelHash =
       "b5e1020e3742cf2c0880d4098146c4dde25ebd8ceab51807bad88ff47c316ece";
 
+  /** Generic authentication failure. Never discloses whether the account exists. */
+  private static final String INVALID_CREDENTIALS = "Invalid user name or password.<br/>";
+
   /**
    * Users must use this functionality to sign in as an administrator to retrieve the result key.
    *
@@ -82,12 +85,13 @@ public class SessionManagement6 extends HttpServlet {
       try {
         log.debug("Getting Cookies");
         Cookie userCookies[] = request.getCookies();
-        int i = 0;
         Cookie theCookie = null;
-        for (i = 0; i < userCookies.length; i++) {
-          if (userCookies[i].getName().compareTo("ac") == 0) {
-            theCookie = userCookies[i];
-            break; // End Loop, because we found the token
+        if (userCookies != null) {
+          for (int i = 0; i < userCookies.length; i++) {
+            if (userCookies[i].getName().compareTo("ac") == 0) {
+              theCookie = userCookies[i];
+              break; // End Loop, because we found the token
+            }
           }
         }
         if (theCookie != null) {
@@ -158,22 +162,10 @@ public class SessionManagement6 extends HttpServlet {
                       + "</a>"
                       + "</p>";
             } else {
-              log.debug("Incorrect credentials, checking if user name correct");
-              callstmt = conn.prepareStatement("SELECT userAddress FROM users WHERE userName = ?");
-              callstmt.setString(1, subName);
-              log.debug("Executing getAddress");
-              resultSet = callstmt.executeQuery();
-              if (resultSet.next()) {
-                log.debug("User Found");
-                userAddress =
-                    ""
-                        + bundle.getString("response.badPass")
-                        + " <a>"
-                        + Encode.forHtml(resultSet.getString(1))
-                        + "</a><br/>";
-              } else {
-                userAddress = "" + bundle.getString("response.badUser") + "<br/>";
-              }
+              // Uniform failure message: never disclose whether the user name exists, and never
+              // leak the account's registered email address
+              log.debug("Incorrect credentials");
+              userAddress = INVALID_CREDENTIALS;
               htmlOutput = makeTable(userAddress, bundle);
             }
             Database.closeConnection(conn);

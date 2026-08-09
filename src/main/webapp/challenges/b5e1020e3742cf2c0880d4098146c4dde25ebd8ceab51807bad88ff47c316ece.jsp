@@ -205,6 +205,7 @@ if (request.getSession() != null)
 			$("#leForm3").submit(function(){
 				var theResetEmail = $("#resetEmail").val();
 				var theAnswer = $("#questionAnswer").val();
+				var theRecoveryToken = $("#recoveryToken").val();
 				$("#answerQuestion").hide("fast");
 				$("#answerLoadingSign").show("slow");
 				$("#resultsDiv3").hide("slow", function(){
@@ -213,7 +214,8 @@ if (request.getSession() != null)
 						url: "<%= levelHash %>SecretQuestion",
 						data: {
 							subEmail: theResetEmail,
-							subAnswer: theAnswer
+							subAnswer: theAnswer,
+							recoveryToken: theRecoveryToken
 						},
 						async: false
 					});
