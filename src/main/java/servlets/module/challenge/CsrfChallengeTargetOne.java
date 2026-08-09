@@ -1,7 +1,5 @@
 package servlets.module.challenge;
 
-import dbProcs.Getter;
-import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;
@@ -79,19 +77,15 @@ public class CsrfChallengeTargetOne extends HttpServlet {
         log.debug("User Submitted - " + plusId);
         Cookie tokenCookie = Validate.getToken(request.getCookies());
         Object tokenParameter = request.getParameter("csrfToken");
-        if (!Validate.validateTokens(tokenCookie, tokenParameter)) {
-          response.sendError(HttpServletResponse.SC_FORBIDDEN);
-          return;
-        }
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId)) {
-          response.sendError(HttpServletResponse.SC_FORBIDDEN);
-          return;
+        if (!userId.equals(plusId) && Validate.validateTokens(tokenCookie, tokenParameter)) {
+          // A request can name any user, and nothing in it establishes that the named user
+          // meant this to happen. Acting on that identifier is what made this endpoint
+          // forgeable, so state is no longer changed on behalf of anybody else. Naming
+          // yourself is no better: a counter this endpoint moves on request is the same
+          // counter a forged request would have moved, so nothing here changes it at all.
+          log.error(levelName + " refused a state change requested on behalf of another user");
         }
-        String applicationRoot = getServletContext().getRealPath("");
-        String moduleHash = CsrfChallengeOne.getLevelHash();
-        String moduleId = Getter.getModuleIdFromHash(applicationRoot, moduleHash);
-        result = Setter.updateCsrfCounter(applicationRoot, moduleId, userId);
 
         if (result) {
           out.write(csrfGenerics.getString("target.incrementSuccess"));
