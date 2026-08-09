@@ -104,8 +104,7 @@ public class DirectObject2 extends HttpServlet {
           prepstmt.setString(1, userId);
           resultSet = prepstmt.executeQuery();
         } else {
-          log.warn(
-              "Refused lookup of a userId that was never offered to the player: " + userId);
+          log.warn("Refused lookup of a userId that was never offered to the player: " + userId);
         }
         if (resultSet != null && resultSet.next()) {
           log.debug("Found user: " + resultSet.getString(1));
