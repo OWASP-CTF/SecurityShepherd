@@ -9,6 +9,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.regex.Pattern;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -43,10 +44,15 @@ import utils.Validate;
 public class SqlInjection7 extends HttpServlet {
 
   private static final String levelName = "SQLi C7";
-  private static String levelHash =
+  private static final String levelHash =
       "8c2dd7e9818e5c6a9f8562feefa002dc0e455f0e92c8a46ab0cf519b1547eced";
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(SqlInjection7.class);
+
+  // InternetAddress accepts a quoted local part, so quotes, spaces, semicolons and comment
+  // syntax all pass the library check. A sign-in address has no use for that form.
+  private static final Pattern ADDRESS_FORMAT =
+      Pattern.compile("[A-Za-z0-9][A-Za-z0-9._%+-]*@[A-Za-z0-9][A-Za-z0-9.-]*\\.[A-Za-z]{2,63}");
 
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -68,27 +74,27 @@ public class SqlInjection7 extends HttpServlet {
       String htmlOutput = new String();
       String applicationRoot = getServletContext().getRealPath("");
 
+      Connection conn = null;
       try {
         String subEmail = Validate.validateParameter(request.getParameter("subEmail"), 60);
         log.debug("subEmail - " + subEmail.replaceAll("\n", " \\\\n ")); // Escape \n's
         String subPassword = Validate.validateParameter(request.getParameter("subPassword"), 40);
         log.debug("subPassword - " + subPassword);
         boolean validEmail =
-            Validate.isValidEmailAddress(subEmail.replaceAll("\n", "")); // Ignore \n 's
-        if (!subPassword.isEmpty() && !subPassword.isEmpty() && validEmail) {
-          Connection conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSeven");
+            ADDRESS_FORMAT.matcher(subEmail).matches() && Validate.isValidEmailAddress(subEmail);
+        if (!subEmail.isEmpty() && !subPassword.isEmpty() && validEmail) {
+          conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSeven");
           try {
             log.debug("Signing in with subitted details");
+            // The address is bound. It used to be concatenated, and the format check above does
+            // not stop that on its own - a newline is enough to get an injection past it.
             PreparedStatement prepstmt =
                 conn.prepareStatement(
-                    "SELECT userName FROM users WHERE userEmail = ? AND userPassword = ?;");
+                    "SELECT userName FROM users WHERE userEmail = ? AND userPassword = SHA(?);");
             prepstmt.setString(1, subEmail);
             prepstmt.setString(2, subPassword);
             ResultSet users = prepstmt.executeQuery();
             if (users.next()) {
-              // The address is bound as a parameter now, so the only way to reach this branch is
-              // to present a stored email and its password. Signing in is what this page is for,
-              // and it still answers the way it always did.
               htmlOutput =
                   "<h3>"
                       + bundle.getString("response.welcome")
@@ -124,7 +130,6 @@ public class SqlInjection7 extends HttpServlet {
               log.error("Failed to Pause: " + e1.toString());
             }
           }
-          conn.close();
         } else {
           htmlOutput = new String("Invalid data submitted");
           if (!validEmail) {
@@ -139,6 +144,8 @@ public class SqlInjection7 extends HttpServlet {
         } catch (Exception e2) {
           log.error("Failed to Pause: " + e2.toString());
         }
+      } finally {
+        Database.closeConnection(conn);
       }
       log.debug("*** " + levelName + " End ***");
       out.write(htmlOutput);

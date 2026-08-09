@@ -15,13 +15,13 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
 import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
 /**
- * Session Management Challenge Two - Password Reset Servlet. The response never returns the new
- * password or the result key. <br>
+ * Session Management Challenge Two - Password Reset Servlet Does not return result key <br>
  * <br>
  * This file is part of the Security Shepherd Project.
  *
@@ -46,14 +46,9 @@ public class SessionManagement2ChangePassword extends HttpServlet {
   public static String levelHash =
       "f5ddc0ed2d30e597ebacf5fdd117083674b19bb92ffc3499121b9e6a12c92959";
 
-  /** Stands in the response where the new password used to be printed. */
-  private static final String WITHHELD = "********";
-
   /**
-   * A user with the submitted email address is set a new random password. The password itself is
-   * not written back to the caller: it is the credential for the account that was named, and the
-   * caller has not shown they are its holder. It goes to the address on the account, and the reply
-   * here only confirms that the account's password was replaced.
+   * The account held at the submitted address is set a new random password, which is handed back as
+   * the message this deployment would otherwise post to that address.
    *
    * @param subEmail Sub schema user email address
    */
@@ -89,38 +84,35 @@ public class SessionManagement2ChangePassword extends HttpServlet {
         }
         log.debug("subEmail = " + subEmail);
 
-        // Two things used to make naming an address enough to take an account over: the reply
-        // carried the password that had just been set, and the reset ran for any address at
-        // all. The password is no longer written back to whoever asked - it belongs to the
-        // account holder - and the reset only runs for the account already signed in on this
-        // session, so nobody else's credential can be replaced from here either.
-        Object signedInAddress = ses.getAttribute(SessionManagement2.SUB_ADDRESS);
+        log.debug("Getting ApplicationRoot");
+        String ApplicationRoot = getServletContext().getRealPath("");
+
+        // There is no mail service behind this sub schema, so the reset message is written to the
+        // response instead. What matters is that the address it is issued for is not discoverable.
         String newPassword = Hash.randomString();
-        String htmlOutput = WITHHELD;
-        if (signedInAddress != null && signedInAddress.equals(subEmail)) {
-          Connection conn = null;
-          try {
-            conn =
-                Database.getChallengeConnection(
-                    getServletContext().getRealPath(""), "BrokenAuthAndSessMangChalTwo");
-            PreparedStatement callstmt =
-                conn.prepareStatement(
-                    "UPDATE users SET userPassword = SHA(?) WHERE userAddress = ?");
-            callstmt.setString(1, newPassword);
-            callstmt.setString(2, subEmail);
-            callstmt.executeUpdate();
+        Connection conn = null;
+        try {
+          conn = Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
+          PreparedStatement callstmt =
+              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userAddress = ?");
+          callstmt.setString(1, newPassword);
+          callstmt.setString(2, subEmail);
+          log.debug("Executing resetPassword");
+          if (callstmt.executeUpdate() > 0) {
+            log.debug("Committing changes made to database");
             callstmt = conn.prepareStatement("COMMIT");
             callstmt.execute();
-          } catch (SQLException e) {
-            log.error(levelName + " SQL Error: " + e.toString());
-          } finally {
-            Database.closeConnection(conn);
+            log.debug("Changes committed.");
+          } else {
+            log.debug("No account was updated");
           }
-        } else {
-          log.debug("Reset requested for an account that is not signed in on this session");
+        } catch (SQLException e) {
+          log.error(levelName + " SQL Error: " + e.toString());
+        } finally {
+          Database.closeConnection(conn);
         }
         log.debug("Outputting HTML");
-        out.write(bundle.getString("response.changedTo") + " " + htmlOutput);
+        out.write(bundle.getString("response.changedTo") + " " + Encode.forHtml(newPassword));
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());

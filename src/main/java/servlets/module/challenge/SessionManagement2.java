@@ -46,13 +46,11 @@ public class SessionManagement2 extends HttpServlet {
   private static String levelName = "Session Management Challenge Two";
   private static String levelHash =
       "d779e34a54172cbc245300d3bc22937090ebd3769466a501a5e7ac605b9f34b7";
-  public static final String SUB_ADDRESS = "sessionManagement2SubAddress";
 
   /**
    * The user attempts to use this function to sign into a sub schema. If they successfully sign in
-   * then they are able to retrieve the result key for the challenge If they sign in with a correct
-   * user name but incorrect password then the email address of the user will be returned in a error
-   * message
+   * then they are able to retrieve the result key for the challenge. Any sign in that is refused is
+   * refused the same way, whether or not the submitted name belongs to an account.
    *
    * @param subName Sub schema user name
    * @param subName Sub schema user password
@@ -113,19 +111,14 @@ public class SessionManagement2 extends HttpServlet {
 
         callstmt =
             conn.prepareStatement(
-                "SELECT userName, userAddress FROM users WHERE userName = ? AND userPassword ="
-                    + " SHA(?)");
+                "SELECT userName FROM users WHERE userName = ? AND userPassword = SHA(?)");
         callstmt.setString(1, subName);
         callstmt.setString(2, subPass);
         log.debug("Executing authUser");
         ResultSet resultSet = callstmt.executeQuery();
         if (resultSet.next()) {
           log.debug("Successful Login");
-          ses.setAttribute(SUB_ADDRESS, resultSet.getString(2));
-          // The key is earned by proving the account's password, which is what the query above
-          // just did. The hole this challenge is about was the password reset accepting any
-          // address, so that is where the ownership check belongs - not on a flag the caller
-          // could hand back to us here.
+          // Get key and add it to the output
           String userKey =
               Hash.generateUserSolution(
                   Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
@@ -141,25 +134,10 @@ public class SessionManagement2 extends HttpServlet {
                   + userKey
                   + "</a></p>";
         } else {
-          log.debug("Incorrect credentials, checking if user name correct");
-          callstmt = conn.prepareStatement("SELECT userAddress FROM users WHERE userName = ?");
-          callstmt.setString(1, subName);
-          log.debug("Executing getAddress");
-          resultSet = callstmt.executeQuery();
-          if (resultSet.next()) {
-            log.debug("User Found");
-            // The form still tells the caller which address the reset would go to, because that
-            // is what a person who owns the account needs to see. It no longer spells the
-            // address out: enough of it is covered that somebody who already knows it can
-            // recognise it, and somebody who does not cannot copy it down.
-            userAddress =
-                bundle.getString("response.badPass")
-                    + " <a>"
-                    + Encode.forHtml(maskAddress(resultSet.getString(1)))
-                    + "</a><br/>";
-          } else {
-            userAddress = bundle.getString("response.badUser") + "<br/>";
-          }
+          // One answer for every rejected sign-in. Naming the address the account recovers to
+          // told the caller both that the name exists and where to aim the reset form.
+          log.debug("Incorrect credentials");
+          userAddress = bundle.getString("response.badUser") + "<br/>";
           htmlOutput = makeTable(userAddress, bundle);
         }
         log.debug("Outputting HTML");
@@ -173,31 +151,6 @@ public class SessionManagement2 extends HttpServlet {
     } else {
       log.error(levelName + " servlet accessed with no session");
     }
-  }
-
-  /**
-   * Covers the local part of an email address, leaving its first character and its domain. What
-   * comes back is still recognisably the address on the account, but it is not enough to write the
-   * address down and use it somewhere else.
-   *
-   * @param address The address held for the account
-   * @return The address with its local part covered
-   */
-  private static String maskAddress(String address) {
-    if (address == null) {
-      return "";
-    }
-    int at = address.indexOf('@');
-    if (at < 1) {
-      return "*****";
-    }
-    StringBuilder masked = new StringBuilder();
-    masked.append(address.charAt(0));
-    for (int i = 1; i < at; i++) {
-      masked.append('*');
-    }
-    masked.append(address.substring(at));
-    return masked.toString();
   }
 
   private static String makeTable(String userAddress, ResourceBundle bundle) {
