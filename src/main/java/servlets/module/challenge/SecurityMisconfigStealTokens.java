@@ -110,8 +110,9 @@ public class SecurityMisconfigStealTokens extends HttpServlet {
                       + "<p>");
         } else {
           // User submitted something different from their cookie: this is the intended
-          // completion path for the lesson (the token can only be obtained by sniffing
-          // it off the wire or via script, both of which the fixed cookie flags prevent).
+          // completion path for the lesson. The cookie flags fixed in the JSP stop the
+          // browser-mediated leaks the lesson teaches (cleartext <img> send, script read);
+          // this check only confirms the submitted token is a real token of another user.
           if (validToken(userId, cookieValue, applicationRoot)) {
             log.debug("Valid Cookie of another User Detected");
             String userKey =
