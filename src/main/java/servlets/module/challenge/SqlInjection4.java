@@ -121,6 +121,10 @@ public class SqlInjection4 extends HttpServlet {
                   + bundle.getString("response.superSecure")
                   + "</p>";
         }
+        // The pool this came from holds twenty connections for this schema and does not reclaim
+        // what a handler forgets to return, so never closing takes the challenge offline for
+        // good once it has been called twenty times.
+        Database.closeConnection(conn);
       } catch (SQLException e) {
         // The database's own complaint is not for the caller. It names tables, columns and the
         // statement that failed, which is how a query gets rebuilt until it does something it
