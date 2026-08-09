@@ -65,12 +65,13 @@ String i18nLevelName = bundle.getString("securityMisconfig.stealTokens.challenge
 		String userId = Encode.forHtml(ses.getAttribute("userStamp").toString());
 		String challengeUrl = request.getRequestURL().toString();
 		ShepherdLogManager.logEvent(request.getRemoteAddr(), request.getHeader("X-Forwarded-For"), levelName +".jsp: DEBUG: Challenge URL " + challengeUrl);
-		//Changing URL to HTTP
-		challengeUrl = challengeUrl.replaceAll("(?i)https", "http");
 		//Set User  Cookie
 		try
 		{
 			Cookie userCookie = new Cookie("securityMisconfigLesson", SecurityMisconfigStealTokens.getUserToken(userId, applicationRoot));
+			//Session token: not readable from script and never sent over a cleartext connection
+			userCookie.setHttpOnly(true);
+			userCookie.setSecure(true);
 	        response.addCookie(userCookie);
 		}
 		catch(Exception e)
