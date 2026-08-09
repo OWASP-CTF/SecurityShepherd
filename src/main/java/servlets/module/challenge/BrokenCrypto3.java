@@ -2,8 +2,12 @@ package servlets.module.challenge;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.security.MessageDigest;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import javax.crypto.Cipher;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -16,8 +20,7 @@ import utils.ShepherdLogManager;
 import utils.Validate;
 
 /**
- * Bad Crypto Challenge Three Really bad crypto algorithm to break. Will reveal key if spaces are
- * submitted <br>
+ * Bad Crypto Challenge Three <br>
  * <br>
  * This file is part of the Security Shepherd Project.
  *
@@ -41,8 +44,13 @@ public class BrokenCrypto3 extends HttpServlet {
   private static String levelName = "Broken Crypto Challenge 3";
   public static String levelHash =
       "2da053b4afb1530a500120a49a14d422ea56705a7e3fc405a77bc269948ccae1";
-  public static String levelResult =
-      "thisisthesecurityshepherdabcencryptionkey"; // Is used as encryption key in this level
+  public static String levelResult = "thisisthesecurityshepherdabcencryptionkey";
+
+  // The cipher key is deliberately separate from the level result so that recovering it reveals
+  // nothing. GCM's authentication tag is what stops chosen ciphertext probing.
+  private static final String encryptionKey = "insecureCryptoStorage3DemoKey";
+  private static final int gcmIvLength = 12;
+  private static final int gcmTagLength = 128;
 
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -73,7 +81,7 @@ public class BrokenCrypto3 extends HttpServlet {
 
         log.debug("Decrypting user input");
         // Using level key as encryption key
-        String decryptedUserData = decrypt(userData, levelResult);
+        String decryptedUserData = decrypt(userData, encryptionKey);
         log.debug("Decrypted to: " + decryptedUserData);
 
         htmlOutput =
@@ -103,32 +111,16 @@ public class BrokenCrypto3 extends HttpServlet {
    * @throws Exception Throws illegal state Exception
    */
   public static String decrypt(String hash, String key) throws Exception {
-    try {
-      return new String(
-          xor(org.apache.commons.codec.binary.Base64.decodeBase64(hash.getBytes()), key), "UTF-8");
-    } catch (java.io.UnsupportedEncodingException ex) {
-      throw new IllegalStateException(ex);
+    byte[] input = org.apache.commons.codec.binary.Base64.decodeBase64(hash.getBytes("UTF-8"));
+    if (input.length <= gcmIvLength) {
+      throw new IllegalArgumentException("Ciphertext is too short to be valid");
     }
-  }
-
-  /**
-   * XOR Function
-   *
-   * @param input Byte array to be XOR'd
-   * @param key Encryption Key
-   * @return
-   */
-  private static byte[] xor(final byte[] input, String theKey) {
-    final byte[] output = new byte[input.length];
-    final byte[] secret = theKey.getBytes();
-    int spos = 0;
-    for (int pos = 0; pos < input.length; pos += 1) {
-      output[pos] = (byte) (input[pos] ^ secret[spos]);
-      spos += 1;
-      if (spos >= secret.length) {
-        spos = 0;
-      }
-    }
-    return output;
+    SecretKeySpec keySpec =
+        new SecretKeySpec(
+            MessageDigest.getInstance("SHA-256").digest(key.getBytes("UTF-8")), "AES");
+    Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+    cipher.init(
+        Cipher.DECRYPT_MODE, keySpec, new GCMParameterSpec(gcmTagLength, input, 0, gcmIvLength));
+    return new String(cipher.doFinal(input, gcmIvLength, input.length - gcmIvLength), "UTF-8");
   }
 }

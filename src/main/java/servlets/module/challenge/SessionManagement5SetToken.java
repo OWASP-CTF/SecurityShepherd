@@ -16,6 +16,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -50,6 +51,8 @@ public class SessionManagement5SetToken extends HttpServlet {
   private static final Logger log = LogManager.getLogger(SessionManagement5SetToken.class);
   private static String levelName = "SessionManagement5SetToken";
   public static String levelHash = SessionManagement5.levelHash;
+  public static final String RESET_USER = "sessionManagement5ResetUser";
+  public static final String RESET_TOKEN = "sessionManagement5ResetToken";
 
   /**
    * Used to apparently send a message to a user with a token to reset their password.
@@ -110,6 +113,10 @@ public class SessionManagement5SetToken extends HttpServlet {
         // Is the username valid?
         if (resultSet.next()) {
           log.debug("User found");
+          // The reset token is a secret sent to the account holder, so it is stored against the
+          // account it was issued for and never returned in this response
+          ses.setAttribute(RESET_USER, resultSet.getString(1));
+          ses.setAttribute(RESET_TOKEN, Hash.randomString());
           htmlOutput =
               bundle.getString("setToken.sentTo.1")
                   + " '"

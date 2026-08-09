@@ -3,18 +3,15 @@ package servlets.module.challenge;
 import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import utils.ShepherdLogManager;
@@ -50,11 +47,11 @@ public class SessionManagement3ChangePassword extends HttpServlet {
   // private static String levelResult = ""; //This Servlet does not return a result
 
   /**
-   * Function used by Session Management Challenge Three to change the password of the submitted
-   * user name specified in the "Current" cookie
+   * Function used by Session Management Challenge Three to change the password of the sub schema
+   * account that is signed in. The account is taken from the server side session, never from the
+   * client controlled "current" cookie.
    *
-   * @param current User cookie used to store the current user (encoded twice with base64)
-   * @param newPassword the password which to use to update an accounts password
+   * @param newPassword the password which to use to update the signed in accounts password
    */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -82,39 +79,16 @@ public class SessionManagement3ChangePassword extends HttpServlet {
       Connection conn = null;
       try {
         log.debug("Getting Challenge Parameters");
-        Cookie userCookies[] = request.getCookies();
-        int i = 0;
-        Cookie theCookie = null;
-        for (i = 0; i < userCookies.length; i++) {
-          if (userCookies[i].getName().compareTo("current") == 0) {
-            theCookie = userCookies[i];
-            break; // End Loop, because we found the token
-          }
-        }
         Object passNewObj = request.getParameter("newPassword");
-        String subName = new String();
+        String subName = (String) ses.getAttribute(SessionManagement3.SUB_USER);
         String subNewPass = new String();
-        if (theCookie != null) {
-          subName = theCookie.getValue();
-        }
         if (passNewObj != null) {
           subNewPass = (String) passNewObj;
         }
         log.debug("subName = " + subName);
-        // Base 64 Decode
-        try {
-          byte[] decodedName = Base64.decodeBase64(subName);
-          subName = new String(decodedName, "UTF-8");
-          decodedName = Base64.decodeBase64(subName);
-          subName = new String(decodedName, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-          log.debug("Could not decode username");
-          subName = new String();
-        }
-        log.debug("subName Decoded = " + subName);
         log.debug("subPass = " + subNewPass);
 
-        if (subNewPass.length() >= 6) {
+        if (subName != null && subNewPass.length() >= 6) {
           log.debug("Getting ApplicationRoot");
           String ApplicationRoot = getServletContext().getRealPath("");
 
@@ -137,7 +111,7 @@ public class SessionManagement3ChangePassword extends HttpServlet {
 
           htmlOutput = "<p>" + bundle.getString("reset.password") + "</p>";
         } else {
-          log.debug("invalid password submitted: " + subNewPass);
+          log.debug("No signed in sub schema user, or invalid password submitted");
           htmlOutput = "<p>" + bundle.getString("reset.failed") + "</p>";
         }
         log.debug("Outputting HTML");
