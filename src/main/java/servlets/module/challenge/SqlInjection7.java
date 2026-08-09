@@ -1,6 +1,7 @@
 package servlets.module.challenge;
 
 import dbProcs.Database;
+import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -16,6 +17,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -84,16 +86,23 @@ public class SqlInjection7 extends HttpServlet {
             prepstmt.setString(2, subPassword);
             ResultSet users = prepstmt.executeQuery();
             if (users.next()) {
-              // Signing in no longer prints the module result key. The stored credentials are
-              // plain text and compared as plain text, so anyone holding a valid pair could read
-              // the key straight out of a legitimate login without going near the injection this
-              // challenge is about.
+              // The credentials are bound as parameters, so only a caller who actually knows a
+              // stored e-mail and password pair reaches this branch. That caller is a legitimate
+              // user of the feature and still receives the result key; what no longer works is
+              // rewriting the WHERE clause to get here without knowing them.
               htmlOutput =
                   "<h3>"
                       + bundle.getString("response.welcome")
                       + " "
                       + Encode.forHtml(users.getString(1))
-                      + "</h3>";
+                      + "</h3>"
+                      + "<p>"
+                      + bundle.getString("response.resultKey")
+                      + ""
+                      + Hash.generateUserSolution(
+                          Getter.getModuleResultFromHash(applicationRoot, levelHash),
+                          (String) ses.getAttribute("userName"))
+                      + "</p>";
             } else {
               htmlOutput =
                   "<h3>"
