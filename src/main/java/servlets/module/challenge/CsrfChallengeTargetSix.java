@@ -4,8 +4,9 @@ import dbProcs.Getter;
 import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Locale;
-import java.util.Random;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -14,6 +15,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -42,11 +44,6 @@ public class CsrfChallengeTargetSix extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static String moduleHash =
       "2fff41105149e507c75b5a54e558470469d7024929cf78d570cd16c03bee3569";
-  private static final String[] csrfArray = {
-    "c4ca4238a0b923820dcc509a6f75849b",
-    "c81e728d9d4c2f636f067f89cc14862c",
-    "eccbc87e4b5ce2fe28308fd9f2a7baf3"
-  };
   private static final Logger log = LogManager.getLogger(CsrfChallengeTargetSix.class);
   private static String levelName = "CSRF 6 Target";
 
@@ -85,11 +82,7 @@ public class CsrfChallengeTargetSix extends HttpServlet {
         if (ses.getAttribute(csrfTokenName) == null
             || ses.getAttribute(csrfTokenName).toString().isEmpty()) {
           log.debug("No CSRF Token associated with user");
-          Random random = new Random();
-          int newToken = random.nextInt(3);
-          storedToken = csrfArray[newToken];
-          out.write(
-              csrfGenerics.getString("target.noTokenNewToken") + " " + storedToken + "<br><br>");
+          storedToken = Hash.randomString();
           ses.setAttribute(csrfTokenName, storedToken);
         } else {
           storedToken = "" + ses.getAttribute(csrfTokenName);
@@ -104,7 +97,9 @@ public class CsrfChallengeTargetSix extends HttpServlet {
         log.debug("csrfToken Submitted - " + csrfToken);
 
         if (!userId.equals(plusId)) {
-          if (csrfToken.equalsIgnoreCase(storedToken)) {
+          if (MessageDigest.isEqual(
+              storedToken.getBytes(StandardCharsets.UTF_8),
+              csrfToken.getBytes(StandardCharsets.UTF_8))) {
             log.debug("Valid Nonce Value Submitted");
             String ApplicationRoot = getServletContext().getRealPath("");
             String userName = (String) ses.getAttribute("userName");
@@ -115,6 +110,7 @@ public class CsrfChallengeTargetSix extends HttpServlet {
               log.debug("Attempting to Increment ");
               String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
               result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
+              ses.setAttribute(csrfTokenName, Hash.randomString());
             } else {
               log.error("UserId '" + plusId + "' could not be found.");
             }

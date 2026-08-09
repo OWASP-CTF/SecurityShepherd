@@ -66,25 +66,28 @@ public class PoorValidation1 extends HttpServlet {
       out.print(getServletInfo());
       String htmlOutput = new String();
       try {
-        int pineappleAmount = Integer.parseInt(request.getParameter("pineappleAmount"));
+        int pineappleAmount =
+            validateAmount(Integer.parseInt(request.getParameter("pineappleAmount")));
         log.debug("pineappleAmount - " + pineappleAmount);
-        int orangeAmount = Integer.parseInt(request.getParameter("orangeAmount"));
+        int orangeAmount = validateAmount(Integer.parseInt(request.getParameter("orangeAmount")));
         log.debug("orangeAmount - " + orangeAmount);
-        int appleAmount = Integer.parseInt(request.getParameter("appleAmount"));
+        int appleAmount = validateAmount(Integer.parseInt(request.getParameter("appleAmount")));
         log.debug("appleAmount - " + appleAmount);
-        int bananaAmount = Integer.parseInt(request.getParameter("bananaAmount"));
+        int bananaAmount = validateAmount(Integer.parseInt(request.getParameter("bananaAmount")));
         log.debug("bananaAmount - " + bananaAmount);
 
         // Working out costs
-        int pineappleCost = pineappleAmount * 30;
-        int orangeCost = orangeAmount * 3000;
-        int appleCost = appleAmount * 45;
-        int bananaCost = bananaAmount * 15;
+        int pineappleCost = Math.multiplyExact(pineappleAmount, 30);
+        int orangeCost = Math.multiplyExact(orangeAmount, 3000);
+        int appleCost = Math.multiplyExact(appleAmount, 45);
+        int bananaCost = Math.multiplyExact(bananaAmount, 15);
 
         htmlOutput = new String();
 
         // Work Out Final Cost
-        int finalCost = pineappleCost + appleCost + bananaCost + orangeCost;
+        int finalCost =
+            Math.addExact(
+                Math.addExact(Math.addExact(pineappleCost, appleCost), bananaCost), orangeCost);
 
         // Output Order
         htmlOutput =
@@ -121,5 +124,12 @@ public class PoorValidation1 extends HttpServlet {
     } else {
       log.error(levelName + " servlet accessed with no session");
     }
+  }
+
+  private static int validateAmount(int amount) throws IllegalArgumentException {
+    if (amount < 0) {
+      throw new IllegalArgumentException("Order amounts cannot be negative");
+    }
+    return amount;
   }
 }

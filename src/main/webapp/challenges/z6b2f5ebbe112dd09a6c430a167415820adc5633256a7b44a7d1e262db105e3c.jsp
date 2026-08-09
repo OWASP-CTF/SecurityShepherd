@@ -6,22 +6,22 @@
 <%
 /**
  * Cross Site Request Forgery Challenge 3
- * 
+ *
  * This file is part of the Security Shepherd Project.
- * 
+ *
  * The Security Shepherd project is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.<br/>
- * 
+ *
  * The Security Shepherd project is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.<br/>
- * 
+ *
  * You should have received a copy of the GNU General Public License
- * along with the Security Shepherd project.  If not, see <http://www.gnu.org/licenses/>. 
- * 
+ * along with the Security Shepherd project.  If not, see <http://www.gnu.org/licenses/>.
+ *
  * @author Mark Denihan
  */
  String levelName = "CSRF Challenge 3";
@@ -30,7 +30,7 @@
  //Translation Stuff
  Locale locale = new Locale(Validate.validateLanguage(request.getSession()));
  ResourceBundle bundle = ResourceBundle.getBundle("i18n.challenges.csrf.csrfStrings", locale);
- 
+
  ShepherdLogManager.logEvent(request.getRemoteAddr(), request.getHeader("X-Forwarded-For"), levelName + " Accessed");
  if (request.getSession() != null)
  {
@@ -52,7 +52,7 @@
  		ShepherdLogManager.logEvent(request.getRemoteAddr(), request.getHeader("X-Forwarded-For"), levelName + " has been accessed by " + ses.getAttribute("userName").toString(), ses.getAttribute("userName"));
  		// Getting Session Variables
 		//The org.owasp.encoder.Encode class should be used to encode any softcoded data. This should be performed everywhere for safety
-		
+
 		String ApplicationRoot = getServletContext().getRealPath("");
 		String csrfToken = Encode.forHtml(tokenCookie.getValue());
 		String userClass = null;
@@ -90,18 +90,18 @@
 			<%= bundle.getString("challenge.csrfTokenGenerated") %>&nbsp;<%= bundle.getString("challenge.userIdExample") %>&nbsp;<%= bundle.getString("challenge.whereIdIsUserBeenIncremented.2") %>&nbsp;<%= bundle.getString("challenge.yourIdIs") %>&nbsp;<a><%= userId %></a><%= bundle.getString("challenge.yourIdIs.1") %>
 			<br /> <br />
 			<%= bundle.getString("challenge.useForumForIframe") %>
-			<% 
+			<%
 				String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, levelHash);
-				if (Getter.isCsrfLevelComplete(ApplicationRoot, moduleId, userId)) 
+				if (Getter.isCsrfLevelComplete(ApplicationRoot, moduleId, userId))
 				{ %>
-		
+
 		<h2 class='title'><%= bundle.getString("result.challengeCompleted") %></h2>
 		<p>
 			<%= bundle.getString("result.congratsTheKeyIs") %>
 			<b> <a><%=Hash.generateUserSolution(Getter.getModuleResult(ApplicationRoot, moduleId), (String)ses.getAttribute("userName")) %></a></b><br />
 			<br />
 			<% } %>
-		
+
 		<form id="leForm" action="javascript:;">
 			<table>
 				<tr>
@@ -122,6 +122,9 @@
 				</tr>
 			</table>
 		</form>
+
+		<input type="hidden" id="csrfChallengeNonce"
+			value="<%= Encode.forHtmlAttribute(CsrfNonce.getNonce(ses)) %>" />
 
 		<div id="resultsDiv">
 			<%= Getter.getCsrfForumWithIframe(ApplicationRoot, userClass, Getter.getModuleIdFromHash(ApplicationRoot, levelHash), bundle) %>
