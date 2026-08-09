@@ -42,7 +42,7 @@ public class BrokenCrypto3 extends HttpServlet {
   public static String levelHash =
       "2da053b4afb1530a500120a49a14d422ea56705a7e3fc405a77bc269948ccae1";
   public static String levelResult =
-      "thisisthesecurityshepherdabcencryptionkey"; // Is used as encryption key in this level
+      "99LTSSJ2JYZY2QY4G2F8KLJZZ9V5UC491ZCF3DGTYX"; // Is used as encryption key in this level
 
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
