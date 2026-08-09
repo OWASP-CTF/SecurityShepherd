@@ -112,43 +112,25 @@ public class SessionManagement3 extends HttpServlet {
         callstmt.execute();
         log.debug("Changes committed.");
 
-        // The change password function used to take the account name from the "current"
-        // cookie, so an unauthenticated caller could write userPassword = SHA(a value of
-        // their own choosing) onto any row here. Such a row outlives the code fix, because
-        // the schema is only seeded while the database is empty. So put every account back
-        // on its seeded literal before anything is checked: a seven character literal can
-        // never equal SHA(x), which is forty hex characters, and a credential planted
-        // through the old flaw therefore cannot sign in and cannot reach the result key.
-        String seedRestore = "UPDATE users SET userPassword = 'default' WHERE userId > 0";
-        callstmt = conn.prepareStatement(seedRestore);
-        callstmt.execute();
-        callstmt = conn.prepareStatement("COMMIT");
-        callstmt.execute();
-        log.debug("Seeded credentials restored");
-
         callstmt =
             conn.prepareStatement(
                 "SELECT userName, userAddress, userRole FROM users WHERE userName = ?");
         callstmt.setString(1, subName);
         log.debug("Executing findUser");
         ResultSet resultSet = callstmt.executeQuery();
-        // Every account has to present its password, not just the administrators. Waving a
-        // guest through on the strength of a name that exists is not a sign in at all, and the
-        // reply it gave marked out which names were real.
         if (resultSet.next()) {
           log.debug("User found");
-          callstmt =
-              conn.prepareStatement(
-                  "SELECT userName, userAddress, userRole FROM users WHERE userName = ? AND"
-                      + " userPassword = SHA(?)");
-          callstmt.setString(1, subName);
-          callstmt.setString(2, subPass);
-          log.debug("Executing authUser");
-          ResultSet resultSet2 = callstmt.executeQuery();
-          if (resultSet2.next()) {
-            // Remember who this session actually authenticated as, server side.
-            ses.setAttribute("sessionManagement3User", resultSet2.getString(1));
-            if (resultSet2.getString(3).equalsIgnoreCase("admin")) {
+          if (resultSet.getString(3).equalsIgnoreCase("admin")) {
+            log.debug("Admin Detected");
+            callstmt =
+                conn.prepareStatement(
+                    "SELECT userName, userAddress, userRole FROM users WHERE userName = ? AND"
+                        + " userPassword = SHA(?)");
+            callstmt.setString(1, subName);
+            callstmt.setString(2, subPass);
+            log.debug("Executing authUser");
+            ResultSet resultSet2 = callstmt.executeQuery();
+            if (resultSet2.next()) {
               log.debug("Successful Admin Login");
               // Get key and add it to the output
               String userKey =
@@ -167,22 +149,23 @@ public class SessionManagement3 extends HttpServlet {
                       + "</a>"
                       + "</p>";
             } else {
-              log.debug("Successful Guest Login");
-              htmlOutput =
-                  makeTable(bundle)
-                      + "<h2 class='title'>"
-                      + bundle.getString("response.welcomeGuest")
-                      + "</h2>"
-                      + "<p>"
-                      + bundle.getString("response.guestMessage")
-                      + "</p><br/><br/>";
+              userAddress =
+                  bundle.getString("response.badPass")
+                      + " <a>"
+                      + Encode.forHtml(resultSet.getString(1))
+                      + "</a><br/>";
+              htmlOutput = makeTable(userAddress, bundle);
             }
           } else {
-            // The same reply as for an account that does not exist. Telling the caller that
-            // the name was right and only the password was wrong marks out the accounts worth
-            // aiming a password reset at.
-            userAddress = bundle.getString("response.badUser") + "<br/>";
-            htmlOutput = makeTable(userAddress, bundle);
+            log.debug("Successful Guest Login");
+            htmlOutput =
+                makeTable(bundle)
+                    + "<h2 class='title'>"
+                    + bundle.getString("response.welcomeGuest")
+                    + "</h2>"
+                    + "<p>"
+                    + bundle.getString("response.guestMessage")
+                    + "</p><br/><br/>";
           }
         } else {
           userAddress = bundle.getString("response.badUser") + "<br/>";

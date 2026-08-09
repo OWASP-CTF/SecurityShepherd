@@ -69,10 +69,7 @@ public class CsrfChallengeSixGetToken extends HttpServlet {
       if (Validate.validateSession(ses)) {
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
         String htmlOutput = new String("Your csrf Token for this Challenge is: ");
-        // The identifier to look up comes from the session, not from the request. Taking it from
-        // the request let anybody read anybody else's anti-CSRF token, and the LIKE comparison
-        // let a wildcard return every token in the table at once.
-        String userId = (String) ses.getAttribute("userStamp");
+        String userId = request.getParameter("userId").toString();
 
         Connection conn =
             Database.getChallengeConnection(
@@ -81,7 +78,7 @@ public class CsrfChallengeSixGetToken extends HttpServlet {
           log.debug("Preparing setCsrfChallengeSixToken call");
           PreparedStatement callstmnt =
               conn.prepareStatement(
-                  "SELECT csrfTokenscol FROM csrfchallengesix.csrfTokens WHERE userId = ?");
+                  "SELECT csrfTokenscol FROM csrfchallengesix.csrfTokens WHERE userId LIKE ?");
           callstmnt.setString(1, userId);
           log.debug("Executing setCsrfChallengeSixTokenQuery");
           ResultSet rs = callstmnt.executeQuery();

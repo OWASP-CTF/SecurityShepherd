@@ -2,15 +2,8 @@ package servlets.module.challenge;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.nio.charset.StandardCharsets;
-import java.security.GeneralSecurityException;
-import java.security.MessageDigest;
-import java.util.Arrays;
 import java.util.Locale;
 import java.util.ResourceBundle;
-import javax.crypto.Cipher;
-import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -48,13 +41,8 @@ public class BrokenCrypto3 extends HttpServlet {
   private static String levelName = "Broken Crypto Challenge 3";
   public static String levelHash =
       "2da053b4afb1530a500120a49a14d422ea56705a7e3fc405a77bc269948ccae1";
-  public static String levelResult = "thisisthesecurityshepherdabcencryptionkey";
-
-  /**
-   * Key used by the sub application's cipher. It is deliberately not the module result, so that
-   * even a full break of the sub application cannot hand out this level's answer.
-   */
-  private static final String encryptionKey = "ShepherdCrypto03"; // AES needs exactly 16 bytes
+  public static String levelResult =
+      "thisisthesecurityshepherdabcencryptionkey"; // Is used as encryption key in this level
 
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -84,17 +72,9 @@ public class BrokenCrypto3 extends HttpServlet {
         log.debug("User Submitted - " + userData);
 
         log.debug("Decrypting user input");
-        String decryptedUserData;
-        try {
-          decryptedUserData = decrypt(userData, encryptionKey);
-          log.debug("Decrypted to: " + decryptedUserData);
-        } catch (GeneralSecurityException | IllegalArgumentException e) {
-          // Cipher text that was not produced by this application does not decrypt. Report that
-          // as an empty plain text rather than telling the submitter anything about why it
-          // failed, which is what turns a decryption endpoint into a padding oracle.
-          log.debug("Submitted cipher text could not be decrypted");
-          decryptedUserData = new String();
-        }
+        // Using level key as encryption key
+        String decryptedUserData = decrypt(userData, levelResult);
+        log.debug("Decrypted to: " + decryptedUserData);
 
         htmlOutput =
             "<h2 class='title'>"
@@ -115,36 +95,40 @@ public class BrokenCrypto3 extends HttpServlet {
   }
 
   /**
-   * Decrypts the supplied string value using the submitted key.
+   * Decrypts the supplied string value using the submitted key
    *
-   * <p>This used to be a repeating key XOR written by hand. Because XOR is its own inverse, feeding
-   * that decryption known bytes handed back the key itself, so anyone who could reach this function
-   * could recover the key from it. A standard block cipher is used instead, which reveals nothing
-   * about the key no matter what cipher text is submitted.
-   *
-   * @param cipherText The base64 cipher text to be decrypted
-   * @param key The encryption key, which must be 16 bytes
+   * @param hash The cipher text to be decrypted
+   * @param key The encryption key
    * @return The plain text revealed from the decryption
-   * @throws GeneralSecurityException If the key or the cipher text is not usable
+   * @throws Exception Throws illegal state Exception
    */
-  public static String decrypt(String cipherText, String key) throws GeneralSecurityException {
-    if (cipherText == null || key == null) {
-      throw new GeneralSecurityException("Encrypted input is required");
+  public static String decrypt(String hash, String key) throws Exception {
+    try {
+      return new String(
+          xor(org.apache.commons.codec.binary.Base64.decodeBase64(hash.getBytes()), key), "UTF-8");
+    } catch (java.io.UnsupportedEncodingException ex) {
+      throw new IllegalStateException(ex);
     }
-    byte[] envelope = java.util.Base64.getDecoder().decode(cipherText);
-    final int nonceLength = 12;
-    if (envelope.length <= nonceLength + 16) {
-      throw new GeneralSecurityException("Encrypted input is incomplete");
+  }
+
+  /**
+   * XOR Function
+   *
+   * @param input Byte array to be XOR'd
+   * @param key Encryption Key
+   * @return
+   */
+  private static byte[] xor(final byte[] input, String theKey) {
+    final byte[] output = new byte[input.length];
+    final byte[] secret = theKey.getBytes();
+    int spos = 0;
+    for (int pos = 0; pos < input.length; pos += 1) {
+      output[pos] = (byte) (input[pos] ^ secret[spos]);
+      spos += 1;
+      if (spos >= secret.length) {
+        spos = 0;
+      }
     }
-    byte[] nonce = Arrays.copyOfRange(envelope, 0, nonceLength);
-    byte[] authenticatedCipherText = Arrays.copyOfRange(envelope, nonceLength, envelope.length);
-    byte[] keyMaterial =
-        MessageDigest.getInstance("SHA-256").digest(key.getBytes(StandardCharsets.UTF_8));
-    Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-    cipher.init(
-        Cipher.DECRYPT_MODE,
-        new SecretKeySpec(keyMaterial, "AES"),
-        new GCMParameterSpec(128, nonce));
-    return new String(cipher.doFinal(authenticatedCipherText), StandardCharsets.UTF_8);
+    return output;
   }
 }

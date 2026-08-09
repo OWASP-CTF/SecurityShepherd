@@ -15,6 +15,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -96,11 +97,10 @@ public class SqlInjection5 extends HttpServlet {
         log.debug("Looking for Coupons");
         PreparedStatement prepstmt =
             conn.prepareStatement(
-                // The shop honoured any code found in the VIP table for any shopper, which is an
-                // authorisation decision the code itself was never entitled to make. Only the
-                // coupons this shop issues are accepted.
-                "SELECT itemId, perCentOff FROM coupons WHERE couponCode = ?");
+                "SELECT itemId, perCentOff FROM coupons WHERE couponCode = ?"
+                    + "UNION SELECT itemId, perCentOff FROM vipCoupons WHERE couponCode = ?");
         prepstmt.setString(1, couponCode);
+        prepstmt.setString(2, couponCode);
         ResultSet coupons = prepstmt.executeQuery();
         try {
           if (coupons.next()) {
@@ -148,10 +148,12 @@ public class SqlInjection5 extends HttpServlet {
                 + finalCost
                 + "</strong></a>";
         if (orangeAmount > 0 && orangeCost == 0) {
-          // Reaching a zero line total needed a discount this shopper was never offered, so the
-          // only way to arrive here was the flaw itself. The shop does not hand out the module's
-          // answer for it.
-          log.error(levelName + " refused to print the module answer for a discounted order");
+          htmlOutput +=
+              "<br><br>"
+                  + bundle.getString("response.orangesFreeSolution")
+                  + "<a><b>"
+                  + Encode.forHtml(levelSolution)
+                  + "</b></a>";
         }
       } catch (Exception e) {
         log.debug("Didn't complete order: " + e.toString());
