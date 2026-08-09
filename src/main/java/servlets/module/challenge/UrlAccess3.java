@@ -6,12 +6,10 @@ import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import utils.Hash;
@@ -45,14 +43,11 @@ public class UrlAccess3 extends HttpServlet {
       "e40333fc2c40b8e0169e433366350f55c77b82878329570efa894838980de5b4";
 
   /**
-   * Users must take advance of the broken session management in this application by modifying the
-   * tracking cookie "currentPerson" which is encoded in Base64. They must modify this cookie to be
-   * equal a super admin to access the result key.
+   * Serves the sub-application functionality using a server-side identity bound to the user's
+   * authenticated session.
    *
    * @param userId Red herring that is pre set to d3d9446802a44259755d38e6d163e820
    * @param secure Red herring that is pre set to true
-   * @param adminDetected Red herring
-   * @param currentPerson Cookie encoded base64 that manages who is signed in to the sub schema
    */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -78,48 +73,35 @@ public class UrlAccess3 extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
-        Cookie userCookies[] = request.getCookies();
-        int i = 0;
-        Cookie theCookie = null;
-        for (i = 0; i < userCookies.length; i++) {
-          if (userCookies[i].getName().compareTo("currentPerson") == 0) {
-            theCookie = userCookies[i];
-            break; // End Loop, because we found the token
-          }
+        String currentPerson = (String) ses.getAttribute("urlAccessThreeCurrentPerson");
+        if (currentPerson == null) {
+          currentPerson = "aGuest";
+          ses.setAttribute("urlAccessThreeCurrentPerson", currentPerson);
         }
         String htmlOutput = null;
-        if (theCookie != null) {
-          log.debug("Cookie value: " + theCookie.getValue());
-          byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
-          String decodedCookie = new String(decodedCookieBytes, "UTF-8");
-          log.debug("Decoded Cookie: " + decodedCookie);
-
-          if (decodedCookie.equals("MrJohnReillyTheSecond")) {
-            log.debug("Super Admin Cookie detected");
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(
-                    Getter.getModuleResultFromHash(getServletContext().getRealPath(""), levelHash),
-                    (String) ses.getAttribute("userName"));
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("admin.superAdminClub")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("admin.superAdminClub.keyMessage")
-                    + " "
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
-          } else if (!decodedCookie.equals("aGuest")) {
-            log.debug("Tampered role cookie detected: " + decodedCookie);
-            htmlOutput = "<!-- " + bundle.getString("response.invalidUser") + " -->";
-          } else {
-            log.debug("No change to role cookie submitted");
-          }
+        if (currentPerson.equals("MrJohnReillyTheSecond")) {
+          log.debug("Super Admin session detected");
+          // Get key and add it to the output
+          String userKey =
+              Hash.generateUserSolution(
+                  Getter.getModuleResultFromHash(getServletContext().getRealPath(""), levelHash),
+                  (String) ses.getAttribute("userName"));
+          htmlOutput =
+              "<h2 class='title'>"
+                  + bundle.getString("admin.superAdminClub")
+                  + "</h2>"
+                  + "<p>"
+                  + bundle.getString("admin.superAdminClub.keyMessage")
+                  + " "
+                  + "<a>"
+                  + userKey
+                  + "</a>"
+                  + "</p>";
+        } else if (!currentPerson.equals("aGuest")) {
+          log.debug("Invalid server-side sub-application identity: " + currentPerson);
+          htmlOutput = "<!-- " + bundle.getString("response.invalidUser") + " -->";
         } else {
-          log.debug("No Role Cookie Submitted");
+          log.debug("Guest sub-application session detected");
         }
         if (htmlOutput == null) {
           log.debug("Challenge Not Complete");
