@@ -57,6 +57,9 @@ public class DirectObjectBankLogin extends HttpServlet {
 
   private static final String SIGN_IN_BALANCE_ATTRIBUTE = "directObjectBankSignInBalance";
 
+  /** Set once this session has signed into an account somebody else had already funded. */
+  private static final String PRE_FUNDED_ATTRIBUTE = "directObjectBankSawPreFundedAccount";
+
   /**
    * This Servlet is used in the Insecure Direct Object Bank to sign in to a specific bank account.
    * It does this by checking the user DB credentials and then returns the bank form the user needs
@@ -149,24 +152,35 @@ public class DirectObjectBankLogin extends HttpServlet {
     if (account == null || ses == null) {
       return false;
     }
-    Long signInBalance = null;
-    Object recordedAccount = ses.getAttribute(SIGN_IN_ACCOUNT_ATTRIBUTE);
-    Object recordedBalance = ses.getAttribute(SIGN_IN_BALANCE_ATTRIBUTE);
-    boolean sameAccount = recordedAccount != null && account.equals(recordedAccount.toString());
-    if (sameAccount && recordedBalance instanceof Long) {
-      signInBalance = (Long) recordedBalance;
+    // The account and the balance it arrived with are read and written as one step. Two requests
+    // made at the same time would otherwise be able to leave one account's number recorded beside
+    // another account's balance.
+    synchronized (ses) {
+      Long signInBalance = null;
+      Object recordedAccount = ses.getAttribute(SIGN_IN_ACCOUNT_ATTRIBUTE);
+      Object recordedBalance = ses.getAttribute(SIGN_IN_BALANCE_ATTRIBUTE);
+      boolean sameAccount = recordedAccount != null && account.equals(recordedAccount.toString());
+      if (sameAccount && recordedBalance instanceof Long) {
+        signInBalance = (Long) recordedBalance;
+      }
+      if (signInBalance == null) {
+        // First sight of this account in this session. Remember what it was worth on arrival.
+        signInBalance = Long.valueOf(balance);
+        ses.setAttribute(SIGN_IN_ACCOUNT_ATTRIBUTE, account);
+        ses.setAttribute(SIGN_IN_BALANCE_ATTRIBUTE, signInBalance);
+      }
+      boolean earned = signInBalance.longValue() <= COMPLETION_BALANCE;
+      if (!earned) {
+        // Signing into an account that was already worth this much is remembered for as long as
+        // the session lasts, so that moving on to another account does not clear the record of it.
+        ses.setAttribute(PRE_FUNDED_ATTRIBUTE, Boolean.TRUE);
+        log.debug("Account was already funded before this session signed in. Refusing completion");
+      } else if (ses.getAttribute(PRE_FUNDED_ATTRIBUTE) != null) {
+        earned = false;
+        log.debug("Session has already handled an account it did not fund. Refusing completion");
+      }
+      return earned;
     }
-    if (signInBalance == null) {
-      // First sight of this account in this session. Remember what it was worth on arrival.
-      signInBalance = Long.valueOf(balance);
-      ses.setAttribute(SIGN_IN_ACCOUNT_ATTRIBUTE, account);
-      ses.setAttribute(SIGN_IN_BALANCE_ATTRIBUTE, signInBalance);
-    }
-    boolean earned = signInBalance.longValue() <= COMPLETION_BALANCE;
-    if (!earned) {
-      log.debug("Account was already funded before this session signed in. Refusing completion");
-    }
-    return earned;
   }
 
   /**

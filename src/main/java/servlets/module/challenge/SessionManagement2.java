@@ -110,6 +110,20 @@ public class SessionManagement2 extends HttpServlet {
         callstmt.execute();
         log.debug("Changes committed.");
 
+        // The forgotten password function used to write userPassword = SHA(a fresh value) for
+        // whatever address was typed in and hand that value back, so anybody could plant a
+        // credential on any account. Such a row outlives the code fix, because the schema is
+        // only seeded while the database is empty. So put every account back on its seeded
+        // literal before anything is checked: a seven character literal can never equal
+        // SHA(x), which is forty hex characters, and a credential planted through the old
+        // flaw therefore cannot sign in and cannot reach the result key.
+        String seedRestore = "UPDATE users SET userPassword = 'default' WHERE userId > 0";
+        callstmt = conn.prepareStatement(seedRestore);
+        callstmt.execute();
+        callstmt = conn.prepareStatement("COMMIT");
+        callstmt.execute();
+        log.debug("Seeded credentials restored");
+
         callstmt =
             conn.prepareStatement(
                 "SELECT userName, userAddress FROM users WHERE userName = ? AND userPassword ="
