@@ -5,10 +5,12 @@ import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import utils.Hash;
@@ -41,15 +43,16 @@ public class SessionManagement1 extends HttpServlet {
   public static String levelHash =
       "dfd6bfba1033fa380e378299b6a998c759646bd8aea02511482b8ce5d707f93a";
   private static String levelResult = "db7b1da5d7a43c7100a6f01bb0c";
-  private static final String SUB_ROLE = "sessionManagement1SubRole";
 
   /**
-   * The role a user holds in the sub schema is tracked server side. The "checksum" cookie is set by
-   * the challenge page for display purposes only and is never used to make the access decision.
+   * Users must take advance of the broken session management in this application by modifying the
+   * tracking cookie "checksum" which is encoded in base 64. They must modify this cookie to be
+   * equal to administrator to access the result key.
    *
    * @param upgraeUserToAdmin Red herring
    * @param returnPassword Red herring
    * @param adminDetected Red herring
+   * @param checksum Cookie encoded base 64 that manages who is signed in to the sub schema
    */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -74,28 +77,38 @@ public class SessionManagement1 extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
-        String subRole = (String) ses.getAttribute(SUB_ROLE);
-        if (subRole == null) {
-          subRole = "user";
-          ses.setAttribute(SUB_ROLE, subRole);
+        Cookie userCookies[] = request.getCookies();
+        int i = 0;
+        Cookie theCookie = null;
+        for (i = 0; i < userCookies.length; i++) {
+          if (userCookies[i].getName().compareTo("checksum") == 0) {
+            theCookie = userCookies[i];
+            break; // End Loop, because we found the token
+          }
         }
-        log.debug("Sub schema role: " + subRole);
         String htmlOutput = null;
-        if (subRole.equals("administrator")) {
-          log.debug("Challenge Complete");
-          // Get key and add it to the output
-          String userKey =
-              Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
-          htmlOutput =
-              "<h2 class='title'>"
-                  + bundle.getString("response.adminClub")
-                  + "</h2>"
-                  + "<p>"
-                  + bundle.getString("response.welcomeAdmin")
-                  + "<a>"
-                  + userKey
-                  + "</a>"
-                  + "</p>";
+        if (theCookie != null) {
+          log.debug("Cookie value: " + theCookie.getValue());
+          byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
+          String decodedCookie = new String(decodedCookieBytes, "UTF-8");
+          log.debug("Decoded Cookie: " + decodedCookie);
+
+          if (decodedCookie.equals("userRole=administrator")) {
+            log.debug("Challenge Complete");
+            // Get key and add it to the output
+            String userKey =
+                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
+            htmlOutput =
+                "<h2 class='title'>"
+                    + bundle.getString("response.adminClub")
+                    + "</h2>"
+                    + "<p>"
+                    + bundle.getString("response.welcomeAdmin")
+                    + "<a>"
+                    + userKey
+                    + "</a>"
+                    + "</p>";
+          }
         }
         if (htmlOutput == null) {
           log.debug("Challenge Not Complete");
