@@ -77,7 +77,9 @@ public class UrlAccess2Admin extends HttpServlet {
           log.debug("User Submitted - " + userData);
         }
 
-        if (!tamperedRequest) {
+        // Knowing the magic parameter is not authorisation: this is an admin-only function
+        // and must be gated on the caller's actual role, not just a guessed constant.
+        if (!tamperedRequest && Validate.validateAdminSession(ses)) {
           String userKey =
               Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
           htmlOutput =

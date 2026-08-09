@@ -132,6 +132,9 @@ public class SessionManagement3 extends HttpServlet {
             ResultSet resultSet2 = callstmt.executeQuery();
             if (resultSet2.next()) {
               log.debug("Successful Admin Login");
+              // Record the authenticated sub-schema identity so ChangePassword can trust it
+              // instead of a client-writable "current" cookie.
+              ses.setAttribute("sessionMgmt3User", subName);
               // Get key and add it to the output
               String userKey =
                   Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
@@ -149,15 +152,13 @@ public class SessionManagement3 extends HttpServlet {
                       + "</a>"
                       + "</p>";
             } else {
-              userAddress =
-                  bundle.getString("response.badPass")
-                      + " <a>"
-                      + Encode.forHtml(resultSet.getString(1))
-                      + "</a><br/>";
+              // Generic failure message; do not disclose the admin account's address
+              userAddress = bundle.getString("response.badPass") + "<br/>";
               htmlOutput = makeTable(userAddress, bundle);
             }
           } else {
             log.debug("Successful Guest Login");
+            ses.setAttribute("sessionMgmt3User", subName);
             htmlOutput =
                 makeTable(bundle)
                     + "<h2 class='title'>"

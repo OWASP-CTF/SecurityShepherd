@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
 import utils.FindXSS;
 import utils.Hash;
 import utils.ShepherdLogManager;
@@ -81,7 +82,10 @@ public class XssChallengeTwo extends HttpServlet {
           searchTerm = XssFilter.levelTwo(searchTerm);
           log.debug("After Filtering - " + searchTerm);
           String htmlOutput = new String();
-          if (FindXSS.search(searchTerm)) {
+          // Grade against what is actually rendered below, not the pre-encoding value: the
+          // key must only be awarded for a payload that still executes once reflected.
+          String safeSearchTerm = Encode.forHtml(searchTerm);
+          if (FindXSS.search(safeSearchTerm)) {
             htmlOutput =
                 "<h2 class='title'>"
                     + bundle.getString("result.wellDone")
@@ -106,7 +110,7 @@ public class XssChallengeTwo extends HttpServlet {
                   + "<p>"
                   + bundle.getString("response.noResults")
                   + " "
-                  + searchTerm
+                  + safeSearchTerm
                   + "</p>";
           log.debug("Outputting HTML");
           out.write(htmlOutput);

@@ -73,7 +73,9 @@ public class DirectObjectBankTransfer extends HttpServlet {
       String errorMessage = new String();
       String applicationRoot = getServletContext().getRealPath("");
       try {
-        String senderAccountNumber = request.getParameter("senderAccountNumber");
+        // Funds can only be moved out of the account bound to this session at login, not
+        // an arbitrary sender supplied by the caller
+        String senderAccountNumber = (String) ses.getAttribute("directObjectBankAccount");
         log.debug("Sender Account Number - " + senderAccountNumber);
         String receiverAccountNumber = request.getParameter("receiverAccountNumber");
         log.debug("Receiver Account Number - " + receiverAccountNumber);
@@ -83,7 +85,9 @@ public class DirectObjectBankTransfer extends HttpServlet {
 
         // Data Validation
         // Positive Transfer Amount?
-        if (tranferAmount > 0) {
+        if (senderAccountNumber == null) {
+          errorMessage = errors.getString("error.shouldNotBeHere");
+        } else if (tranferAmount > 0) {
           // Sender Account Has necessary funds?
           long senderFunds =
               DirectObjectBankLogin.getAccountBalance(senderAccountNumber, applicationRoot);

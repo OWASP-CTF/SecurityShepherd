@@ -144,11 +144,8 @@ public class SessionManagement5 extends HttpServlet {
                       + "</a>"
                       + "</p>";
             } else {
-              userAddress =
-                  bundle.getString("response.badPass")
-                      + " <a>"
-                      + Encode.forHtml(resultSet.getString(1))
-                      + "</a><br/>";
+              // Generic failure message; do not disclose the admin account's user name
+              userAddress = bundle.getString("response.badPass") + "<br/>";
               htmlOutput = makeTable(userAddress, bundle);
             }
           } else {

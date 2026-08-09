@@ -93,7 +93,11 @@ public class SessionManagement1 extends HttpServlet {
           String decodedCookie = new String(decodedCookieBytes, "UTF-8");
           log.debug("Decoded Cookie: " + decodedCookie);
 
-          if (decodedCookie.equals("userRole=administrator")) {
+          // Privilege must come from server-side session state, never from a client-writable
+          // cookie value, so a tampered "checksum" cookie can no longer grant admin access.
+          Object serverRole = ses.getAttribute("userRole");
+          if (decodedCookie.equals("userRole=administrator")
+              && "administrator".equals(serverRole)) {
             log.debug("Challenge Complete");
             // Get key and add it to the output
             String userKey =

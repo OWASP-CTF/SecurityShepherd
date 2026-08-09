@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
 import utils.FindXSS;
 import utils.Hash;
 import utils.ShepherdLogManager;
@@ -90,9 +91,18 @@ public class XssChallengeFour extends HttpServlet {
           } else {
 
             searchTerm = XssFilter.encodeForHtml(searchTerm);
-            userPost =
-                "<a href=\"" + searchTerm + "\" alt=\"" + searchTerm + "\">" + searchTerm + "</a>";
             log.debug("After Encoding - " + searchTerm);
+            // The level's own filter leaves this attribute-breakable, so what is actually
+            // rendered must be re-encoded per context and the key graded on that value,
+            // not the still-dangerous string the filter produced.
+            userPost =
+                "<a href=\""
+                    + Encode.forHtmlAttribute(searchTerm)
+                    + "\" alt=\""
+                    + Encode.forHtmlAttribute(searchTerm)
+                    + "\">"
+                    + Encode.forHtml(searchTerm)
+                    + "</a>";
             if (FindXSS.search(userPost)) {
               htmlOutput =
                   "<h2 class='title'>"
