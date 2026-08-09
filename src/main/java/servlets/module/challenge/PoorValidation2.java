@@ -79,18 +79,17 @@ public class PoorValidation2 extends HttpServlet {
         int bananaAmount = validateAmount(Integer.parseInt(request.getParameter("bananaAmount")));
         log.debug("bananaAmount - " + bananaAmount);
 
-        // Working out costs
-        int pineappleCost = Math.multiplyExact(pineappleAmount, 30);
-        int orangeCost = Math.multiplyExact(orangeAmount, 3000);
-        int appleCost = Math.multiplyExact(appleAmount, 45);
-        int bananaCost = Math.multiplyExact(bananaAmount, 15);
+        // Working out costs. Widened to long so a large order cannot overflow the total
+        // into a negative number
+        long pineappleCost = (long) pineappleAmount * 30;
+        long orangeCost = (long) orangeAmount * 3000;
+        long appleCost = (long) appleAmount * 45;
+        long bananaCost = (long) bananaAmount * 15;
 
         htmlOutput = new String();
 
         // Work Out Final Cost
-        int finalCost =
-            Math.addExact(
-                Math.addExact(Math.addExact(pineappleCost, orangeCost), bananaCost), appleCost);
+        long finalCost = pineappleCost + orangeCost + bananaCost + appleCost;
 
         // Output Order
         htmlOutput =
