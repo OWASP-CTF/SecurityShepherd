@@ -39,6 +39,9 @@ public class Validate {
   public static Cookie getSessionId(Cookie[] userCookies) {
     int i = 0;
     Cookie theSessionId = null;
+    if (userCookies == null) {
+      return null;
+    }
     for (i = 0; i < userCookies.length; i++) {
       if (userCookies[i].getName().compareTo("JSESSIONID") == 0) {
         theSessionId = userCookies[i];
@@ -57,6 +60,9 @@ public class Validate {
   public static Cookie getToken(Cookie[] userCookies) {
     int i = 0;
     Cookie theToken = null;
+    if (userCookies == null) {
+      return null;
+    }
     for (i = 0; i < userCookies.length; i++) {
       if (userCookies[i].getName().compareTo("token") == 0) {
         theToken = userCookies[i];
@@ -116,6 +122,9 @@ public class Validate {
    */
   public static boolean isValidEmailAddress(String email) {
     boolean result = true;
+    if (email == null) {
+      return false;
+    }
     try {
       log.debug("Validating email");
       InternetAddress emailAddr = new InternetAddress(email);
@@ -203,6 +212,21 @@ public class Validate {
   }
 
   /**
+   * Whitelists the http and https URL schemes, rejecting script bearing schemes like javascript:
+   * and data:
+   *
+   * @param theUrl URL submitted by a user
+   * @return Boolean value reflecting if the URL is safe to place in a URI attribute
+   */
+  public static boolean isHttpUrl(String theUrl) {
+    if (theUrl == null) {
+      return false;
+    }
+    String scheme = theUrl.toLowerCase();
+    return scheme.startsWith("http://") || scheme.startsWith("https://");
+  }
+
+  /**
    * Session is checked for credentials and ensures that they have not been modified and that they
    * are valid for an administrator
    *
@@ -231,7 +255,9 @@ public class Validate {
                   "User " + userName + " Attempting Admin functions! (CSRF Tokens Not Checked)");
             }
           } catch (Exception e) {
-            log.fatal("Tampered Parameter Detected!!! Could not parameters");
+            // The decision is only sound if the whole check ran, so a throw refuses access
+            result = false;
+            log.fatal("Could not validate admin session for " + userName + ": " + e.toString());
           }
         } else {
           log.debug("Session has no credentials");
@@ -282,7 +308,9 @@ public class Validate {
             }
 
           } catch (Exception e) {
-            log.fatal("Tampered Parameter Detected!!! Could not parameters");
+            // The decision is only sound if the whole check ran, so a throw refuses access
+            result = false;
+            log.fatal("Could not validate admin session for " + userName + ": " + e.toString());
           }
         } else {
           log.debug("Session has no credentials");
@@ -402,6 +430,9 @@ public class Validate {
             result = (role.compareTo("player") == 0 || role.compareTo("admin") == 0);
             if (!result) {
               log.fatal("User Role Parameter Tampered. Role = " + role);
+            } else if (ses.getAttribute("userName") == null) {
+              log.error("Session holds a role but no user name");
+              result = false;
             } else {
               String userName = ses.getAttribute("userName").toString();
               // Has the user been suspended? Should they be kicked?
@@ -418,7 +449,10 @@ public class Validate {
               }
             }
           } catch (Exception e) {
-            log.fatal("Tampered Parameter Detected!!! Could not Decrypt stamp");
+            // result is already true here and the suspension check below can throw, so a
+            // swallowed exception would hand a kicked user a valid session
+            result = false;
+            log.fatal("Could not validate session: " + e.toString());
           }
         } else {
           log.debug("Session has no credentials");

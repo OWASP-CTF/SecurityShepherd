@@ -47,10 +47,8 @@ public class SessionManagement2ChangePassword extends HttpServlet {
       "f5ddc0ed2d30e597ebacf5fdd117083674b19bb92ffc3499121b9e6a12c92959";
 
   /**
-   * A user with the submitted email address is set a new random password, the password is also
-   * returned from the database procedure and is forwards through to the HTTP response. This
-   * response is not consumed by the client interface by default, and the user will have to discover
-   * it.
+   * The account signed in on this session is set a new random password. A reset for any other
+   * address is refused, so the form cannot be used to take over an account.
    *
    * @param subEmail Sub schema user email address
    */
@@ -76,7 +74,6 @@ public class SessionManagement2ChangePassword extends HttpServlet {
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
 
-      String htmlOutput = new String();
       log.debug(levelName + " Servlet accessed");
       try {
         log.debug("Getting Challenge Parameter");
@@ -90,31 +87,41 @@ public class SessionManagement2ChangePassword extends HttpServlet {
         log.debug("Getting ApplicationRoot");
         String ApplicationRoot = getServletContext().getRealPath("");
 
-        String newPassword = Hash.randomString();
-        try {
-          Connection conn =
-              Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
-          log.debug("Checking credentials");
-          PreparedStatement callstmt =
-              conn.prepareStatement("UPDATE users SET userPassword = SHA(?) WHERE userAddress = ?");
-          callstmt.setString(1, newPassword);
-          callstmt.setString(2, subEmail);
-          log.debug("Executing resetPassword");
-          callstmt.execute();
-          log.debug("Statement executed");
-
-          log.debug("Committing changes made to database");
-          callstmt = conn.prepareStatement("COMMIT");
-          callstmt.execute();
-          log.debug("Changes committed.");
-
-          htmlOutput = Encode.forHtml(newPassword);
-          Database.closeConnection(conn);
-        } catch (SQLException e) {
-          log.error(levelName + " SQL Error: " + e.toString());
+        // A reset may only be issued for the account already signed in on this session. There is
+        // no mail transport here, so any other address would hand out someone else's password.
+        String signedInAddress = (String) ses.getAttribute(SessionManagement2.SUB_ADDRESS);
+        String htmlOutput = bundle.getString("response.resetRefused");
+        if (signedInAddress != null && signedInAddress.equals(subEmail)) {
+          String newPassword = Hash.randomString();
+          Connection conn = null;
+          try {
+            conn = Database.getChallengeConnection(ApplicationRoot, "BrokenAuthAndSessMangChalTwo");
+            PreparedStatement callstmt =
+                conn.prepareStatement(
+                    "UPDATE users SET userPassword = SHA(?) WHERE userAddress = ?");
+            callstmt.setString(1, newPassword);
+            callstmt.setString(2, subEmail);
+            log.debug("Executing resetPassword");
+            if (callstmt.executeUpdate() > 0) {
+              log.debug("Committing changes made to database");
+              callstmt = conn.prepareStatement("COMMIT");
+              callstmt.execute();
+              log.debug("Changes committed.");
+              htmlOutput =
+                  bundle.getString("response.changedTo") + " " + Encode.forHtml(newPassword);
+            } else {
+              log.debug("No account was updated");
+            }
+          } catch (SQLException e) {
+            log.error(levelName + " SQL Error: " + e.toString());
+          } finally {
+            Database.closeConnection(conn);
+          }
+        } else {
+          log.debug("Reset requested for an account that is not signed in on this session");
         }
         log.debug("Outputting HTML");
-        out.write(bundle.getString("response.changedTo") + " " + htmlOutput);
+        out.write(htmlOutput);
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());

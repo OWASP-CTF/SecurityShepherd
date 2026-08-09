@@ -68,6 +68,7 @@ public class SqlInjection5 extends HttpServlet {
       String htmlOutput = new String();
       String applicationRoot = getServletContext().getRealPath("");
 
+      Connection conn = null;
       try {
         int pineappleAmount =
             validateAmount(Integer.parseInt(request.getParameter("pineappleAmount")));
@@ -92,8 +93,7 @@ public class SqlInjection5 extends HttpServlet {
         int perCentOffBanana = 0; // Will search for coupons in DB and update this int
 
         htmlOutput = new String();
-        Connection conn =
-            Database.getChallengeConnection(applicationRoot, "SqlInjectionChallenge5Shop");
+        conn = Database.getChallengeConnection(applicationRoot, "SqlInjectionChallenge5Shop");
         log.debug("Looking for Coupons");
         PreparedStatement prepstmt =
             conn.prepareStatement(
@@ -125,13 +125,12 @@ public class SqlInjection5 extends HttpServlet {
         } catch (Exception e) {
           log.debug("Could Not Find Coupon: " + e.toString());
         }
-        conn.close();
 
         // Work Out Final Cost
-        pineappleCost = pineappleCost - (pineappleCost * (perCentOffPineapple / 100));
-        appleCost = appleCost - (appleCost * (perCentOffApple / 100));
-        bananaCost = bananaCost - (bananaCost * (perCentOffBanana / 100));
-        orangeCost = orangeCost - (orangeCost * (perCentOffOrange / 100));
+        pineappleCost = applyDiscount(pineappleCost, perCentOffPineapple);
+        appleCost = applyDiscount(appleCost, perCentOffApple);
+        bananaCost = applyDiscount(bananaCost, perCentOffBanana);
+        orangeCost = applyDiscount(orangeCost, perCentOffOrange);
         int finalCost = pineappleCost + appleCost + bananaCost + orangeCost;
 
         // Output Order
@@ -158,6 +157,8 @@ public class SqlInjection5 extends HttpServlet {
       } catch (Exception e) {
         log.debug("Didn't complete order: " + e.toString());
         htmlOutput += "<p>" + bundle.getString("response.orderFailed") + "</p>";
+      } finally {
+        Database.closeConnection(conn);
       }
       try {
         Thread.sleep(1000);
@@ -168,6 +169,11 @@ public class SqlInjection5 extends HttpServlet {
     } else {
       log.error(levelName + " servlet accessed with no session");
     }
+  }
+
+  /** Discount worked out in long, because cost * perCentOff overflows int at 7159 items. */
+  private static int applyDiscount(int cost, int perCentOff) {
+    return (int) (cost - (((long) cost * perCentOff) / 100));
   }
 
   private static int validateAmount(int amount) throws IllegalArgumentException {

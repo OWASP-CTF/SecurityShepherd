@@ -1,7 +1,6 @@
 package servlets.module.challenge;
 
 import dbProcs.Database;
-import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -11,16 +10,12 @@ import java.sql.SQLException;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.owasp.encoder.Encode;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -47,8 +42,10 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(SessionManagement7SecretQuestion.class);
   private static String levelName = "Session Management Challenge 7 (Secret Question)";
-  private static String levelHash =
-      "269d55bc0e0ff635dcaeec8533085e5eae5d25e8646dcd4b05009353c9cf9c80";
+  // The answer space is the seven known flowers below, so the cap has to be smaller than it or the
+  // whole space can be tried before it applies
+  private static final String FAILED_ANSWERS = "sessionManagement7FailedAnswers";
+  private static final int MAX_FAILED_ANSWERS = 3;
   // To catch most requests before calling the DB, the in comming Answers must be one of the
   // following flowers
   private static String possibleAnswers[] = {
@@ -101,12 +98,26 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
         Object emailObj = request.getParameter("subEmail");
         String subEmail = Validate.validateParameter(emailObj, 60);
         log.debug("subEmail = " + subEmail);
-        if (validAnswer(subAns)) {
+        Integer failedAnswers = (Integer) ses.getAttribute(FAILED_ANSWERS);
+        if (failedAnswers == null) {
+          failedAnswers = 0;
+        }
+        if (failedAnswers >= MAX_FAILED_ANSWERS) {
+          log.debug("Too many failed answers on this session");
+          htmlOutput =
+              new String(
+                  "<h2 class='title'>"
+                      + bundle.getString("question.badAnswer")
+                      + "</h2><p>"
+                      + bundle.getString("question.whoAreYou")
+                      + "</p>");
+        } else if (validAnswer(subAns)) {
           log.debug("Submitted answer is a possible valid answer");
           String ApplicationRoot = getServletContext().getRealPath("");
+          Connection conn = null;
           try {
             if (Validate.isValidEmailAddress(subEmail) && subAns.length() > 5) {
-              Connection conn =
+              conn =
                   Database.getChallengeConnection(
                       ApplicationRoot, "BrokenAuthAndSessMangChalFlowers");
               log.debug("Checking Secret Answer");
@@ -117,27 +128,16 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
               callstmt.setString(2, subAns);
               log.debug("Running secret Answer Check");
               ResultSet rs = callstmt.executeQuery();
+              // The answer is checked here and nothing about the account is echoed back, so a
+              // guessed answer still never discloses the user name or signs the account in
               if (rs.next()) {
+                // The count is not cleared here. Guessing one account's answer would otherwise
+                // hand back a full budget of guesses against the next account.
                 log.debug("Correct Answer Submitted");
-                // Get key and add it to the output
-                String userKey =
-                    Hash.generateUserSolution(
-                        Getter.getModuleResultFromHash(ApplicationRoot, levelHash),
-                        (String) ses.getAttribute("userName"));
-                htmlOutput =
-                    "<h2 class='title'>"
-                        + bundle.getString("response.welcome")
-                        + " "
-                        + Encode.forHtml(rs.getString(1))
-                        + "</h2>"
-                        + "<p>"
-                        + bundle.getString("response.resultKey")
-                        + " <a>"
-                        + userKey
-                        + "</a>"
-                        + "</p>";
+                htmlOutput = "<h2 class='title'>" + bundle.getString("response.welcome") + "</h2>";
               } else {
                 log.debug("Bad Answer Submitted");
+                ses.setAttribute(FAILED_ANSWERS, failedAnswers + 1);
                 htmlOutput =
                     new String(
                         "<h2 class='title'>"
@@ -146,7 +146,7 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
                             + bundle.getString("question.whoAreYou")
                             + "</p>");
               }
-              Database.closeConnection(conn);
+              rs.close();
             } else {
               log.debug("Invalid data submitted");
               htmlOutput = new String("<b>" + bundle.getString("question.invalidData") + ": </b>");
@@ -158,9 +158,19 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
             }
           } catch (SQLException e) {
             log.error(levelName + " SQL Error: " + e.toString());
+            htmlOutput =
+                new String(
+                    "<h2 class='title'>"
+                        + bundle.getString("question.badAnswer")
+                        + "</h2><p>"
+                        + bundle.getString("question.whoAreYou")
+                        + "</p>");
+          } finally {
+            Database.closeConnection(conn);
           }
         } else {
           log.debug("Invalid answer submitted for any user, skipping rest of function");
+          ses.setAttribute(FAILED_ANSWERS, failedAnswers + 1);
           htmlOutput =
               new String(
                   "<h2 class='title'>"
@@ -211,32 +221,17 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
       String htmlOutput = new String();
       log.debug(levelName + " Servlet accessed");
       try {
-        log.debug("Getting Cookies");
-        Cookie userCookies[] = request.getCookies();
-        int i = 0;
-        Cookie theCookie = null;
-        for (i = 0; i < userCookies.length; i++) {
-          if (userCookies[i].getName().compareTo("ac") == 0) {
-            theCookie = userCookies[i];
-            break; // End Loop, because we found the token
-          }
+        // The answer disclosure policy is decided server side; no client cookie can change it
+        String answerPolicy = (String) ses.getAttribute(SessionManagement7.ANSWER_POLICY);
+        if (answerPolicy == null) {
+          answerPolicy = "doNotReturnAnswers";
+          ses.setAttribute(SessionManagement7.ANSWER_POLICY, answerPolicy);
         }
-        if (theCookie != null) {
-          log.debug("Cookie value: " + theCookie.getValue());
-          log.debug("Cookie value: " + theCookie.getValue());
-          byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
-          String decodedCookie = new String(decodedCookieBytes, "UTF-8");
-          log.debug("Decoded Cookie: " + decodedCookie);
-          if (decodedCookie.equals("doNotReturnAnswers")) // Untampered Cookie
-          {
-            // Question not translated as DB will only mark English answers as correct
-            htmlOutput = new String("What is your favourite flower?");
-          } else {
-            log.debug("Tampered cookie detected");
-            htmlOutput = bundle.getString("response.configError");
-          }
+        if (answerPolicy.equals("doNotReturnAnswers")) {
+          // Question not translated as DB will only mark English answers as correct
+          htmlOutput = new String("What is your favourite flower?");
         } else {
-          log.debug("Tampered cookie detected");
+          log.debug("Answer disclosure is disabled");
           htmlOutput = bundle.getString("response.configError");
         }
         log.debug("Outputting HTML");

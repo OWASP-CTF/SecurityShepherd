@@ -126,6 +126,9 @@ String i18nLevelName = bundle.getString("title.csrfJson");
 			</table>
 		</form>
 
+		<input type="hidden" id="csrfChallengeNonce"
+			value="<%= Encode.forHtmlAttribute(CsrfNonce.getNonce(ses)) %>" />
+
 		<div id="resultsDiv">
 			<%= Getter.getCsrfForumWithIframe(ApplicationRoot, userClass, Getter.getModuleIdFromHash(ApplicationRoot, levelHash), bundle) %>
 		</div>

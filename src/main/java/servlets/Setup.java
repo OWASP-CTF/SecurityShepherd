@@ -46,6 +46,14 @@ public class Setup extends HttpServlet {
 
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
+    // The installer rewrites database.properties and can re-run the schema scripts, so it stays
+    // reachable only while the application is not installed yet. SetupFilter does not gate it.
+    if (isInstalled()) {
+      log.error("Setup request refused: the application is already installed");
+      response.sendError(HttpServletResponse.SC_FORBIDDEN);
+      return;
+    }
+
     // Translation Stuff
     Locale locale = new Locale(Validate.validateLanguage(request.getSession()));
 
@@ -189,12 +197,14 @@ public class Setup extends HttpServlet {
         log.error("Auth file could not be found: " + e.toString());
       }
 
-      if (auth == "") {
+      if (auth.isEmpty()) {
         // No auth loaded, could be because user never reloaded setup page after an
-        // error. Generate it again
+        // error. Generate it again and read it back, otherwise the empty token below would
+        // match an empty dbauth parameter.
         log.debug("Generating auth file");
 
         generateAuth();
+        auth = new String(Files.readAllBytes(Paths.get(Constants.SETUP_AUTH)));
       }
 
       if (!auth.equals(dbAuth)) {
