@@ -109,7 +109,12 @@ public class SqlInjection4 extends HttpServlet {
                   + "</p>";
           if (resultSet.getString(1).equalsIgnoreCase("admin")) {
             htmlOutput +=
-                "<p>" + bundle.getString("response.adminResultKey") + "" + "<a>" + "" + "</a>";
+                "<p>"
+                    + bundle.getString("response.adminResultKey")
+                    + ""
+                    + "<a>"
+                    + Encode.forHtml(levelResult)
+                    + "</a>";
           } else {
             htmlOutput += "<p>" + bundle.getString("response.adminsFun") + "</p>";
           }

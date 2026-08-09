@@ -132,7 +132,7 @@ public class NoSqlInjection1 extends HttpServlet {
             log.debug(bundle.getString("results.queryResult") + result.toString());
             htmlOutput +=
                 "<tr><td>"
-                    + ""
+                    + Encode.forHtml(String.valueOf(id))
                     + "</td><td>"
                     + Encode.forHtml(String.valueOf(name))
                     + "</td><td>"

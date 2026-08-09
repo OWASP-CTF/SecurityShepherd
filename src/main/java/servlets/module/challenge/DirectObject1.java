@@ -110,7 +110,7 @@ public class DirectObject1 extends HttpServlet {
                     + bundle.getString("response.message")
                     + "</h2>"
                     + "<p>"
-                    + ""
+                    + privateMessage
                     + "</p>";
           } else {
             log.debug("No Profile Found");
