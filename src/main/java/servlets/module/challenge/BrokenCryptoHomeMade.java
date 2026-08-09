@@ -4,13 +4,17 @@ import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.crypto.Cipher;
+import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import javax.servlet.ServletException;
@@ -124,11 +128,22 @@ public class BrokenCryptoHomeMade extends HttpServlet {
           log.debug(homemadebadanswers + "previous bad attempts");
           if (homemadebadanswers < 5) {
             String submittedSolution = request.getParameter("theSubmission");
-            String expectedSolution =
-                BrokenCryptoHomeMade.generateUserSolutionKeyOnly(
-                    BrokenCryptoHomeMade.challenges.get(4).get(1),
-                    ses.getAttribute("userName").toString());
-            if (submittedSolution.equals(expectedSolution)) {
+            String baseKey = BrokenCryptoHomeMade.challenges.get(4).get(1);
+            String expectedPlaintext = baseKey + BrokenCryptoHomeMade.getCurrentSalt();
+            // AES-GCM uses a random IV per encryption, so re-encrypting the same plaintext never
+            // reproduces the same ciphertext string - the submission must be decrypted and its
+            // plaintext compared, rather than comparing ciphertext strings directly.
+            boolean correctSubmission = false;
+            try {
+              byte[] key =
+                  createUserSpecificEncryptionKey(
+                      Validate.validateEncryptionKey(ses.getAttribute("userName").toString()));
+              correctSubmission =
+                  expectedPlaintext.equals(decryptUserSpecific(key, submittedSolution));
+            } catch (Exception e) {
+              log.debug("Could not decrypt submitted solution: " + e.toString());
+            }
+            if (correctSubmission) {
               log.debug("Correct Solution Submitted for 'This Challenge'. Returning Key");
               htmlOutput =
                   "<h2 class='title'>"
@@ -145,7 +160,7 @@ public class BrokenCryptoHomeMade extends HttpServlet {
                           (String) ses.getAttribute("userName"))
                       + "</a>";
             } else {
-              log.debug("Expected: " + expectedSolution);
+              log.debug("Expected plaintext: " + expectedPlaintext);
               log.debug("Got     : " + submittedSolution);
               htmlOutput =
                   "<h2 class='title'>"
@@ -211,10 +226,12 @@ public class BrokenCryptoHomeMade extends HttpServlet {
                 "i18n.servlets.challenges.insecureCryptoStorage.insecureCryptoStorage", locale);
         out.print(getServletInfo());
         try {
-          String name = new String();
-          if (request.getParameter("name") != null) {
-            name = request.getParameter("name").toString();
-          }
+          // This value seeds the per-user key derivation below. It used to come straight from
+          // the "name" request parameter, so a caller could pass any other user's username here
+          // and get that user's personalised encrypted answers back in the response - an IDOR
+          // via the key-derivation input rather than the usual object-id parameter. Tying it to
+          // the caller's own authenticated session removes that choice entirely.
+          String name = ses.getAttribute("userName").toString();
           if (name.length() < 4) {
             htmlOutput = bundle.getString("insecureCryptoStorage.homemade.nameTooShort");
           } else {
@@ -248,24 +265,69 @@ public class BrokenCryptoHomeMade extends HttpServlet {
     out.close();
   }
 
+  private static final int GCM_IV_LENGTH_BYTES = 12;
+  private static final int GCM_TAG_LENGTH_BITS = 128;
+
   /**
-   * Merges current server encryption key with user name based encryption key to create user
-   * specific key
+   * Derives a user-specific encryption key from the server's secret key and a user name based key,
+   * via SHA-256 rather than the previous byte-wise addition. Addition is linear and invertible: an
+   * attacker who fully controls userNameKey (as this challenge's "name" parameter does) and
+   * observes the resulting ciphertexts can recover serverEncryptionKey byte-by-byte. SHA-256 is
+   * one-way, so observing outputs for chosen inputs reveals nothing about the secret key mixed into
+   * them.
    *
    * @param userNameKey
-   * @return
+   * @return 32-byte AES-256 key
    */
-  private static String createUserSpecificEncryptionKey(String userNameKey) throws Exception {
+  private static byte[] createUserSpecificEncryptionKey(String userNameKey) throws Exception {
     if (userNameKey.length() != 16) {
       throw new Exception("User Name key must be 16 bytes long");
     } else {
-      byte[] serverKey = serverEncryptionKey.getBytes();
-      byte[] userKey = userNameKey.getBytes();
-      for (int i = 0; i < userKey.length; i++) {
-        userKey[i] = (byte) (userKey[i] + serverKey[i]);
-      }
-      return new String(userKey, Charset.forName("US-ASCII"));
+      MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
+      sha256.update(serverEncryptionKey.getBytes(Charset.forName("US-ASCII")));
+      return sha256.digest(userNameKey.getBytes(Charset.forName("US-ASCII")));
     }
+  }
+
+  /**
+   * Encrypts plain text using a user-specific key with AES-256-GCM. A random IV is generated per
+   * call and prepended to the ciphertext.
+   *
+   * @param key 32-byte AES-256 key
+   * @param value Plain text to encrypt
+   * @return Base64 of (IV || ciphertext)
+   */
+  private static String encryptUserSpecific(byte[] key, String value)
+      throws GeneralSecurityException {
+    SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+    byte[] iv = new byte[GCM_IV_LENGTH_BYTES];
+    new SecureRandom().nextBytes(iv);
+    Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+    cipher.init(Cipher.ENCRYPT_MODE, keySpec, new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv));
+    byte[] ciphertext = cipher.doFinal(value.getBytes(StandardCharsets.UTF_8));
+    byte[] combined = new byte[iv.length + ciphertext.length];
+    System.arraycopy(iv, 0, combined, 0, iv.length);
+    System.arraycopy(ciphertext, 0, combined, iv.length, ciphertext.length);
+    return Base64.encodeBase64String(combined);
+  }
+
+  /**
+   * Decrypts data encrypted by {@link #encryptUserSpecific(byte[], String)}.
+   *
+   * @param key 32-byte AES-256 key
+   * @param encrypted Base64 of (IV || ciphertext)
+   * @return Decrypted plain text
+   */
+  private static String decryptUserSpecific(byte[] key, String encrypted)
+      throws GeneralSecurityException {
+    byte[] combined = Base64.decodeBase64(encrypted);
+    byte[] iv = Arrays.copyOfRange(combined, 0, GCM_IV_LENGTH_BYTES);
+    byte[] ciphertext = Arrays.copyOfRange(combined, GCM_IV_LENGTH_BYTES, combined.length);
+    SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+    Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+    cipher.init(Cipher.DECRYPT_MODE, keySpec, new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv));
+    byte[] plaintext = cipher.doFinal(ciphertext);
+    return new String(plaintext, StandardCharsets.UTF_8);
   }
 
   /**
@@ -308,16 +370,8 @@ public class BrokenCryptoHomeMade extends HttpServlet {
   public static String decryptUserSpecificSolution(String userNameKey, String encryptedSolution)
       throws GeneralSecurityException, Exception {
     try {
-      String key = createUserSpecificEncryptionKey(userNameKey);
-      byte[] raw = key.getBytes(Charset.forName("US-ASCII"));
-      if (raw.length != 16) {
-        throw new IllegalArgumentException("Invalid key size.");
-      }
-      SecretKeySpec skeySpec = new SecretKeySpec(raw, "AES");
-      Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-      cipher.init(Cipher.DECRYPT_MODE, skeySpec, new IvParameterSpec(new byte[16]));
-      byte[] original = cipher.doFinal(Base64.decodeBase64(encryptedSolution));
-      return new String(original, Charset.forName("US-ASCII"));
+      byte[] key = createUserSpecificEncryptionKey(userNameKey);
+      return decryptUserSpecific(key, encryptedSolution);
     } catch (Exception e) {
       throw new Exception("Decryption Failure: Could not Craft User Key or Ciphertext was Bad");
     }
@@ -377,8 +431,8 @@ public class BrokenCryptoHomeMade extends HttpServlet {
     String toReturn = "Key Should be here! Please refresh the home page and try again!";
 
     try {
-      String key = createUserSpecificEncryptionKey(Validate.validateEncryptionKey(userSalt));
-      String forLog = BrokenCryptoHomeMade.encrypt(key, baseKey + getCurrentSalt());
+      byte[] key = createUserSpecificEncryptionKey(Validate.validateEncryptionKey(userSalt));
+      String forLog = BrokenCryptoHomeMade.encryptUserSpecific(key, baseKey + getCurrentSalt());
       toReturn =
           "<script>prepTooltips();prepClipboardEvents();</script>"
               + "<div class='input-group'>"
@@ -409,8 +463,8 @@ public class BrokenCryptoHomeMade extends HttpServlet {
     String forLog = "Key Should be here! Please refresh the home page and try again!";
 
     try {
-      String key = createUserSpecificEncryptionKey(Validate.validateEncryptionKey(userSalt));
-      forLog = BrokenCryptoHomeMade.encrypt(key, baseKey + getCurrentSalt());
+      byte[] key = createUserSpecificEncryptionKey(Validate.validateEncryptionKey(userSalt));
+      forLog = BrokenCryptoHomeMade.encryptUserSpecific(key, baseKey + getCurrentSalt());
 
       log.debug("Returning: " + forLog);
     } catch (Exception e) {
