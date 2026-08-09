@@ -80,6 +80,7 @@ public class CsrfChallengeTargetThree extends HttpServlet {
           }
         }
 
+        Cookie tokenCookie = Validate.getToken(request.getCookies());
         String userId = (String) ses.getAttribute("userStamp");
         if (!userId.equals(plusId) || !Validate.validateTokens(tokenCookie, csrfParam)) {
           response.sendError(HttpServletResponse.SC_FORBIDDEN);
