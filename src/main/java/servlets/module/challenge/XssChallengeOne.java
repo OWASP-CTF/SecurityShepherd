@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
 import utils.FindXSS;
 import utils.Hash;
 import utils.ShepherdLogManager;
@@ -76,9 +77,18 @@ public class XssChallengeOne extends HttpServlet {
         Object tokenParmeter = request.getParameter("csrfToken");
         if (Validate.validateTokens(tokenCookie, tokenParmeter)) {
           String searchTerm = request.getParameter("searchTerm");
+          if (searchTerm == null) {
+            searchTerm = "";
+          }
           log.debug("User Submitted - " + searchTerm);
           searchTerm = XssFilter.levelOne(searchTerm);
           log.debug("After Filtering - " + searchTerm);
+          // The keyword blacklist above only strips the literal word "script" and is trivially
+          // bypassed (event handler attributes, alternate tags, mixed case, etc). The value is
+          // reflected straight into an HTML body context below, so the control that actually
+          // stops script execution has to be applied at that output boundary: HTML-entity encode
+          // the term right before it is used for anything, rather than relying on the blacklist.
+          searchTerm = Encode.forHtml(searchTerm);
           String htmlOutput = new String();
           if (FindXSS.search(searchTerm)) {
             htmlOutput =
