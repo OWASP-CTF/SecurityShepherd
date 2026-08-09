@@ -63,7 +63,13 @@ public class UrlAccess1Admin extends HttpServlet {
     ResourceBundle bundle =
         ResourceBundle.getBundle("i18n.servlets.challenges.urlAccess.urlAccess1", locale);
 
-    if (Validate.validateSession(ses)) {
+    // This module never issues a genuine administrative credential for its own separate
+    // "admin" persona - the only gate that stood between a regular player and this function
+    // was the obscurity of the URL itself. Require a session flag that no login path in the
+    // application ever grants, rather than relying on the global account role (which the
+    // client could never legitimately obtain here either, and checking it alone still left
+    // this reachable to any real Shepherd admin browsing while logged in as themselves).
+    if (Validate.validateSession(ses) && Boolean.TRUE.equals(ses.getAttribute("urlAccess1Authorized"))) {
       ShepherdLogManager.setRequestIp(
           request.getRemoteAddr(),
           request.getHeader("X-Forwarded-For"),
@@ -116,7 +122,8 @@ public class UrlAccess1Admin extends HttpServlet {
       log.debug("Outputting HTML");
       out.write(htmlOutput);
     } else {
-      log.error(levelName + " servlet accessed with no session");
+      response.sendError(HttpServletResponse.SC_FORBIDDEN);
+      log.error(levelName + " servlet accessed without challenge administrator authorization");
     }
   }
 }
