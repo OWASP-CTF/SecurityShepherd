@@ -46,6 +46,17 @@ public class Setup extends HttpServlet {
 
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
+    // SetupFilter deliberately lets requests for this servlet through even once the app is
+    // installed, so that a fresh instance can be provisioned in the first place. That means
+    // this method itself is the only thing standing between a running, already-configured
+    // instance and an unauthenticated request that repoints it at a different database or
+    // reruns the schema scripts against the one it already has. Refuse once installed.
+    if (isInstalled()) {
+      log.error("Setup request refused: application is already installed");
+      response.sendError(HttpServletResponse.SC_FORBIDDEN);
+      return;
+    }
+
     // Translation Stuff
     Locale locale = new Locale(Validate.validateLanguage(request.getSession()));
 
@@ -189,12 +200,17 @@ public class Setup extends HttpServlet {
         log.error("Auth file could not be found: " + e.toString());
       }
 
-      if (auth == "") {
+      if (auth.isEmpty()) {
         // No auth loaded, could be because user never reloaded setup page after an
-        // error. Generate it again
+        // error. Generate it again, then read the freshly written value back in. Comparing
+        // with == above tested reference identity rather than content, and leaving auth
+        // empty afterwards meant a request that supplied no dbauth parameter at all (which
+        // request.getParameter also returns as null, but concatenation elsewhere can turn
+        // into "") would compare equal to this still-blank auth and be let through.
         log.debug("Generating auth file");
 
         generateAuth();
+        auth = new String(Files.readAllBytes(Paths.get(Constants.SETUP_AUTH)));
       }
 
       if (!auth.equals(dbAuth)) {
