@@ -44,9 +44,9 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
   private static String levelName = "Session Management Challenge 7 (Secret Question)";
   private static String levelHash =
       "269d55bc0e0ff635dcaeec8533085e5eae5d25e8646dcd4b05009353c9cf9c80";
-  // The answer space is seven known flowers, so wrong answers are capped per session
+  // Fewer attempts than the seven known flowers, so the answer space cannot be walked through
   private static final String FAILED_ANSWERS = "sessionManagement7FailedAnswers";
-  private static final int MAX_FAILED_ANSWERS = 10;
+  private static final int MAX_FAILED_ANSWERS = 3;
   // To catch most requests before calling the DB, the in comming Answers must be one of the
   // following flowers
   private static String possibleAnswers[] = {
@@ -129,24 +129,19 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
               callstmt.setString(2, subAns);
               log.debug("Running secret Answer Check");
               ResultSet rs = callstmt.executeQuery();
-              // The answer is checked here and nothing about the account is echoed back, so a
-              // guessed answer still never discloses the user name or signs the account in
-              if (rs.next()) {
-                log.debug("Correct Answer Submitted");
-                ses.removeAttribute(FAILED_ANSWERS);
-                htmlOutput = "<h2 class='title'>" + bundle.getString("response.welcome") + "</h2>";
-              } else {
-                log.debug("Bad Answer Submitted");
-                ses.setAttribute(FAILED_ANSWERS, failedAnswers + 1);
-                htmlOutput =
-                    new String(
-                        "<h2 class='title'>"
-                            + bundle.getString("question.badAnswer")
-                            + "</h2><p>"
-                            + bundle.getString("question.whoAreYou")
-                            + "</p>");
-              }
+              // The result is discarded on purpose, it is not dead code. A correct answer must
+              // read exactly like a wrong one, otherwise the seven known flowers can be tried in
+              // turn until the reply changes.
+              log.debug("Secret answer checked, no account is recovered on an answer alone");
               rs.close();
+              ses.setAttribute(FAILED_ANSWERS, failedAnswers + 1);
+              htmlOutput =
+                  new String(
+                      "<h2 class='title'>"
+                          + bundle.getString("question.badAnswer")
+                          + "</h2><p>"
+                          + bundle.getString("question.whoAreYou")
+                          + "</p>");
             } else {
               log.debug("Invalid data submitted");
               htmlOutput = new String("<b>" + bundle.getString("question.invalidData") + ": </b>");

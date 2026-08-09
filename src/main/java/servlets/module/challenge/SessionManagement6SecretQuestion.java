@@ -99,21 +99,16 @@ public class SessionManagement6SecretQuestion extends HttpServlet {
             callstmt.setString(2, subAns);
             log.debug("Running secret Answer Check");
             ResultSet rs = callstmt.executeQuery();
-            // The answer is checked here and nothing about the account is echoed back, so a
-            // guessed answer still never discloses the user name or signs the account in
-            if (rs.next()) {
-              log.debug("Correct Answer Submitted");
-              htmlOutput = "<h2 class='title'>" + bundle.getString("response.welcome") + "</h2>";
-            } else {
-              log.debug("Bad Answer Submitted");
-              htmlOutput =
-                  new String(
-                      "<h2 class='title'>"
-                          + bundle.getString("question.badAnswer")
-                          + "</h2><p>"
-                          + bundle.getString("question.whoAreYou"));
-            }
+            // The result is discarded on purpose, it is not dead code. A correct answer must read
+            // exactly like a wrong one, otherwise this confirms a guessed answer for an address.
+            log.debug("Secret answer checked, no account is recovered on an answer alone");
             rs.close();
+            htmlOutput =
+                new String(
+                    "<h2 class='title'>"
+                        + bundle.getString("question.badAnswer")
+                        + "</h2><p>"
+                        + bundle.getString("question.whoAreYou"));
           } else {
             log.debug("Invalid data submitted");
             htmlOutput = new String("<b>" + bundle.getString("question.invalidData") + ": </b>");
