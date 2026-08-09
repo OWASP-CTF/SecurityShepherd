@@ -1,7 +1,6 @@
 package servlets.module.challenge;
 
 import dbProcs.Database;
-import dbProcs.Getter;
 import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -103,24 +102,12 @@ public class CsrfChallengeTargetFour extends HttpServlet {
         log.debug("storedCsrf Token is - '" + storedToken + "'");
 
         if (!userId.equals(plusId)) {
-          if (storedToken.equals(csrfToken)) {
-            log.debug("'Valid' Nonce Value Submitted");
-            String userName = (String) ses.getAttribute("userName");
-            String attackerName = Getter.getUserName(ApplicationRoot, plusId);
-            if (attackerName != null) {
-              log.debug(userName + " is been CSRF'd by " + attackerName);
-
-              log.debug("Attempting to Increment ");
-              String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
-              result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
-            } else {
-              log.error("UserId '" + plusId + "' could not be found in system.");
-            }
-          } else {
-            log.debug("User " + plusId + " CSRF attack failed due to invalid nonce");
-          }
-        } else {
-          log.debug("User " + userId + " is attacking themselves");
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
+        }
+        if (!storedToken.equals(csrfToken)) {
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
         }
 
         if (result) {

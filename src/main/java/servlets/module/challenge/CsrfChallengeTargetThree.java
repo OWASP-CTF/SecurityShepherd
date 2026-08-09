@@ -1,7 +1,5 @@
 package servlets.module.challenge;
 
-import dbProcs.Getter;
-import dbProcs.Setter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;
@@ -81,21 +79,8 @@ public class CsrfChallengeTargetThree extends HttpServlet {
 
         String userId = (String) ses.getAttribute("userStamp");
         if (!userId.equals(plusId)) {
-          String ApplicationRoot = getServletContext().getRealPath("");
-          String userName = (String) ses.getAttribute("userName");
-          String attackerName = Getter.getUserName(ApplicationRoot, plusId);
-          if (attackerName != null) {
-            log.debug(userName + " is been CSRF'd by " + attackerName);
-
-            log.debug("Attempting to Increment ");
-            String moduleHash = CsrfChallengeThree.getLevelHash();
-            String moduleId = Getter.getModuleIdFromHash(ApplicationRoot, moduleHash);
-            result = Setter.updateCsrfCounter(ApplicationRoot, moduleId, plusId);
-          } else {
-            log.error("UserId '" + plusId + "' could not be found.");
-          }
-        } else {
-          log.debug("No CSRF Token found");
+          response.sendError(HttpServletResponse.SC_FORBIDDEN);
+          return;
         }
 
         if (result) {
