@@ -69,6 +69,18 @@ public class DirectObjectBankCurrentBalance extends HttpServlet {
       try {
         String accountNumber = request.getParameter("accountNumber");
         log.debug("Account Number - " + accountNumber);
+        Object boundAccount = ses.getAttribute("directObjectBankAccount");
+        if (boundAccount == null || !boundAccount.toString().equals(accountNumber)) {
+          log.warn(
+              levelName
+                  + " - Rejected balance lookup for account "
+                  + accountNumber
+                  + " requested by session bound to "
+                  + boundAccount
+                  + ". This is not their account.");
+          out.write(errors.getString("error.shouldNotBeHere"));
+          return;
+        }
         String applicationRoot = getServletContext().getRealPath("");
         String htmlOutput = new String();
         long currentBalance =

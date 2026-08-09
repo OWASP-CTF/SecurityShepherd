@@ -81,9 +81,22 @@ public class DirectObjectBankTransfer extends HttpServlet {
         log.debug("Transfer Amount - " + transferAmountString);
         float tranferAmount = Float.parseFloat(transferAmountString);
 
+        Object boundAccount = ses.getAttribute("directObjectBankAccount");
+
         // Data Validation
-        // Positive Transfer Amount?
-        if (tranferAmount > 0) {
+        // Sender Account must be the account the session is actually signed in to. Funds may
+        // only ever be moved out of the account that was authenticated with, never an
+        // arbitrary account number supplied by the client.
+        if (boundAccount == null || !boundAccount.toString().equals(senderAccountNumber)) {
+          log.warn(
+              levelName
+                  + " - Rejected transfer attempt out of account "
+                  + senderAccountNumber
+                  + " by session bound to "
+                  + boundAccount
+                  + ". This is not their account.");
+          errorMessage = errors.getString("error.shouldNotBeHere");
+        } else if (tranferAmount > 0) {
           // Sender Account Has necessary funds?
           long senderFunds =
               DirectObjectBankLogin.getAccountBalance(senderAccountNumber, applicationRoot);
