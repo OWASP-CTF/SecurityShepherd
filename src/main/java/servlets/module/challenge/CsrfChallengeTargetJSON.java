@@ -8,6 +8,7 @@ import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.Scanner;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -81,7 +82,20 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
         String plusId = (String) json.get("userId");
         log.debug("User Submitted - " + plusId);
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId)) {
+
+        // This endpoint mutates state for the calling session, so it must be protected by the
+        // same anti-CSRF double-submit token every other state-changing endpoint relies on. A
+        // request forged from a foreign origin (e.g. an auto-submitting cross-site form using a
+        // text/plain body to dodge JSON preflight) will carry the victim's session cookie
+        // automatically, but has no way to read the victim's "token" cookie value, so it cannot
+        // supply a matching csrfToken in the JSON payload below.
+        Cookie tokenCookie = Validate.getToken(request.getCookies());
+        Object submittedCsrfToken = json.has("csrfToken") ? json.get("csrfToken") : null;
+        boolean csrfTokenValid = Validate.validateTokens(tokenCookie, submittedCsrfToken);
+
+        if (!csrfTokenValid) {
+          log.error("CSRF JSON Target - request rejected due to missing/invalid csrfToken");
+        } else if (!userId.equals(plusId)) {
           String ApplicationRoot = getServletContext().getRealPath("");
           String userName = (String) ses.getAttribute("userName");
           String attackerName = Getter.getUserName(ApplicationRoot, plusId);
