@@ -82,32 +82,36 @@ public class XxeChallenge1 extends HttpServlet {
               ses.getAttribute("userName").toString());
           log.debug(LEVEL_NAME + " accessed by: " + ses.getAttribute("userName").toString());
           Cookie tokenCookie = Validate.getToken(request.getCookies());
-          Object tokenHeader = request.getHeader("csrfToken").toString();
+          Object tokenHeader = request.getHeader("csrfToken");
 
           if (Validate.validateTokens(tokenCookie, tokenHeader)) {
             InputStream json = request.getInputStream();
-            String emailAddr = readJson(json, errors);
-            emailAddr = Encode.forHtml(emailAddr);
+            String emailAddr = readJson(json);
             log.debug("Email Addr: " + emailAddr);
 
             String htmlOutput = new String();
 
             if (emailAddr == null) {
               htmlOutput += "<p>" + bundle.getString("response.blank.email") + "</p>";
-              out.write(htmlOutput + emailAddr);
+              out.write(htmlOutput);
             } else if (Validate.isValidEmailAddress(emailAddr)) {
+              String encodedEmail = Encode.forHtml(emailAddr);
               log.debug("User Submitted - " + emailAddr);
 
               htmlOutput +=
                   "<p>"
                       + bundle.getString("response.success.reset")
                       + ": "
-                      + emailAddr
+                      + encodedEmail
                       + " has been reset</p>";
               out.write(htmlOutput);
             } else {
               htmlOutput +=
-                  "<p>" + bundle.getString("response.invalid.email") + ": " + emailAddr + "</p>";
+                  "<p>"
+                      + bundle.getString("response.invalid.email")
+                      + ": "
+                      + Encode.forHtml(emailAddr)
+                      + "</p>";
               out.write(htmlOutput);
             }
           }
@@ -126,7 +130,7 @@ public class XxeChallenge1 extends HttpServlet {
     log.debug("End of " + LEVEL_NAME + " Servlet");
   }
 
-  public static String readJson(InputStream jsonEmail, ResourceBundle errors) {
+  public static String readJson(InputStream jsonEmail) {
     String result;
 
     JSONObject jsonObject;
@@ -136,8 +140,8 @@ public class XxeChallenge1 extends HttpServlet {
       result = jsonObject.get("email").toString();
       return result;
     } catch (JSONException e) {
-      e.printStackTrace();
-      return errors.getString("error.funky");
+      log.error("Could not parse the submitted JSON: " + e.toString());
+      return null;
     }
   }
 
