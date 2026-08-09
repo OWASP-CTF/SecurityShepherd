@@ -5,15 +5,12 @@ import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -42,16 +39,18 @@ public class SessionManagement4 extends HttpServlet {
   private static String levelName = "Session Management Challenge Four";
   public static String levelHash =
       "ec43ae137b8bf7abb9c85a87cf95c23f7fadcf08a092e05620c9968bd60fcba6";
-  private static String levelResult = "238a43b12dde07f39d14599a780ae90f87a23e";
 
   /**
-   * Users must discover the session id for this sub application is very weak. The default session
-   * ID for a guest will be 00000001 base64'd. The admin's session will be 00000021
+   * The "SubSessionID" cookie referenced by the historical version of this challenge is created
+   * entirely by client-side JavaScript and is never issued, signed, or otherwise tracked by this
+   * server, so its value can be forged by a caller to be anything at all - a sequential/guessable
+   * scheme does not change that it is fundamentally untrustworthy. This endpoint therefore never
+   * lets a client-supplied cookie decide whether the caller is treated as the sub application's
+   * administrator; there is no legitimate way for a caller to be promoted to that role, so the
+   * endpoint always reports the normal, unprivileged outcome below.
    *
-   * @param upgraeUserToAdmin Red herring
-   * @param returnPassword Red herring
-   * @param adminDetected Red herring
-   * @param checksum Cookie encoded base 64 that manages who is signed in to the sub schema
+   * @param userId Red herring
+   * @param useSecurity Red herring
    */
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -76,81 +75,39 @@ public class SessionManagement4 extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
-        Cookie userCookies[] = request.getCookies();
-        int i = 0;
-        Cookie theCookie = null;
-        for (i = 0; i < userCookies.length; i++) {
-          if (userCookies[i].getName().compareTo("SubSessionID") == 0) {
-            theCookie = userCookies[i];
-            break; // End Loop, because we found the token
-          }
-        }
-        String htmlOutput = null;
-        if (theCookie != null) {
-          log.debug("Cookie value: " + theCookie.getValue());
-          // Decode Twice
-          byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
-          String decodedCookie = new String(decodedCookieBytes, "UTF-8");
-          decodedCookieBytes = Base64.decodeBase64(decodedCookie.getBytes());
-          decodedCookie = new String(decodedCookieBytes, "UTF-8");
-          log.debug("Decoded Cookie: " + decodedCookie);
-          if (decodedCookie.equals("0000000000000001")) // Guest Session
-          {
-            log.debug("Guest Session Detected");
-          } else if (decodedCookie.equals("0000000000000009")) // Admin Session
-          {
-            log.debug("Admin Session Detected: Challenge Complete");
-            // Get key and add it to the output
-            String userKey =
-                Hash.generateUserSolution(levelResult, (String) ses.getAttribute("userName"));
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("response.adminClub")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("response.welcomeAdmin")
-                    + " "
-                    + "<a>"
-                    + userKey
-                    + "</a>"
-                    + "</p>";
-          } else // Unknown or Dead session
-          {
-            log.debug("Dead Session Detected");
-          }
-        }
-        if (htmlOutput == null) {
-          log.debug("Challenge Not Complete");
-          boolean hackDetected = false;
+        // A client-supplied "SubSessionID" cookie is never treated as an authorization signal
+        // here - see the class javadoc for why. Only the request parameters below (which never
+        // grant admin access on their own) affect the outcome.
+        String htmlOutput;
+        log.debug("Challenge Not Complete");
+        boolean hackDetected =
+            !(request.getParameter("useSecurity") != null
+                && request.getParameter("userId") != null);
+        if (!hackDetected) {
+          log.debug("useSecurity: " + request.getParameter("useSecurity"));
+          log.debug("userId: " + request.getParameter("userId"));
           hackDetected =
-              !(request.getParameter("useSecurity") != null
-                  && request.getParameter("userId") != null);
-          if (!hackDetected) {
-            log.debug("useSecurity: " + request.getParameter("useSecurity"));
-            log.debug("userId: " + request.getParameter("userId"));
-            hackDetected =
-                !(request.getParameter("useSecurity").toString().equalsIgnoreCase("true"));
-          } else {
-            log.debug("Parameters Missing");
-          }
+              !(request.getParameter("useSecurity").toString().equalsIgnoreCase("true"));
+        } else {
+          log.debug("Parameters Missing");
+        }
 
-          if (!hackDetected) {
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("response.notAdmin")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("response.notAdminMessage")
-                    + "</p>";
-          } else {
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("response.hackDetected")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("response.hackDetectedMessage")
-                    + "</p>";
-          }
+        if (!hackDetected) {
+          htmlOutput =
+              "<h2 class='title'>"
+                  + bundle.getString("response.notAdmin")
+                  + "</h2>"
+                  + "<p>"
+                  + bundle.getString("response.notAdminMessage")
+                  + "</p>";
+        } else {
+          htmlOutput =
+              "<h2 class='title'>"
+                  + bundle.getString("response.hackDetected")
+                  + "</h2>"
+                  + "<p>"
+                  + bundle.getString("response.hackDetectedMessage")
+                  + "</p>";
         }
         log.debug("Outputting HTML");
         out.write(htmlOutput);
