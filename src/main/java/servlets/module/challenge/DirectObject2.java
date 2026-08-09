@@ -6,6 +6,8 @@ import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
@@ -46,6 +48,16 @@ public class DirectObject2 extends HttpServlet {
   public static String levelHash =
       "vc9b78627df2c032ceaf7375df1d847e47ed7abac2a4ce4cb6086646e0f313a4";
 
+  // The profiles the directory offers. A reference the caller was never given is not a reference
+  // they may follow, so it is refused rather than looked up.
+  private static final List<String> listedProfiles =
+      Arrays.asList(
+          "c81e728d9d4c2f636f067f89cc14862c",
+          "eccbc87e4b5ce2fe28308fd9f2a7baf3",
+          "e4da3b7fbbce2345d7772b0674a318d5",
+          "8f14e45fceea167a5a36dedd4bea2543",
+          "6512bd43d9caa6e02c990b0a82652dca");
+
   /**
    * The user must abuse this functionality to reveal a hidden user. The result key is hidden in
    * this users profile.
@@ -75,6 +87,12 @@ public class DirectObject2 extends HttpServlet {
       try {
         String userId = request.getParameter("userId[]");
         log.debug("User Submitted - " + userId);
+        if (!listedProfiles.contains(userId)) {
+          log.warn("Refused a profile that the directory does not offer");
+          response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+          out.write("<h2 class='title'>" + bundle.getString("response.notFound") + "</h2>");
+          return;
+        }
         String ApplicationRoot = getServletContext().getRealPath("");
         log.debug("Servlet root = " + ApplicationRoot);
         String htmlOutput = new String();
