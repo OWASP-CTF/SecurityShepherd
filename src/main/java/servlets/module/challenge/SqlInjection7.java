@@ -73,8 +73,9 @@ public class SqlInjection7 extends HttpServlet {
         log.debug("subEmail - " + subEmail.replaceAll("\n", " \\\\n ")); // Escape \n's
         String subPassword = Validate.validateParameter(request.getParameter("subPassword"), 40);
         log.debug("subPassword - " + subPassword);
-        boolean validEmail =
-            Validate.isValidEmailAddress(subEmail.replaceAll("\n", "")); // Ignore \n 's
+        // Validate the address that is actually used. Stripping the newlines before the check
+        // meant the value that passed validation was not the value the query then received.
+        boolean validEmail = Validate.isValidEmailAddress(subEmail);
         if (!subPassword.isEmpty() && !subPassword.isEmpty() && validEmail) {
           Connection conn = Database.getChallengeConnection(applicationRoot, "SqlChallengeSeven");
           try {
