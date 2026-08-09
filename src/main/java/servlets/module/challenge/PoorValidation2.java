@@ -127,7 +127,11 @@ public class PoorValidation2 extends HttpServlet {
   }
 
   private static int validateAmount(int amount) {
-    if (amount < 0) {
+    // Reject negative amounts as well as unreasonably large amounts. Without an
+    // upper bound, a very large but "valid-looking" quantity multiplied by the unit
+    // price can overflow a 32-bit int and wrap around to a negative final cost,
+    // which is exactly what this level was previously vulnerable to.
+    if (amount < 0 || amount > 9000) {
       amount = 0;
     }
     return amount;
