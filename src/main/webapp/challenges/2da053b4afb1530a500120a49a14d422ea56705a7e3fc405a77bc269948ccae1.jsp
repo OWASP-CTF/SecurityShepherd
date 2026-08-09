@@ -1,7 +1,5 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
-	language="java"
-	import="utils.*, servlets.module.challenge.BrokenCrypto3, org.owasp.encoder.Encode"
-	errorPage=""%>
+	language="java" import="utils.*" errorPage=""%>
 <%@ page import="java.util.Locale, java.util.ResourceBundle"%>
 <%
 /**
@@ -101,7 +99,7 @@ if (request.getSession() != null)
 		<div id="resultsDiv">
 			<h2 class="title"><%= bundle.getString("insecureCryptoStorage.3.ciphertextExample") %></h2>
 			<p><%= bundle.getString("insecureCryptoStorage.3.tryDecryptThis") %>
-				<%= Encode.forHtml(BrokenCrypto3.getCiphertextExample()) %>
+				IAAAAEkQBhEVBwpDHAFJGhYHSBYEGgocAw==
 			</p>
 		</div>
 		</p>
