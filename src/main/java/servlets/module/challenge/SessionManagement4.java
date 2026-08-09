@@ -5,12 +5,10 @@ import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.servlet.ServletException;
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import utils.ShepherdLogManager;
@@ -75,34 +73,15 @@ public class SessionManagement4 extends HttpServlet {
             request.getHeader("X-Forwarded-For"),
             ses.getAttribute("userName").toString());
         log.debug(levelName + " servlet accessed by: " + ses.getAttribute("userName").toString());
-        Cookie userCookies[] = request.getCookies();
-        int i = 0;
-        Cookie theCookie = null;
-        for (i = 0; i < userCookies.length; i++) {
-          if (userCookies[i].getName().compareTo("SubSessionID") == 0) {
-            theCookie = userCookies[i];
-            break; // End Loop, because we found the token
-          }
+        String challengeSession = (String) ses.getAttribute("sessionManagementFourId");
+        if (challengeSession == null) {
+          challengeSession = "guest";
+          ses.setAttribute("sessionManagementFourId", challengeSession);
+        }
+        if (!"guest".equals(challengeSession)) {
+          log.error("Unknown server-side challenge session rejected");
         }
         String htmlOutput = null;
-        if (theCookie != null) {
-          log.debug("Cookie value: " + theCookie.getValue());
-          // Decode Twice
-          byte[] decodedCookieBytes = Base64.decodeBase64(theCookie.getValue());
-          String decodedCookie = new String(decodedCookieBytes, "UTF-8");
-          decodedCookieBytes = Base64.decodeBase64(decodedCookie.getBytes());
-          decodedCookie = new String(decodedCookieBytes, "UTF-8");
-          log.debug("Decoded Cookie: " + decodedCookie);
-          // The session id is supplied by the client, so guessing or editing it cannot move
-          // the requester into another session. No value in this cookie grants a privileged
-          // view; anything but the guest session is treated as dead.
-          if (decodedCookie.equals("0000000000000001")) // Guest Session
-          {
-            log.debug("Guest Session Detected");
-          } else {
-            log.debug("Dead Session Detected");
-          }
-        }
         if (htmlOutput == null) {
           log.debug("Challenge Not Complete");
           boolean hackDetected = false;
