@@ -75,15 +75,6 @@ public class SqlInjectionStoredProcedure extends HttpServlet {
         log.debug("User Submitted - " + userIdentity);
         String ApplicationRoot = getServletContext().getRealPath("");
 
-        log.debug("Getting Connection to Database");
-        Connection conn =
-            Database.getChallengeConnection(ApplicationRoot, "SqlChallengeStoredProc");
-        // Bind the user supplied value as a real stored-procedure parameter instead of
-        // splicing it into the SQL text, so it can never break out of the argument.
-        CallableStatement callstmt = conn.prepareCall("{call findUser(?)}");
-        callstmt.setString(1, userIdentity);
-        ResultSet resultSet = callstmt.executeQuery();
-
         int i = 0;
         htmlOutput = "<h2 class='title'>" + bundle.getString("response.searchResults") + "</h2>";
         htmlOutput +=
@@ -95,33 +86,45 @@ public class SqlInjectionStoredProcedure extends HttpServlet {
                 + bundle.getString("response.table.comment")
                 + "</th></tr>";
 
-        log.debug("Opening Result Set from query");
-        while (resultSet.next()) {
-          log.debug("Adding Customer " + resultSet.getString(2));
-          htmlOutput +=
-              "<tr><td>"
-                  + Encode.forHtml(resultSet.getString(2))
-                  + "</td><td>"
-                  + Encode.forHtml(resultSet.getString(3))
-                  + "</td><td>"
-                  + Encode.forHtml(resultSet.getString(4))
-                  + "</td></tr>";
-          i++;
+        log.debug("Getting Connection to Database");
+        // Bind the user supplied value as a real stored-procedure parameter instead of
+        // splicing it into the SQL text, so it can never break out of the argument. The
+        // connection, statement and result set are all opened in a try-with-resources block
+        // so a crafted/oversized userIdentity that makes the driver throw can never leak the
+        // pooled connection - a prior version only closed it on the success path, so a run of
+        // failing/malicious requests could starve the pool for this challenge's legitimate
+        // lookups.
+        try (Connection conn =
+                Database.getChallengeConnection(ApplicationRoot, "SqlChallengeStoredProc");
+            CallableStatement callstmt = conn.prepareCall("{call findUser(?)}")) {
+          callstmt.setString(1, userIdentity);
+          try (ResultSet resultSet = callstmt.executeQuery()) {
+            log.debug("Opening Result Set from query");
+            while (resultSet.next()) {
+              log.debug("Adding Customer " + resultSet.getString(2));
+              htmlOutput +=
+                  "<tr><td>"
+                      + Encode.forHtml(resultSet.getString(2))
+                      + "</td><td>"
+                      + Encode.forHtml(resultSet.getString(3))
+                      + "</td><td>"
+                      + Encode.forHtml(resultSet.getString(4))
+                      + "</td></tr>";
+              i++;
+            }
+          }
         }
-        conn.close();
         htmlOutput += "</table>";
         if (i == 0) {
           htmlOutput = "<p>" + bundle.getString("response.noResults") + "</p>";
         }
       } catch (SQLException e) {
-        log.debug("SQL Error caught - " + e.toString());
-        htmlOutput +=
-            "<p>"
-                + errors.getString("error.detected")
-                + "</p>"
-                + "<p>"
-                + Encode.forHtml(e.toString())
-                + "</p>";
+        // Report only the generic localized error to the caller - echoing the driver's own
+        // exception text (e.g. column/table names, driver/connection identifiers) back to an
+        // attacker is itself an information leak that helps refine further injection attempts.
+        // The full detail still goes to the server log for debugging.
+        log.error("SQL Error caught - " + e.toString());
+        htmlOutput += "<p>" + errors.getString("error.detected") + "</p>";
       } catch (Exception e) {
         out.write(errors.getString("error.funky"));
         log.fatal(levelName + " - " + e.toString());
