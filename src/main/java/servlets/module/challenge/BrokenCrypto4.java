@@ -98,7 +98,8 @@ public class BrokenCrypto4 extends HttpServlet {
         conn = Database.getChallengeConnection(applicationRoot, "CryptoChallengeShop");
         log.debug("Looking for Coupons");
         PreparedStatement prepstmt =
-            conn.prepareStatement("SELECT itemId, perCentOff FROM coupons WHERE couponCode = ?");
+            conn.prepareStatement(
+                "SELECT itemId, perCentOff FROM coupons WHERE couponCode = ? AND perCentOff < 100");
         prepstmt.setString(1, couponCode);
         ResultSet coupons = prepstmt.executeQuery();
         try {
