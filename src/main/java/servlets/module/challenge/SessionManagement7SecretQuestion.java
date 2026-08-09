@@ -44,9 +44,10 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
   private static String levelName = "Session Management Challenge 7 (Secret Question)";
   private static String levelHash =
       "269d55bc0e0ff635dcaeec8533085e5eae5d25e8646dcd4b05009353c9cf9c80";
-  // The answer space is seven known flowers, so wrong answers are capped per session
+  // The answer space is the seven known flowers below, so the cap has to be smaller than it or the
+  // whole space can be tried before it applies
   private static final String FAILED_ANSWERS = "sessionManagement7FailedAnswers";
-  private static final int MAX_FAILED_ANSWERS = 10;
+  private static final int MAX_FAILED_ANSWERS = 3;
   // To catch most requests before calling the DB, the in comming Answers must be one of the
   // following flowers
   private static String possibleAnswers[] = {
@@ -132,8 +133,9 @@ public class SessionManagement7SecretQuestion extends HttpServlet {
               // The answer is checked here and nothing about the account is echoed back, so a
               // guessed answer still never discloses the user name or signs the account in
               if (rs.next()) {
+                // The count is not cleared here. Guessing one account's answer would otherwise
+                // hand back a full budget of guesses against the next account.
                 log.debug("Correct Answer Submitted");
-                ses.removeAttribute(FAILED_ANSWERS);
                 htmlOutput = "<h2 class='title'>" + bundle.getString("response.welcome") + "</h2>";
               } else {
                 log.debug("Bad Answer Submitted");

@@ -91,14 +91,21 @@ public class SessionManagement5ChangePassword extends HttpServlet {
         // The account to reset is the one the token was issued for, never one named in the request
         String issuedToken = (String) ses.getAttribute(SessionManagement5SetToken.RESET_TOKEN);
         String userName = (String) ses.getAttribute(SessionManagement5SetToken.RESET_USER);
+        Long issuedAt = (Long) ses.getAttribute(SessionManagement5SetToken.RESET_ISSUED);
         log.debug("userName = " + userName);
+
+        boolean expired =
+            issuedAt == null
+                || System.currentTimeMillis() - issuedAt
+                    > SessionManagement5SetToken.TOKEN_LIFE_MILLIS;
 
         if (issuedToken == null
             || userName == null
+            || expired
             || !MessageDigest.isEqual(
                 issuedToken.getBytes(StandardCharsets.UTF_8),
                 token.getBytes(StandardCharsets.UTF_8))) {
-          log.debug("No matching reset token was issued");
+          log.debug("No matching reset token was issued, or it has expired");
           htmlOutput = "<p>" + bundle.getString("changePass.oldToken") + "</p>";
         } else if (newPass.length() < 12) {
           log.debug("Invalid password submitted");
@@ -129,6 +136,7 @@ public class SessionManagement5ChangePassword extends HttpServlet {
           // A reset token is good for one password change only
           ses.removeAttribute(SessionManagement5SetToken.RESET_TOKEN);
           ses.removeAttribute(SessionManagement5SetToken.RESET_USER);
+          ses.removeAttribute(SessionManagement5SetToken.RESET_ISSUED);
 
           htmlOutput = "<p>" + bundle.getString("changePass.success") + "</p>";
         }
