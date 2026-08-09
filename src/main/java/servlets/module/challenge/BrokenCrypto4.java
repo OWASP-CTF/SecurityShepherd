@@ -9,6 +9,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.Set;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -47,6 +48,21 @@ public class BrokenCrypto4 extends HttpServlet {
   private static final long serialVersionUID = 1L;
   private static final Logger log = LogManager.getLogger(BrokenCrypto4.class);
 
+  /**
+   * The coupon codes this shop publishes to its customers, lower cased. A coupon code arrives from
+   * the client as a bearer string, so the server - not the browser, and not the coupons table alone
+   * - decides which codes it is willing to honour. A code that was never published, or that has
+   * been disclosed, buys nothing regardless of what the database holds for it.
+   */
+  private static final Set<String> PUBLISHED_COUPON_CODES =
+      Set.of(
+          "pleasetakeafruit",
+          "fruitforfree",
+          "pleasetakeanorange",
+          "halfofforanges",
+          "pleasetakeabanana",
+          "halfoffbananas");
+
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
     // Setting IpAddress To Log and taking header for original IP if forwarded from
@@ -81,58 +97,69 @@ public class BrokenCrypto4 extends HttpServlet {
         int bananaAmount = validateAmount(Integer.parseInt(request.getParameter("bananaAmount")));
         log.debug("bananaAmount - " + bananaAmount);
         String couponCode = request.getParameter("couponCode");
+        if (couponCode == null) {
+          couponCode = new String();
+        }
+        couponCode = couponCode.trim();
         log.debug("couponCode - " + couponCode);
 
         // Working out costs
-        int pineappleCost = pineappleAmount * 30;
-        int orangeCost = orangeAmount * 3000;
-        int appleCost = appleAmount * 45;
-        int bananaCost = bananaAmount * 15;
+        int pineappleCost = Math.multiplyExact(pineappleAmount, 30);
+        int orangeCost = Math.multiplyExact(orangeAmount, 3000);
+        int appleCost = Math.multiplyExact(appleAmount, 45);
+        int bananaCost = Math.multiplyExact(bananaAmount, 15);
         int perCentOffPineapple = 0; // Will search for coupons in DB and update this int
         int perCentOffOrange = 0; // Will search for coupons in DB and update this int
         int perCentOffApple = 0; // Will search for coupons in DB and update this int
         int perCentOffBanana = 0; // Will search for coupons in DB and update this int
 
         htmlOutput = new String();
-        Connection conn = Database.getChallengeConnection(applicationRoot, "CryptoChallengeShop");
-        log.debug("Looking for Coupons");
-        PreparedStatement prepstmt =
-            conn.prepareStatement("SELECT itemId, perCentOff FROM coupons WHERE couponCode = ?");
-        prepstmt.setString(1, couponCode);
-        ResultSet coupons = prepstmt.executeQuery();
-        try {
-          if (coupons.next()) {
-            if (coupons.getInt(1) == 1) // Pineapple
-            {
-              log.debug("Found coupon for %" + coupons.getInt(2) + " off Pineapple");
-              perCentOffPineapple = coupons.getInt(2);
-            } else if (coupons.getInt(1) == 2) // Orange
-            {
-              log.debug("Found coupon for %" + coupons.getInt(2) + " off Orange");
-              perCentOffOrange = coupons.getInt(2);
-            } else if (coupons.getInt(1) == 3) // Apple
-            {
-              log.debug("Found coupon for %" + coupons.getInt(2) + " off Apple");
-              perCentOffApple = coupons.getInt(2);
-            } else if (coupons.getInt(1) == 4) // Banana
-            {
-              log.debug("Found coupon for %" + coupons.getInt(2) + " off Banana");
-              perCentOffBanana = coupons.getInt(2);
+        if (PUBLISHED_COUPON_CODES.contains(couponCode.toLowerCase(Locale.ROOT))) {
+          log.debug("Looking for Coupons");
+          try (Connection conn =
+                  Database.getChallengeConnection(applicationRoot, "CryptoChallengeShop");
+              PreparedStatement prepstmt =
+                  conn.prepareStatement(
+                      "SELECT itemId, perCentOff FROM coupons WHERE couponCode = ?")) {
+            prepstmt.setString(1, couponCode);
+            try (ResultSet coupons = prepstmt.executeQuery()) {
+              if (coupons.next()) {
+                int itemId = coupons.getInt(1);
+                int perCentOff = coupons.getInt(2);
+                if (itemId == 1) // Pineapple
+                {
+                  log.debug("Found coupon for %" + perCentOff + " off Pineapple");
+                  perCentOffPineapple = perCentOff;
+                } else if (itemId == 2) // Orange
+                {
+                  log.debug("Found coupon for %" + perCentOff + " off Orange");
+                  perCentOffOrange = perCentOff;
+                } else if (itemId == 3) // Apple
+                {
+                  log.debug("Found coupon for %" + perCentOff + " off Apple");
+                  perCentOffApple = perCentOff;
+                } else if (itemId == 4) // Banana
+                {
+                  log.debug("Found coupon for %" + perCentOff + " off Banana");
+                  perCentOffBanana = perCentOff;
+                }
+              } else {
+                log.debug("Invalid Coupon Code");
+              }
             }
-          } else {
-            log.debug("Invalid Coupon Code");
+          } catch (Exception e) {
+            log.debug("Could Not Find Coupon: " + e.toString());
           }
-        } catch (Exception e) {
-          log.debug("Could Not Find Coupon: " + e.toString());
+        } else {
+          log.debug("Coupon code was not published by this shop - ignoring it");
         }
-        conn.close();
 
         // Work Out Final Cost
-        pineappleCost = pineappleCost - (pineappleCost * (perCentOffPineapple / 100));
-        appleCost = appleCost - (appleCost * (perCentOffApple / 100));
-        bananaCost = bananaCost - (bananaCost * (perCentOffBanana / 100));
-        orangeCost = orangeCost - (orangeCost * (perCentOffOrange / 100));
-        int finalCost = pineappleCost + appleCost + bananaAmount + orangeCost;
+        pineappleCost = applyDiscount(pineappleCost, perCentOffPineapple);
+        appleCost = applyDiscount(appleCost, perCentOffApple);
+        bananaCost = applyDiscount(bananaCost, perCentOffBanana);
+        orangeCost = applyDiscount(orangeCost, perCentOffOrange);
+        int finalCost = pineappleCost + appleCost + bananaCost + orangeCost;
 
         // Output Order
         htmlOutput =
@@ -179,5 +206,22 @@ public class BrokenCrypto4 extends HttpServlet {
       amount = 0;
     }
     return amount;
+  }
+
+  /**
+   * Applies a percentage discount to a cost. The percentage is clamped to a sane range and the
+   * arithmetic is done in long precision so a hostile or corrupt value cannot wrap an int.
+   *
+   * @param cost The undiscounted cost
+   * @param perCentOff The percentage to take off
+   * @return The discounted cost
+   */
+  private static int applyDiscount(int cost, int perCentOff) {
+    if (cost <= 0 || perCentOff <= 0) {
+      return cost;
+    }
+    int percentage = Math.min(perCentOff, 100);
+    long discount = ((long) cost * (long) percentage) / 100L;
+    return Math.toIntExact((long) cost - discount);
   }
 }
