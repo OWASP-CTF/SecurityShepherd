@@ -1,6 +1,7 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"
 	language="java" import="utils.*" errorPage=""%>
 <%@ page import="java.util.Locale, java.util.ResourceBundle"%>
+<%@ page import="servlets.module.challenge.SessionManagement4"%>
 <%
 /**
  * Broken Authentication and Session Management Challenge Four
@@ -101,7 +102,7 @@ if (request.getSession() != null)
 				$("#submitButton").hide("fast");
 				$("#loadingSign").show("slow");
 				$("#resultsDiv").hide("slow", function(){
-					document.cookie="SubSessionID=TURBd01EQXdNREF3TURBd01EQXdNUT09";
+					document.cookie="SubSessionID=<%= SessionManagement4.issueSubSession(ses) %>";
 					var ajaxCall = $.ajax({
 						type: "POST",
 						url: "<%= levelHash %>",
