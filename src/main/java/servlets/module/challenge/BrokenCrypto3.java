@@ -41,8 +41,9 @@ public class BrokenCrypto3 extends HttpServlet {
   private static String levelName = "Broken Crypto Challenge 3";
   public static String levelHash =
       "2da053b4afb1530a500120a49a14d422ea56705a7e3fc405a77bc269948ccae1";
-  public static String levelResult =
-      "thisisthesecurityshepherdabcencryptionkey"; // Is used as encryption key in this level
+  public static String levelResult = "thisisthesecurityshepherdabcencryptionkey";
+  // Separate from levelResult so the known-plaintext (space) attack can't recover the flag itself
+  private static String cipherKey = "thisisthesecurityshepherdxyzxorstreamkey1";
 
   public void doPost(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
@@ -73,7 +74,7 @@ public class BrokenCrypto3 extends HttpServlet {
 
         log.debug("Decrypting user input");
         // Using level key as encryption key
-        String decryptedUserData = decrypt(userData, levelResult);
+        String decryptedUserData = decrypt(userData, cipherKey);
         log.debug("Decrypted to: " + decryptedUserData);
 
         htmlOutput =

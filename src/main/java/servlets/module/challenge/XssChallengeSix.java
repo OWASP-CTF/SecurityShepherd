@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.owasp.encoder.Encode;
 import utils.FindXSS;
 import utils.Hash;
 import utils.ShepherdLogManager;
@@ -80,8 +81,11 @@ public class XssChallengeSix extends HttpServlet {
           String searchTerm = request.getParameter("searchTerm");
           log.debug("User Submitted - " + searchTerm);
           searchTerm = XssFilter.anotherBadUrlValidate(searchTerm);
-          userPost = "<a href=\"" + searchTerm + "\">Your HTTP Link!</a>";
           log.debug("After Sanitising - " + searchTerm);
+          // The sanitiser still leaves the href breakable, so what is actually rendered
+          // must be re-encoded for the attribute context, and the key graded on that value
+          // rather than the still-dangerous string the sanitiser produced.
+          userPost = "<a href=\"" + Encode.forHtmlAttribute(searchTerm) + "\">Your HTTP Link!</a>";
 
           boolean xssDetected = FindXSS.search(userPost);
           if (xssDetected) {

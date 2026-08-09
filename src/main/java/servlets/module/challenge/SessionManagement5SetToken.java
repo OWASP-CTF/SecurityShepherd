@@ -3,16 +3,19 @@ package servlets.module.challenge;
 import dbProcs.Database;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import org.apache.commons.codec.binary.Hex;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
@@ -50,6 +53,20 @@ public class SessionManagement5SetToken extends HttpServlet {
   private static final Logger log = LogManager.getLogger(SessionManagement5SetToken.class);
   private static String levelName = "SessionManagement5SetToken";
   public static String levelHash = SessionManagement5.levelHash;
+  private static final SecureRandom secureRandom = new SecureRandom();
+  // Per-user reset tokens; a real token can only be obtained for an account by requesting it,
+  // it can no longer be forged as a base64'd timestamp.
+  static final ConcurrentHashMap<String, TokenEntry> resetTokens = new ConcurrentHashMap<>();
+
+  static final class TokenEntry {
+    final String token;
+    final long issuedAtMillis;
+
+    TokenEntry(String token, long issuedAtMillis) {
+      this.token = token;
+      this.issuedAtMillis = issuedAtMillis;
+    }
+  }
 
   /**
    * Used to apparently send a message to a user with a token to reset their password.
@@ -110,6 +127,10 @@ public class SessionManagement5SetToken extends HttpServlet {
         // Is the username valid?
         if (resultSet.next()) {
           log.debug("User found");
+          byte[] tokenBytes = new byte[24];
+          secureRandom.nextBytes(tokenBytes);
+          String token = Hex.encodeHexString(tokenBytes);
+          resetTokens.put(userName, new TokenEntry(token, System.currentTimeMillis()));
           htmlOutput =
               bundle.getString("setToken.sentTo.1")
                   + " '"

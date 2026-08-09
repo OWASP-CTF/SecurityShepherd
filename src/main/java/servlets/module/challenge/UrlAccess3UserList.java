@@ -92,9 +92,9 @@ public class UrlAccess3UserList extends HttpServlet {
         PreparedStatement callstmt;
         callstmt =
             conn.prepareStatement(
-                "SELECT userName FROM users WHERE userRole = \"admin\" OR userName = \""
-                    + currentUser
-                    + "\";");
+                "SELECT userName FROM users WHERE userRole = \"admin\" OR userName = ?;");
+        // Bind the cookie-derived value instead of concatenating it: it is attacker controlled.
+        callstmt.setString(1, currentUser);
         log.debug("Getting User List");
         htmlOutput = new String();
         ResultSet rs = callstmt.executeQuery();

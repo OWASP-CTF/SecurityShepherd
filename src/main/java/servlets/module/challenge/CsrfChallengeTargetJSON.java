@@ -81,7 +81,11 @@ public class CsrfChallengeTargetJSON extends HttpServlet {
         String plusId = (String) json.get("userId");
         log.debug("User Submitted - " + plusId);
         String userId = (String) ses.getAttribute("userStamp");
-        if (!userId.equals(plusId)) {
+        // A cross-site <form> cannot set a non-simple Content-Type, so this rejects forged posts
+        String contentType = request.getContentType();
+        boolean isJsonRequest =
+            contentType != null && contentType.toLowerCase(Locale.ROOT).startsWith("application/json");
+        if (isJsonRequest && !userId.equals(plusId)) {
           String ApplicationRoot = getServletContext().getRealPath("");
           String userName = (String) ses.getAttribute("userName");
           String attackerName = Getter.getUserName(ApplicationRoot, plusId);

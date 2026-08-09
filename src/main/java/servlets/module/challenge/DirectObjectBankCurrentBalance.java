@@ -67,15 +67,21 @@ public class DirectObjectBankCurrentBalance extends HttpServlet {
       PrintWriter out = response.getWriter();
       out.print(getServletInfo());
       try {
-        String accountNumber = request.getParameter("accountNumber");
+        // Balance checks are scoped to the account bound to this session at login, not
+        // whatever accountNumber the caller supplies
+        String accountNumber = (String) ses.getAttribute("directObjectBankAccount");
         log.debug("Account Number - " + accountNumber);
         String applicationRoot = getServletContext().getRealPath("");
         String htmlOutput = new String();
-        long currentBalance =
-            DirectObjectBankLogin.getAccountBalance(accountNumber, applicationRoot);
-        log.debug("Outputting HTML");
-        htmlOutput = Long.toString(currentBalance);
-        out.write(htmlOutput);
+        if (accountNumber == null) {
+          out.write(errors.getString("error.shouldNotBeHere"));
+        } else {
+          long currentBalance =
+              DirectObjectBankLogin.getAccountBalance(accountNumber, applicationRoot);
+          log.debug("Outputting HTML");
+          htmlOutput = Long.toString(currentBalance);
+          out.write(htmlOutput);
+        }
       } catch (SQLException e) {
         out.write(
             errors.getString("error.funky")
