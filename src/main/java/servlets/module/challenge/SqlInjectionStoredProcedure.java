@@ -17,6 +17,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
+import utils.ResultLeakGuard;
 import utils.ShepherdLogManager;
 import utils.Validate;
 
@@ -97,7 +98,15 @@ public class SqlInjectionStoredProcedure extends HttpServlet {
                 + "</th></tr>";
 
         log.debug("Opening Result Set from query");
+        String levelAnswer = ResultLeakGuard.lookupAnswer(ApplicationRoot, levelHash);
         while (resultSet.next()) {
+          // A row carrying this module's own answer must never be echoed back through this
+          // lookup, no matter what search term reached it.
+          if (ResultLeakGuard.leaksAnswer(
+              levelAnswer, resultSet.getString(2), resultSet.getString(3), resultSet.getString(4))) {
+            log.debug("Withholding a row that carries this module's answer");
+            continue;
+          }
           log.debug("Adding Customer " + resultSet.getString(2));
           htmlOutput +=
               "<tr><td>"
