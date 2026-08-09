@@ -1,6 +1,5 @@
 package servlets.module.challenge;
 
-import dbProcs.Getter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;
@@ -14,8 +13,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.owasp.encoder.Encode;
-import utils.FindXSS;
-import utils.Hash;
 import utils.ShepherdLogManager;
 import utils.Validate;
 import utils.XssFilter;
@@ -80,27 +77,8 @@ public class XssChallengeThree extends HttpServlet {
           log.debug("User Submitted - " + searchTerm);
           searchTerm = XssFilter.levelThree(searchTerm);
           log.debug("After Filtering - " + searchTerm);
-          // The win-detector must inspect the value exactly as it will be rendered, not the
-          // filtered-but-unencoded intermediate value, otherwise a filter bypass that is
-          // harmless once encoded still trips the detector.
           String encodedForDisplay = Encode.forHtml(searchTerm);
           String htmlOutput = new String();
-          if (FindXSS.search(encodedForDisplay)) {
-            htmlOutput =
-                "<h2 class='title'>"
-                    + bundle.getString("result.wellDone")
-                    + "</h2>"
-                    + "<p>"
-                    + bundle.getString("result.youDidIt")
-                    + "<br />"
-                    + bundle.getString("result.resultKey")
-                    + " <a>"
-                    + Hash.generateUserSolution(
-                        Getter.getModuleResultFromHash(
-                            getServletContext().getRealPath(""), levelHash),
-                        (String) ses.getAttribute("userName"))
-                    + "</a>";
-          }
           log.debug("Adding searchTerm to Html: " + searchTerm);
           htmlOutput +=
               "<h2 class='title'>"
